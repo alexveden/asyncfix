@@ -2,7 +2,7 @@ import unittest
 
 from asyncfix.connection import MessageDirection
 from asyncfix.journaler import Journaler
-from asyncfix.message import FIXContext, FIXMessage
+from asyncfix.message import FIXContainer, FIXMessage
 from asyncfix.session import FIXSession
 
 
@@ -13,7 +13,7 @@ class JournalerTests(unittest.TestCase):
         msg.set("32", "aaaa")
         msg.set("323", "bbbb")
 
-        rptgrp1 = FIXContext()
+        rptgrp1 = FIXContainer()
         rptgrp1.set("611", "aaa")
         rptgrp1.set("612", "bbb")
         rptgrp1.set("613", "ccc")

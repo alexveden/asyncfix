@@ -8,7 +8,7 @@ import pytest
 from asyncfix import FMsgType, FTag
 from asyncfix.codec import Codec
 from asyncfix.message import (
-    FIXContext,
+    FIXContainer,
     FIXMessage,
     RepeatingTagError,
     TagNotFoundError,
@@ -63,14 +63,14 @@ def test_encode(fix_session):
     msg.set(codec.protocol.fixtags.ClOrdID, "abcdefg")
     msg.set(codec.protocol.fixtags.Currency, "GBP")
 
-    rptgrp1 = FIXContext()
+    rptgrp1 = FIXContainer()
     rptgrp1.set("611", "aaa")
     rptgrp1.set("612", "bbb")
     rptgrp1.set("613", "ccc")
 
     msg.add_group("444", rptgrp1, 0)
 
-    rptgrp2 = FIXContext()
+    rptgrp2 = FIXContainer()
     rptgrp2.set("611", "zzz")
     rptgrp2.set("612", "yyy")
     rptgrp2.set("613", "xxx")
@@ -193,22 +193,22 @@ def test_decode_groups(fix_session):
     msg_in.set(codec.protocol.fixtags.OrderQty, 9876)
     msg_in.set(codec.protocol.fixtags.Symbol, "VOD.L")
 
-    rptgrp1 = FIXContext()
+    rptgrp1 = FIXContainer()
     rptgrp1.set(FTag.SecurityAltID, "abc")
     rptgrp1.set(FTag.SecurityAltIDSource, "bbb")
     msg_in.add_group(FTag.NoSecurityAltID, rptgrp1)
 
-    rptgrp2 = FIXContext()
+    rptgrp2 = FIXContainer()
     rptgrp2.set(FTag.SecurityAltID, "zzz")
     rptgrp2.set(FTag.SecurityAltIDSource, "xxx")
     msg_in.add_group(FTag.NoSecurityAltID, rptgrp2)
 
-    g = FIXContext()
+    g = FIXContainer()
     g.set("20323", "1")
     g.set("20324", "3")
     msg_in.add_group("20228", g)
 
-    g = FIXContext()
+    g = FIXContainer()
     g.set("20323", "1")
     g.set("20324", "3")
     msg_in.add_group("20228", g)

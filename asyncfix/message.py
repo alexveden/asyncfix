@@ -6,6 +6,14 @@ from typing import Any
 
 from asyncfix import FMsgType
 
+from .errors import (
+    DuplicatedTagError,
+    FIXMessageError,
+    RepeatingTagError,
+    TagNotFoundError,
+    UnmappedRepeatedGrpError,
+)
+
 
 def isclass(cl):
     try:
@@ -19,29 +27,9 @@ class MessageDirection(Enum):
     OUTBOUND = 1
 
 
-class FIXMessageError(Exception):
-    pass
-
-
-class TagNotFoundError(FIXMessageError):
-    pass
-
-
-class DuplicatedTagError(FIXMessageError):
-    pass
-
-
-class RepeatingTagError(FIXMessageError):
-    pass
-
-
-class UnmappedRepeatedGrpError(FIXMessageError):
-    pass
-
-
 class _FIXRepeatingGroupContainer:
     def __init__(self):
-        self.groups: list[FIXContext] = []
+        self.groups: list[FIXContainer] = []
 
     def add_group(self, group, index):
         if index == -1:
@@ -61,7 +49,7 @@ class _FIXRepeatingGroupContainer:
     __repr__ = __str__
 
 
-class FIXContext(object):
+class FIXContainer(object):
     def __init__(self, tags: dict[str | int, [str, float, int]] = None):
         self.tags: dict[str, str | _FIXRepeatingGroupContainer] = OrderedDict()
 
@@ -106,12 +94,12 @@ class FIXContext(object):
             )
         return result
 
-    def add_group(self, tag: str | int, group: FIXContext | dict, index: int = -1):
+    def add_group(self, tag: str | int, group: FIXContainer | dict, index: int = -1):
         tag = str(tag)
 
         if isinstance(group, dict):
-            group = FIXContext(group)
-        elif not isinstance(group, FIXContext):
+            group = FIXContainer(group)
+        elif not isinstance(group, FIXContainer):
             raise FIXMessageError(f"Expected FIXContext in group, got {type(group)}")
 
         if tag in self:
@@ -122,7 +110,7 @@ class FIXContext(object):
             group_container.add_group(group, index)
             self.tags[tag] = group_container
 
-    def set_group(self, tag: str | int, groups: list[dict, FIXContext]):
+    def set_group(self, tag: str | int, groups: list[dict, FIXContainer]):
         tag = str(tag)
 
         if tag in self:
@@ -132,8 +120,8 @@ class FIXContext(object):
 
         for m in groups:
             if isinstance(m, dict):
-                m = FIXContext(tags=m)
-            elif not isinstance(m, FIXContext):
+                m = FIXContainer(tags=m)
+            elif not isinstance(m, FIXContainer):
                 raise ValueError(
                     f"groups must be a list of FIXContext or dict, got {type(m)}"
                 )
@@ -154,7 +142,7 @@ class FIXContext(object):
             except KeyError:
                 pass
 
-    def get_group(self, tag: str | int) -> list[FIXContext]:
+    def get_group(self, tag: str | int) -> list[FIXContainer]:
         tag = str(tag)
         is_group = self.is_group(tag)
         if is_group is None:
@@ -173,7 +161,7 @@ class FIXContext(object):
                     return group
         raise TagNotFoundError(f"get_group_by_tag: {tag=} {gtag=} {gvalue=} missing")
 
-    def get_group_by_index(self, tag: str | int, index: int) -> FIXContext:
+    def get_group_by_index(self, tag: str | int, index: int) -> FIXContainer:
         g = self.get_group(tag)
 
         if index >= len(g):
@@ -222,7 +210,7 @@ class FIXContext(object):
     __repr__ = __str__
 
 
-class FIXMessage(FIXContext):
+class FIXMessage(FIXContainer):
     def __init__(
         self,
         msg_type: str | FMsgType,

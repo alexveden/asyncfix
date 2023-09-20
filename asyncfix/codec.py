@@ -1,7 +1,7 @@
 import logging
 from datetime import datetime
 
-from asyncfix.message import FIXContext, FIXMessage, RepeatingTagError
+from asyncfix.message import FIXContainer, FIXMessage, RepeatingTagError
 from asyncfix.protocol import FIXProtocolBase
 from asyncfix.session import FIXSession
 
@@ -14,12 +14,12 @@ class DecodingError(Exception):
     pass
 
 
-class RepeatingGroupContext(FIXContext):
+class RepeatingGroupContext(FIXContainer):
     def __init__(self, tag, repeating_group_tags, parent):
         self.tag = tag
         self.repeating_group_tags = repeating_group_tags
         self.parent = parent
-        FIXContext.__init__(self)
+        FIXContainer.__init__(self)
 
 
 class Codec(object):

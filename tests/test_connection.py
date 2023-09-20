@@ -6,7 +6,7 @@ from asyncfix import FMsgType, FTag
 from asyncfix.codec import Codec
 from asyncfix.connection import FIXConnectionHandler
 from asyncfix.engine import FIXEngine
-from asyncfix.message import FIXContext, FIXMessage
+from asyncfix.message import FIXContainer, FIXMessage
 from asyncfix.protocol import FIXProtocol44
 from asyncfix.session import FIXSession
 

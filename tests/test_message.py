@@ -6,7 +6,7 @@ import pytest
 from asyncfix import FTag
 from asyncfix.message import (
     DuplicatedTagError,
-    FIXContext,
+    FIXContainer,
     FIXMessage,
     FIXMessageError,
     RepeatingTagError,
@@ -51,24 +51,24 @@ def test_tag_errors():
 def test_groups():
     msg = FIXMessage("AB")
 
-    msg.set_group(2023, [{1: "a", 2: "b"}, FIXContext({1: "c", 2: "d"})])
+    msg.set_group(2023, [{1: "a", 2: "b"}, FIXContainer({1: "c", 2: "d"})])
     msg.add_group(2023, {1: "e", 4: "f"})
 
     with pytest.raises(FIXMessageError, match="Expected FIXContext in group, got "):
         msg.add_group(2023, None)
 
     g = msg.get_group_by_index(2023, 0)
-    assert isinstance(g, FIXContext)
+    assert isinstance(g, FIXContainer)
     assert g[1] == "a"
     assert g[2] == "b"
 
     g = msg.get_group_by_index(2023, 1)
-    assert isinstance(g, FIXContext)
+    assert isinstance(g, FIXContainer)
     assert g[1] == "c"
     assert g[2] == "d"
 
     g = msg.get_group_by_index(2023, 2)
-    assert isinstance(g, FIXContext)
+    assert isinstance(g, FIXContainer)
     assert g[1] == "e"
     assert g[4] == "f"
 
@@ -94,14 +94,14 @@ def test_msg_construction():
     msg.set("32", "aaaa")
     msg.set("323", "bbbb")
 
-    rptgrp1 = FIXContext()
+    rptgrp1 = FIXContainer()
     rptgrp1.set("611", "aaa")
     rptgrp1.set("612", "bbb")
     rptgrp1.set("613", "ccc")
 
     msg.add_group("444", rptgrp1, 0)
 
-    rptgrp2 = FIXContext({611: "zzz", 612: "yyy", "613": "xxx"})
+    rptgrp2 = FIXContainer({611: "zzz", 612: "yyy", "613": "xxx"})
     msg.add_group("444", rptgrp2, 1)
 
     assert "45=dgd|32=aaaa|323=bbbb|444=2=>[611=aaa|612=bbb|613=ccc,"
@@ -112,7 +112,7 @@ def test_msg_construction():
 
     msg.add_group("444", rptgrp2, 1)
 
-    rptgrp3 = FIXContext()
+    rptgrp3 = FIXContainer()
     rptgrp3.set("611", "ggg")
     rptgrp3.set("612", "hhh")
     rptgrp3.set("613", "jjj")
@@ -130,7 +130,7 @@ def testPickle():
     msg.set("32", "aaaa")
     msg.set("323", "bbbb")
 
-    rptgrp1 = FIXContext()
+    rptgrp1 = FIXContainer()
     rptgrp1.set("611", "aaa")
     rptgrp1.set("612", "bbb")
     rptgrp1.set("613", "ccc")
