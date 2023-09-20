@@ -10,8 +10,6 @@ from asyncfix.message import FIXContainer, FIXMessage
 from asyncfix.protocol import FIXProtocol44
 from asyncfix.session import FIXSession
 
-from .utils import assert_msg
-
 
 class TestConnection(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
@@ -48,14 +46,11 @@ class TestConnection(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(len(args[0]), 1)  # 1 arg
             self.assertEqual(args[1], {})  # no kwargs
 
-            assert_msg(
-                args[0][0],
-                {
-                    FTag.Symbol: "VOD.L",
-                    FTag.Price: "123.45",
-                    FTag.OrderQty: "9876",
-                },
-            )
+            assert {
+                FTag.Symbol: "VOD.L",
+                FTag.Price: "123.45",
+                FTag.OrderQty: "9876",
+            } in args[0][0]
 
     async def test_handle_read_partial_msg(self):
         full = self.codec.encode(self.msg, self.session).encode()
@@ -83,14 +78,11 @@ class TestConnection(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(len(args[0]), 1)  # 1 arg
             self.assertEqual(args[1], {})  # no kwargs
 
-            assert_msg(
-                args[0][0],
-                {
-                    FTag.Symbol: "VOD.L",
-                    FTag.Price: "123.45",
-                    FTag.OrderQty: "9876",
-                },
-            )
+            assert {
+                FTag.Symbol: "VOD.L",
+                FTag.Price: "123.45",
+                FTag.OrderQty: "9876",
+            } in args[0][0]
 
     async def test_handle_read_partial_bad_data(self):
         full = self.codec.encode(self.msg, self.session).encode()
@@ -118,14 +110,11 @@ class TestConnection(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(len(args[0]), 1)  # 1 arg
             self.assertEqual(args[1], {})  # no kwargs
 
-            assert_msg(
-                args[0][0],
-                {
-                    FTag.Symbol: "VOD.L",
-                    FTag.Price: "123.45",
-                    FTag.OrderQty: "9876",
-                },
-            )
+            assert {
+                FTag.Symbol: "VOD.L",
+                FTag.Price: "123.45",
+                FTag.OrderQty: "9876",
+            } in args[0][0]
 
     async def test_handle_read_partial_decode_logic_msg_buff_management(self):
         full = self.codec.encode(self.msg, self.session).encode()
@@ -174,11 +163,8 @@ class TestConnection(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(len(args[0]), 1)  # 1 arg
             self.assertEqual(args[1], {})  # no kwargs
 
-            assert_msg(
-                args[0][0],
-                {
-                    FTag.Symbol: "VOD.L",
-                    FTag.Price: "123.45",
-                    FTag.OrderQty: "9876",
-                },
-            )
+            assert {
+                FTag.Symbol: "VOD.L",
+                FTag.Price: "123.45",
+                FTag.OrderQty: "9876",
+            } in args[0][0]
