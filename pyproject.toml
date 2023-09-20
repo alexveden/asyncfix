@@ -31,12 +31,3 @@ Homepage = "https://github.com/alexveden/asyncfix"
 
 [tool.isort]
 profile = "black"
-
-[tool.flake8]
-extend-ignore = ['E203']
-per-file-ignores = [
-    './__init__.py:F401,F403',
-    '**/__init__.py:F401,F403',
-    '**/test_*.py:F405,E501,F841,F541,F403,F401,E741,W291,E265,W293',
-]
-max-line-length = 88
