@@ -28,3 +28,4 @@ def test_msgtype():
     assert "0" in FMsg
     assert 0 not in FMsg
     assert hash(FMsg.HEARTBEAT) == hash("0")
+    assert FMsg.HEARTBEAT in FMsg

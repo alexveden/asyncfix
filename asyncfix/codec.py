@@ -187,17 +187,16 @@ class Codec(object):
             tag, value = toks
 
             if tag == FTag.CheckSum:
-                check_sum = (
-                    sum([ord(i) for i in list(self.SOH.join(msg[:-1]))]) + 1
-                ) % 256
-                if check_sum != int(value):
+                cheksum_base = self.SOH.join(msg[:-1])
+                checksum = (sum([ord(i) for i in cheksum_base]) + 1) % 256
+
+                if checksum != int(value):
                     logging.warning(
-                        "\tCheckSum: %s (INVALID) expecting %s"
-                        % (int(value), check_sum)
+                        "\tCheckSum: %s (INVALID) expecting %s" % (int(value), checksum)
                     )
                     assert (
                         silent
-                    ), f"invalid checksum tag[10]={value} expected: {check_sum} {msg=}"
+                    ), f"invalid checksum tag[10]={value} expected: {checksum} {msg=}"
                     checksum_passed = False
                 else:
                     checksum_passed = True
