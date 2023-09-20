@@ -22,7 +22,6 @@ dev = [
   "flake8==6.1.0",
   "black==23.7.0",
   "pre-commit",
-  "Flake8-pyproject",
 ]
 
 [project.urls]

@@ -4,7 +4,7 @@ from collections import OrderedDict
 from enum import Enum
 from typing import Any
 
-from asyncfix.protocol.msgtype import FMsgType
+from asyncfix import FMsgType
 
 
 def isclass(cl):

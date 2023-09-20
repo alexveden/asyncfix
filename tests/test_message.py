@@ -1,7 +1,9 @@
 import pickle
+import unittest
 
 import pytest
 
+from asyncfix import FTag
 from asyncfix.message import (
     DuplicatedTagError,
     FIXContext,
@@ -10,11 +12,6 @@ from asyncfix.message import (
     RepeatingTagError,
     TagNotFoundError,
 )
-from asyncfix.protocol import FTag
-
-__author__ = "tom, alex"
-
-import unittest
 
 
 def test_init_construction():

@@ -1,8 +1,11 @@
 import datetime
 import importlib
+import unittest
+from unittest.mock import Mock, patch
 
 import pytest
 
+from asyncfix import FMsgType, FTag
 from asyncfix.codec import Codec
 from asyncfix.message import (
     FIXContext,
@@ -11,12 +14,7 @@ from asyncfix.message import (
     TagNotFoundError,
     UnmappedRepeatedGrpError,
 )
-from asyncfix.protocol import FIXProtocol44, FMsgType, FTag
-
-__author__ = "tom, alex"
-
-import unittest
-from unittest.mock import Mock, patch
+from asyncfix.protocol import FIXProtocol44
 
 
 class FakeDate(datetime.datetime):

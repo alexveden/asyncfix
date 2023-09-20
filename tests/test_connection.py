@@ -2,11 +2,12 @@ import asyncio
 import unittest
 from unittest.mock import AsyncMock, MagicMock, patch
 
+from asyncfix import FMsgType, FTag
 from asyncfix.codec import Codec
 from asyncfix.connection import FIXConnectionHandler
 from asyncfix.engine import FIXEngine
 from asyncfix.message import FIXContext, FIXMessage
-from asyncfix.protocol import FIXProtocol44, FMsgType, FTag
+from asyncfix.protocol import FIXProtocol44
 from asyncfix.session import FIXSession
 
 from .utils import assert_msg

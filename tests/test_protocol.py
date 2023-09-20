@@ -1,6 +1,6 @@
 import pytest
 
-from asyncfix.protocol import FMsgType, FTag
+from asyncfix import FMsgType, FTag
 
 
 def test_tags():
