@@ -37,6 +37,10 @@ def test_tag_errors():
     with pytest.raises(DuplicatedTagError, match="tag=45 already exists"):
         msg[45] = "aaa"
 
+    assert 45 in msg
+    del msg[45]
+    assert 45 not in msg
+
     with pytest.raises(FIXMessageError, match="Tags must be only integers"):
         msg["abs"] = "aaa"
 
