@@ -194,8 +194,13 @@ class FIXMessage(FIXContainer):
         msg_type: str | FMsg,
         tags: dict[str | int, [str, float, int]] = None,
     ):
-        self.msg_type = msg_type
+        self._msg_type = msg_type
         super().__init__(tags)
 
-    def set_msg_type(self, msg_type: str | FMsg):
-        self.msg_type = msg_type
+    @property
+    def msg_type(self) -> str | FMsg:
+        return self._msg_type
+
+    @msg_type.setter
+    def msg_type(self, msg_type: str | FMsg):
+        self._msg_type = msg_type

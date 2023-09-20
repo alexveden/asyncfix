@@ -102,6 +102,9 @@ def test_decode_invalid_checksum(fix_session):
     assert msg is None
     assert parsed_len == len(enc_msg)
 
+    with pytest.raises(AssertionError, match="invalid checksum tag"):
+        msg, parsed_len = codec.decode(enc_msg, silent=False)
+
 
 def test_decode_valid(fix_session):
     protocol = FIXProtocol44()
@@ -118,7 +121,7 @@ def test_decode_valid(fix_session):
     # assert False, enc_msg
 
     enc_msg = b"8=FIX.4.4\x019=82\x0135=D\x0149=sender\x0156=target\x0134=1\x0152=20230919-07:13:26.808\x0144=123.45\x0138=9876\x0155=VOD.L\x0110=100\x01"  # noqa
-    msg, parsed_len = codec.decode(enc_msg)
+    msg, parsed_len = codec.decode(enc_msg, silent=False)
 
     assert isinstance(msg, FIXMessage)
     assert msg[8] == "FIX.4.4"
@@ -138,6 +141,9 @@ def test_decode_invalid_no_fix(fix_session):
     assert msg is None
     assert parsed_len == len(enc_msg)
 
+    with pytest.raises(AssertionError, match="no fix header"):
+        msg, parsed_len = codec.decode(enc_msg, silent=False)
+
 
 def test_decode_invalid_with_added_fix(fix_session):
     protocol = FIXProtocol44()
@@ -147,6 +153,8 @@ def test_decode_invalid_with_added_fix(fix_session):
     msg, parsed_len = codec.decode(enc_msg)
     assert isinstance(msg, FIXMessage)
     assert parsed_len == len(enc_msg)
+
+    msg, parsed_len = codec.decode(enc_msg, silent=False)
 
 
 def test_decode_invalid_junk_with_incomplete_fix(fix_session):
@@ -160,13 +168,17 @@ def test_decode_invalid_junk_with_incomplete_fix(fix_session):
     assert parsed_len == len("somejunk\n")
     assert enc_msg[parsed_len:].startswith(b"8=FIX")
 
+    with pytest.raises(AssertionError, match="incomplete message"):
+        msg, parsed_len = codec.decode(enc_msg, silent=False)
+
 
 def test_decode_invalid_2nd_fix_msg(fix_session):
     protocol = FIXProtocol44()
     codec = Codec(protocol)
 
     enc_msg = b"somejunk\n8=FIX.4.4\x019=82\x0135=D\x0149=sender\x0156=target\x0134=1\x0152=20230919-07:13:26.808\x0144=123.45\x0138=9876\x0155=VOD.L\x0110=100\x018=FIX.4.4\x019=82\x0135=D"  # noqa
-    msg, parsed_len = codec.decode(enc_msg)
+    # msg, parsed_len = codec.decode(enc_msg)
+    msg, parsed_len = codec.decode(enc_msg, silent=False)
     assert isinstance(msg, FIXMessage)
     assert parsed_len == len(
         b"somejunk\n8=FIX.4.4\x019=82\x0135=D\x0149=sender\x0156=target\x0134=1\x0152=20230919-07:13:26.808\x0144=123.45\x0138=9876\x0155=VOD.L\x0110=100\x01"
@@ -182,6 +194,8 @@ def test_decode_invalid_start_fix_msg(fix_session):
     msg, parsed_len = codec.decode(enc_msg)
     assert isinstance(msg, FIXMessage)
     assert parsed_len == len(enc_msg)
+
+    msg, parsed_len = codec.decode(enc_msg, silent=False)
 
 
 def test_decode_groups(fix_session):
@@ -251,3 +265,112 @@ def test_decode_groups(fix_session):
 
     with pytest.raises(TagNotFoundError, match="missing tag group tag="):
         g = msg_out.get_group_list("129012099")
+
+
+def test_decode_protocol_mismatch(fix_session):
+    protocol = FIXProtocol44()
+    codec = Codec(protocol)
+
+    enc_msg = b"8=FIX.4.2\x019=82\x0135=D\x0149=sender\x0156=target\x0134=1\x0152=20230919-07:13:26.808\x0144=123.45\x0138=9876\x0155=VOD.L\x0110=100\x01"  # noqa
+    msg, parsed_len = codec.decode(enc_msg)
+    assert msg is None
+    assert parsed_len == len(enc_msg)
+
+    with pytest.raises(AssertionError, match="protocol beginstring mismatch"):
+        msg, parsed_len = codec.decode(enc_msg, silent=False)
+
+
+def test_decode_body_len_split_err(fix_session):
+    protocol = FIXProtocol44()
+    codec = Codec(protocol)
+
+    # this is an error, but possibly caused by socket buffer not loaded
+    #   expected to be appended by good data later
+    enc_msg = b"8=FIX.4.4\x0199\x0199=2\x01"
+    msg, parsed_len = codec.decode(enc_msg)
+    assert msg is None
+    assert parsed_len == len(enc_msg)
+
+    with pytest.raises(AssertionError, match="BodyLength split error "):
+        msg, parsed_len = codec.decode(enc_msg, silent=False)
+
+
+def test_decode_bad_second_tag(fix_session):
+    protocol = FIXProtocol44()
+    codec = Codec(protocol)
+
+    # this is an error, but possibly caused by socket buffer not loaded
+    #   expected to be appended by good data later
+    enc_msg = b"8=FIX.4.4\x0135=\x0199=2\x01"
+    msg, parsed_len = codec.decode(enc_msg)
+    assert msg is None
+    assert parsed_len == 19
+
+    with pytest.raises(AssertionError, match="2nd tag must be BodyLength"):
+        msg, parsed_len = codec.decode(enc_msg, silent=False)
+
+
+def test_decode_bad_second_tag_expected_body_length(fix_session):
+    protocol = FIXProtocol44()
+    codec = Codec(protocol)
+    # 2nd tag always must be a bodylength
+    enc_msg = b"8=FIX.4.4\x0135=8\x0199=2\x01"
+    msg, parsed_len = codec.decode(enc_msg)
+    assert msg is None
+    assert parsed_len == len(enc_msg)
+
+    with pytest.raises(AssertionError, match="2nd tag must be BodyLength"):
+        msg, parsed_len = codec.decode(enc_msg, silent=False)
+
+
+def test_decode_with_unicode_valid(fix_session):
+    protocol = FIXProtocol44()
+    codec = Codec(protocol)
+
+    msg = FIXMessage(codec.protocol.msgtype.NEWORDERSINGLE)
+    msg.set(codec.protocol.fixtags.Price, "123.45")
+    msg.set(codec.protocol.fixtags.OrderQty, 9876)
+    msg.set(codec.protocol.fixtags.Symbol, "ЮН")
+    protocol = FIXProtocol44()
+    codec = Codec(protocol)
+    enc_msg = codec.encode(msg, fix_session).encode("cp1251")
+    # print(repr(enc_msg))
+    # assert False, enc_msg
+
+    msg, parsed_len = codec.decode(enc_msg)
+    assert msg is None
+    assert parsed_len == len(enc_msg)
+
+    with pytest.raises(AssertionError, match="invalid checksum tag"):
+        msg, parsed_len = codec.decode(enc_msg, silent=False)
+
+
+def test_decode_empty_tag(fix_session):
+    protocol = FIXProtocol44()
+    codec = Codec(protocol)
+
+    enc_msg = b"8=FIX.4.4\x019=75\x0135=D\x0149=sender\x0156=target\x0134=1\x0152=20230919-07:13:26.808\x0144=123.45\x0138\x0155=VOD.L\x0110=100\x01"  # noqa
+    msg, parsed_len = codec.decode(enc_msg)
+    assert msg is None
+    assert parsed_len == len(enc_msg)
+    with pytest.raises(AssertionError, match="incomplete tag 38"):
+        msg, parsed_len = codec.decode(enc_msg, silent=False)
+
+    enc_msg = b"8=FIX.4.4\x019=75\x0135=D\x0149=sender\x0156=target\x0134=1\x0152=20230919-07:13:26.808\x0144=123.45\x01\x0155=VOD.L\x0110=100\x01"  # noqa
+    msg, parsed_len = codec.decode(enc_msg)
+    assert msg is None
+    assert parsed_len == len(enc_msg)
+    with pytest.raises(AssertionError, match="incomplete tag"):
+        msg, parsed_len = codec.decode(enc_msg, silent=False)
+
+
+def test_decode_minimum_message(fix_session):
+    protocol = FIXProtocol44()
+    codec = Codec(protocol)
+
+    enc_msg = b"8=FIX.4.4\x019=75\x01"
+    msg, parsed_len = codec.decode(enc_msg)
+    assert msg is None
+    assert parsed_len == 0
+    with pytest.raises(AssertionError, match="Minimum message"):
+        msg, parsed_len = codec.decode(enc_msg, silent=False)

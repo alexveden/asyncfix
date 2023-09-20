@@ -1,4 +1,16 @@
-class FIXMessageError(Exception):
+class FIXError(Exception):
+    pass
+
+
+class FIXMessageError(FIXError):
+    pass
+
+
+class EncodingError(FIXError):
+    pass
+
+
+class DecodingError(FIXError):
     pass
 
 

@@ -1,17 +1,11 @@
 import logging
 from datetime import datetime
 
+from asyncfix import FTag
+from asyncfix.errors import EncodingError
 from asyncfix.message import FIXContainer, FIXMessage, RepeatingTagError
 from asyncfix.protocol import FIXProtocolBase
 from asyncfix.session import FIXSession
-
-
-class EncodingError(Exception):
-    pass
-
-
-class DecodingError(Exception):
-    pass
 
 
 class RepeatingGroupContext(FIXContainer):
@@ -121,82 +115,94 @@ class Codec(object):
 
         return fixmsg + SEP
 
-    def decode(self, rawmsg: bytes) -> tuple[FIXMessage | None, int]:
-        parsed_length = 0
-        try:
-            valid_idx = rawmsg.find(b"8=FIX.")
-            if valid_idx == -1:
-                return None, len(rawmsg)
+    def decode(
+        self, rawmsg: bytes, silent: bool = True
+    ) -> tuple[FIXMessage | None, int]:
+        valid_idx = rawmsg.find(b"8=FIX.")
+        if valid_idx == -1:
+            assert silent, "no fix header"
+            return None, len(rawmsg)
 
-            rawmsg = rawmsg[valid_idx:].decode("utf-8")
-            parsed_length = valid_idx
-            msg = rawmsg.split(self.SOH)
+        parsed_length = valid_idx
+
+        msg = rawmsg[valid_idx:].decode("latin-1")
+
+        next_msg = msg[5:].find("8=FIX.")
+        if next_msg != -1:
+            # Next fix message added, but incomplete
+            next_msg += 5
+        else:
+            next_msg = len(msg)
+
+        msg = msg[:next_msg].split(self.SOH)
+        if not msg[-1]:
             msg = msg[:-1]
-        except UnicodeDecodeError as why:
-            logging.error("Failed to parse message %s" % (why,))
-            return (None, len(rawmsg))
 
         # at a minimum we require BeginString, BodyLength & Checksum
         if len(msg) < 3:
+            assert silent, "Minimum message"
             return (None, parsed_length)
 
-        toks = msg[0].split("=", 1)
-        if len(toks) != 2:
-            return (None, parsed_length)
-        tag, value = toks
-
-        if tag != self.protocol.fixtags.BeginString:
-            logging.error("*** BeginString missing or not 1st field *** [" + tag + "]")
-        elif value != self.protocol.beginstring:
+        tag, value = msg[0].split("=", 1)
+        if value != self.protocol.beginstring:
             logging.error(
                 "FIX Version unexpected (Recv: %s Expected: %s)"
                 % (value, self.protocol.beginstring)
             )
+            assert silent, "protocol beginstring mismatch"
+            return (None, len(rawmsg))
 
         toks = msg[1].split("=", 1)
         if len(toks) != 2:
-            return (None, parsed_length)
+            assert silent, f"BodyLength split error {msg}"
+            return (None, len(rawmsg))
         tag, value = toks
 
         msg_length = len(msg[0]) + len(msg[1]) + len("10=000") + 3
-        if tag != self.protocol.fixtags.BodyLength:
-            logging.error("*** BodyLength missing or not 2nd field *** [" + tag + "]")
+        if tag != FTag.BodyLength:
+            logging.error(f"*** BodyLength missing or not 2nd field *** [{tag}]: {msg}")
+            assert silent, "2nd tag must be BodyLength"
+            return (None, len(rawmsg))
         else:
             msg_length += int(value)
 
         # message looks incomplete
         if msg_length > len(rawmsg):
+            assert silent, "incomplete message"
             return (None, parsed_length)
 
         checksum_passed = False
         parsed_length += msg_length
 
-        # resplit our message
-        msg = rawmsg[:msg_length].split(self.SOH)
-        msg = msg[:-1]
         decoded_msg = FIXMessage("UNKNOWN")
         repeating_groups = []
         repeating_group_tags = self.protocol.repeating_groups
         current_context = decoded_msg
 
         for m in msg:
-            tag, value = m.split("=", 1)
+            toks = m.split("=", 1)
+            if len(toks) != 2:
+                assert silent, f"incomplete tag {m}"
+                return (None, len(rawmsg))
+            tag, value = toks
 
-            if tag == self.protocol.fixtags.CheckSum:
-                cksum = (sum([ord(i) for i in list(self.SOH.join(msg[:-1]))]) + 1) % 256
-                if cksum != int(value):
+            if tag == FTag.CheckSum:
+                check_sum = (
+                    sum([ord(i) for i in list(self.SOH.join(msg[:-1]))]) + 1
+                ) % 256
+                if check_sum != int(value):
                     logging.warning(
-                        "\tCheckSum: %s (INVALID) expecting %s" % (int(value), cksum)
+                        "\tCheckSum: %s (INVALID) expecting %s"
+                        % (int(value), check_sum)
                     )
+                    assert (
+                        silent
+                    ), f"invalid checksum tag[10]={value} expected: {check_sum} {msg=}"
                     checksum_passed = False
                 else:
                     checksum_passed = True
-            elif tag == self.protocol.fixtags.MsgType:
-                try:
-                    # self.protocol.msgtype.msgTypeToName(value)
-                    decoded_msg.set_msg_type(value)
-                except KeyError:
-                    logging.error('*** MsgType "%s" not supported ***')
+            elif tag == FTag.MsgType:
+                decoded_msg.msg_type = value
 
             # found the start of a repeating group
             if tag in repeating_group_tags:
@@ -259,4 +265,5 @@ class Codec(object):
         if checksum_passed:
             return (decoded_msg, parsed_length)
         else:
+            assert silent, f"Checksum probably missing: {msg}"
             return (None, parsed_length)
