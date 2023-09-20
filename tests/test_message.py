@@ -171,6 +171,14 @@ def test_dict_contains():
     assert {11: "clordis"} in msg
     assert {12: "clordis"} not in msg
     assert {11: "clordis", "2": "account"} not in msg
+    assert {11: "clordis1"} not in msg
+
+    msg.add_group("444", {1: "ok"})
+    with pytest.raises(
+        FIXMessageError,
+        match="__contains__ supports only simple tags, got group at tag=444",
+    ):
+        assert {444: "clordis"} in msg
 
 
 def test_dict_equals():
@@ -181,6 +189,8 @@ def test_dict_equals():
     assert msg[FTag.Account] == "account"
     assert msg[FTag.Price] == "21.21"
     assert msg[FTag.OrderQty] == "2"
+
+    assert msg != "aaldsa"
 
     assert {11: "clordis", 1: "account", FTag.Price: 21.21, FTag.OrderQty: 2} in msg
     assert {11: "clordis", 1: "account", FTag.Price: 21.21, FTag.OrderQty: 2} == msg
@@ -200,3 +210,25 @@ def test_dict_equals():
     # Other tag fails
     msg[2000] = "1"
     assert {11: "clordis", "1": "account", FTag.Price: 21.21, FTag.OrderQty: 2} != msg
+
+    assert {
+        11: "clordis",
+        "1": "account",
+        FTag.Price: 21.21,
+        FTag.OrderQty: 2,
+        2000: 1,
+    } == msg
+
+    msg.add_group(555, {1: "foo"})
+    with pytest.raises(
+        FIXMessageError,
+        match="fix message __eq__ .* supports only simple tags, got group at tag=555",
+    ):
+        assert {
+            11: "clordis",
+            "1": "account",
+            FTag.Price: 21.21,
+            FTag.OrderQty: 2,
+            2000: 1,
+            555: [{1: "foo"}],
+        } == msg
