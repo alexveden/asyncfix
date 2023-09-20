@@ -52,7 +52,7 @@ def test_groups():
 
     msg.set_group(2023, [{1: "a", 2: "b"}, FIXContainer({1: "c", 2: "d"})])
 
-    assert msg.get_group_by_tag(2023, 1, "a") == "1=a|2=b"
+    assert msg.get_group_by_tag(2023, 1, "a") == {1: "a", 2: "b"}
 
     with pytest.raises(
         TagNotFoundError, match="get_group_by_tag: tag=2023 gtag=1 gvalue='z' missing"
@@ -157,3 +157,46 @@ def testPickle():
 
     msg2 = pickle.loads(str)
     assert msg == msg2
+
+
+def test_dict_contains():
+    msg = FIXMessage(
+        "AB", {11: "clordis", "1": "account", FTag.Price: 21.21, FTag.OrderQty: 2}
+    )
+    assert msg[11] == "clordis"
+    assert msg[FTag.Account] == "account"
+    assert msg[FTag.Price] == "21.21"
+    assert msg[FTag.OrderQty] == "2"
+
+    assert {11: "clordis"} in msg
+    assert {12: "clordis"} not in msg
+    assert {11: "clordis", "2": "account"} not in msg
+
+
+def test_dict_equals():
+    msg = FIXMessage(
+        "AB", {11: "clordis", "1": "account", FTag.Price: 21.21, FTag.OrderQty: 2}
+    )
+    assert msg[11] == "clordis"
+    assert msg[FTag.Account] == "account"
+    assert msg[FTag.Price] == "21.21"
+    assert msg[FTag.OrderQty] == "2"
+
+    assert {11: "clordis", 1: "account", FTag.Price: 21.21, FTag.OrderQty: 2} in msg
+    assert {11: "clordis", 1: "account", FTag.Price: 21.21, FTag.OrderQty: 2} == msg
+    assert {12: "clordis", 1: "account", FTag.Price: 21.21, FTag.OrderQty: 2} != msg
+    assert {11: "clordis1", 1: "account", FTag.Price: 21.21, FTag.OrderQty: 2} != msg
+
+    # Ignoring tags
+    msg[FTag.BeginString] = "FIX.4.4"
+    assert {11: "clordis", 1: "account", FTag.Price: 21.21, FTag.OrderQty: 2} == msg
+    msg[FTag.BodyLength] = "100"
+    assert {11: "clordis", 1: "account", FTag.Price: 21.21, FTag.OrderQty: 2} == msg
+    msg[FTag.CheckSum] = "100"
+    assert {11: "clordis", 1: "account", FTag.Price: 21.21, FTag.OrderQty: 2} == msg
+    msg[FTag.MsgType] = "1"
+    assert {11: "clordis", "1": "account", FTag.Price: 21.21, FTag.OrderQty: 2} == msg
+
+    # Other tag fails
+    msg[2000] = "1"
+    assert {11: "clordis", "1": "account", FTag.Price: 21.21, FTag.OrderQty: 2} != msg

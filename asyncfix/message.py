@@ -4,7 +4,7 @@ from collections import OrderedDict
 from enum import Enum
 from typing import Any
 
-from asyncfix import FMsg
+from asyncfix import FMsg, FTag
 
 from .errors import (
     DuplicatedTagError,
@@ -168,8 +168,29 @@ class FIXContainer(object):
     def __setitem__(self, tag: str | int, value):
         self.set(tag, value)
 
-    def __contains__(self, item: str | int):
-        return str(item) in self.tags
+    def __contains__(self, item: str | int | dict[str, Any]):
+        if isinstance(item, dict):
+            assert item, "empty dict item"
+
+            # tag member comparison
+            for t, v in item.items():
+                t = str(t)
+                v = str(v)
+
+                if t not in self.tags:
+                    return False
+
+                if self.is_group(t):
+                    raise FIXMessageError(
+                        "fix message __contains__ supports only simple tags, got group"
+                        f" at tag={t}"
+                    )
+
+                if v != self.get(t):
+                    return False
+            return True
+        else:
+            return str(item) in self.tags
 
     def __str__(self):
         r = ""
@@ -183,7 +204,40 @@ class FIXContainer(object):
 
     def __eq__(self, other):
         # if our string representation looks the same, the objects are equivalent
-        return self.__str__() == other.__str__()
+        if isinstance(other, FIXContainer):
+            return self.__str__() == other.__str__()
+        elif isinstance(other, dict):
+            ignore_tags = {
+                FTag.BeginString,
+                FTag.BodyLength,
+                FTag.CheckSum,
+                FTag.MsgType,
+            }
+
+            other_tags = set(
+                [str(t) for t in other.keys() if str(t) not in ignore_tags]
+            )
+            self_tags = set(
+                [str(t) for t in self.tags.keys() if str(t) not in ignore_tags]
+            )
+
+            if other_tags != self_tags:
+                return False
+
+            for t, v in other.items():
+                if self.is_group(t):
+                    raise FIXMessageError(
+                        "fix message __eq__ (dict) supports only simple tags, got group"
+                        f" at tag={t}"
+                    )
+
+                v = str(other[t])
+                if v != self.get(t):
+                    return False
+
+            return True
+        else:
+            return False
 
     __repr__ = __str__
 
