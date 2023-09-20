@@ -1,4 +1,4 @@
-from asyncfix import FIXMessage, FMsgType, FTag
+from asyncfix import FIXMessage, FMsg, FTag
 from asyncfix.protocol.protocol_base import FIXProtocolBase
 
 
@@ -6,14 +6,14 @@ class FIXProtocol44(FIXProtocolBase):
     beginstring = "FIX.4.4"
 
     session_message_types = {
-        FMsgType.HEARTBEAT,
-        FMsgType.TESTREQUEST,
-        FMsgType.RESENDREQUEST,
-        FMsgType.REJECT,
-        FMsgType.SEQUENCERESET,
-        FMsgType.LOGOUT,
-        FMsgType.LOGON,
-        FMsgType.XMLNONFIX,
+        FMsg.HEARTBEAT,
+        FMsg.TESTREQUEST,
+        FMsg.RESENDREQUEST,
+        FMsg.REJECT,
+        FMsg.SEQUENCERESET,
+        FMsg.LOGOUT,
+        FMsg.LOGON,
+        FMsg.XMLNONFIX,
     }
 
     repeating_groups = {
@@ -240,31 +240,31 @@ class FIXProtocol44(FIXProtocolBase):
     }
 
     def logon(self) -> FIXMessage:
-        msg = FIXMessage(FMsgType.LOGON)
+        msg = FIXMessage(FMsg.LOGON)
         msg.set(FTag.EncryptMethod, 0)
         msg.set(FTag.HeartBtInt, 30)
         return msg
 
     def logout(self) -> FIXMessage:
-        msg = FIXMessage(FMsgType.LOGOUT)
+        msg = FIXMessage(FMsg.LOGOUT)
         return msg
 
     def heartbeat(self) -> FIXMessage:
-        msg = FIXMessage(FMsgType.HEARTBEAT)
+        msg = FIXMessage(FMsg.HEARTBEAT)
         return msg
 
     def test_request(self) -> FIXMessage:
-        msg = FIXMessage(FMsgType.TESTREQUEST)
+        msg = FIXMessage(FMsg.TESTREQUEST)
         return msg
 
     def sequence_reset(self, responding_to, is_gap_fill) -> FIXMessage:
-        msg = FIXMessage(FMsgType.SEQUENCERESET)
+        msg = FIXMessage(FMsg.SEQUENCERESET)
         msg.set(FTag.GapFillFlag, "Y" if is_gap_fill else "N")
         msg.set(FTag.MsgSeqNum, responding_to[FTag.BeginSeqNo])
         return msg
 
     def resend_request(self, begin_seq_no, end_seq_no="0") -> FIXMessage:
-        msg = FIXMessage(FMsgType.RESENDREQUEST)
+        msg = FIXMessage(FMsg.RESENDREQUEST)
         msg.set(FTag.BeginSeqNo, str(begin_seq_no))
         msg.set(FTag.EndSeqNo, str(end_seq_no))
         return msg

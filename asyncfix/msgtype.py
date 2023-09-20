@@ -9,7 +9,7 @@ class MsgTypeEnumMeta(enum.EnumMeta):
             return item in cls._value2member_map_
 
 
-class FMsgType(enum.Enum, metaclass=MsgTypeEnumMeta):
+class FMsg(enum.Enum, metaclass=MsgTypeEnumMeta):
     def __str__(self):
         return str(self.value)
 

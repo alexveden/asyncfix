@@ -5,7 +5,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from asyncfix import FMsgType, FTag
+from asyncfix import FMsg, FTag
 from asyncfix.codec import Codec
 from asyncfix.message import (
     FIXContainer,
@@ -122,7 +122,7 @@ def test_decode_valid(fix_session):
 
     assert isinstance(msg, FIXMessage)
     assert msg[8] == "FIX.4.4"
-    assert msg.msg_type == FMsgType.NEWORDERSINGLE
+    assert msg.msg_type == FMsg.NEWORDERSINGLE
     assert msg[FTag.Price] == "123.45"
     assert msg[FTag.OrderQty] == "9876"
     assert msg[FTag.Symbol] == "VOD.L"
@@ -223,7 +223,7 @@ def test_decode_groups(fix_session):
 
     assert isinstance(msg_out, FIXMessage)
     assert msg_out[8] == "FIX.4.4"
-    assert msg_out.msg_type == FMsgType.NEWORDERSINGLE
+    assert msg_out.msg_type == FMsg.NEWORDERSINGLE
     assert msg_out[FTag.Price] == "123.45"
     assert msg_out[FTag.OrderQty] == "9876"
     assert msg_out[FTag.Symbol] == "VOD.L"

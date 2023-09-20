@@ -2,7 +2,7 @@ import asyncio
 import unittest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from asyncfix import FMsgType, FTag
+from asyncfix import FMsg, FTag
 from asyncfix.codec import Codec
 from asyncfix.connection import FIXConnectionHandler
 from asyncfix.engine import FIXEngine
@@ -22,7 +22,7 @@ class TestConnection(unittest.IsolatedAsyncioTestCase):
 
         self.socket_reader_mock = MagicMock()
         self.socket_reader_mock.read = AsyncMock()
-        msg = FIXMessage(FMsgType.NEWORDERSINGLE)
+        msg = FIXMessage(FMsg.NEWORDERSINGLE)
         msg.set(FTag.Price, "123.45")
         msg.set(FTag.OrderQty, 9876)
         msg.set(FTag.Symbol, "VOD.L")

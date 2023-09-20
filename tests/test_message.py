@@ -86,11 +86,7 @@ def test_msg_construction():
     assert msg["45"] == "dgd"
     assert "45" in msg
     assert 45 in msg
-    del msg["45"]
-    assert "45" not in msg
 
-    msg["45"] = "dgd"
-    assert msg["45"] == "dgd"
     msg.set("32", "aaaa")
     msg.set("323", "bbbb")
 
@@ -106,9 +102,6 @@ def test_msg_construction():
 
     assert "45=dgd|32=aaaa|323=bbbb|444=2=>[611=aaa|612=bbb|613=ccc,"
     " 611=zzz|612=yyy|613=xxx]" == str(msg)
-
-    msg.remove_group("444", 1)
-    assert "45=dgd|32=aaaa|323=bbbb|444=1=>[611=aaa|612=bbb|613=ccc]" == str(msg)
 
     msg.add_group("444", rptgrp2, 1)
 

@@ -4,7 +4,7 @@ from collections import OrderedDict
 from enum import Enum
 from typing import Any
 
-from asyncfix import FMsgType
+from asyncfix import FMsg
 
 from .errors import (
     DuplicatedTagError,
@@ -36,9 +36,6 @@ class _FIXRepeatingGroupContainer:
             self.groups.append(group)
         else:
             self.groups.insert(index, group)
-
-    def remove_group(self, index):
-        del self.groups[index]
 
     def get_group(self, index):
         return self.groups[index]
@@ -77,12 +74,6 @@ class FIXContainer(object):
 
         self.tags[t] = value
 
-    def remove(self, tag: str | int):
-        try:
-            del self.tags[tag]
-        except KeyError:
-            pass
-
     def get(self, tag: str | int, default=TagNotFoundError):
         result = self.tags.get(str(tag), default)
         if result is TagNotFoundError:
@@ -93,6 +84,16 @@ class FIXContainer(object):
                 " malformed fix message"
             )
         return result
+
+    def is_group(self, tag: str | int) -> bool | None:
+        tag_val = self.get(tag, default=None)
+        if tag_val is not None:
+            if isinstance(tag_val, _FIXRepeatingGroupContainer):
+                return True
+            else:
+                return False
+        else:
+            return None
 
     def add_group(self, tag: str | int, group: FIXContainer | dict, index: int = -1):
         tag = str(tag)
@@ -129,19 +130,6 @@ class FIXContainer(object):
 
         self.tags[tag] = group_container
 
-    def remove_group(self, tag: str | int, index=-1):
-        tag = str(tag)
-        if self.is_group(tag):
-            try:
-                if index == -1:
-                    del self.tags[tag]
-                    pass
-                else:
-                    groups = self.tags[tag]
-                    groups.remove_group(index)
-            except KeyError:
-                pass
-
     def get_group(self, tag: str | int) -> list[FIXContainer]:
         tag = str(tag)
         is_group = self.is_group(tag)
@@ -177,19 +165,6 @@ class FIXContainer(object):
     def __setitem__(self, tag: str | int, value):
         self.set(tag, value)
 
-    def __delitem__(self, tag: str | int):
-        del self.tags[str(tag)]
-
-    def is_group(self, tag: str | int) -> bool | None:
-        tag_val = self.get(tag, default=None)
-        if tag_val is not None:
-            if isinstance(tag_val, _FIXRepeatingGroupContainer):
-                return True
-            else:
-                return False
-        else:
-            return None
-
     def __contains__(self, item: str | int):
         return str(item) in self.tags
 
@@ -213,11 +188,11 @@ class FIXContainer(object):
 class FIXMessage(FIXContainer):
     def __init__(
         self,
-        msg_type: str | FMsgType,
+        msg_type: str | FMsg,
         tags: dict[str | int, [str, float, int]] = None,
     ):
         self.msg_type = msg_type
         super().__init__(tags)
 
-    def set_msg_type(self, msg_type: str | FMsgType):
+    def set_msg_type(self, msg_type: str | FMsg):
         self.msg_type = msg_type

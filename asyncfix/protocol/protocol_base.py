@@ -1,4 +1,4 @@
-from asyncfix import FIXMessage, FMsgType, FTag
+from asyncfix import FIXMessage, FMsg, FTag
 
 
 class FIXProtocolBase(object):
@@ -6,7 +6,7 @@ class FIXProtocolBase(object):
     repeating_groups: dict[str, list[str]] = {}
     session_message_types: set = set()
     fixtags: FTag = FTag
-    msgtype: FMsgType = FMsgType
+    msgtype: FMsg = FMsg
 
     def logon(self) -> FIXMessage:
         raise NotImplementedError("Implement this method in child class")

@@ -1,6 +1,6 @@
 import pytest
 
-from asyncfix import FMsgType, FTag
+from asyncfix import FMsg, FTag
 
 
 def test_tags():
@@ -20,11 +20,11 @@ def test_tags():
 
 
 def test_msgtype():
-    assert FMsgType.HEARTBEAT == "0"
-    assert FMsgType.HEARTBEAT != 0
-    assert str(FMsgType.HEARTBEAT) == "0"
-    assert f"{FMsgType.HEARTBEAT}" == "0"
-    assert FMsgType("0") == FMsgType.HEARTBEAT
-    assert "0" in FMsgType
-    assert 0 not in FMsgType
-    assert hash(FMsgType.HEARTBEAT) == hash("0")
+    assert FMsg.HEARTBEAT == "0"
+    assert FMsg.HEARTBEAT != 0
+    assert str(FMsg.HEARTBEAT) == "0"
+    assert f"{FMsg.HEARTBEAT}" == "0"
+    assert FMsg("0") == FMsg.HEARTBEAT
+    assert "0" in FMsg
+    assert 0 not in FMsg
+    assert hash(FMsg.HEARTBEAT) == hash("0")
