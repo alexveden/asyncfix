@@ -37,9 +37,6 @@ class _FIXRepeatingGroupContainer:
         else:
             self.groups.insert(index, group)
 
-    def get_group(self, index):
-        return self.groups[index]
-
     def __str__(self):
         return str(len(self.groups)) + "=>" + str(self.groups)
 
@@ -83,10 +80,14 @@ class FIXContainer(object):
                 f"tag={tag} was repeated, possible undefined repeating group or"
                 " malformed fix message"
             )
+        elif isinstance(result, _FIXRepeatingGroupContainer):
+            raise FIXMessageError(
+                "You are trying to get group as simple tag,use get_group*() methods"
+            )
         return result
 
     def is_group(self, tag: str | int) -> bool | None:
-        tag_val = self.get(tag, default=None)
+        tag_val = self.tags.get(str(tag), None)
         if tag_val is not None:
             if isinstance(tag_val, _FIXRepeatingGroupContainer):
                 return True
@@ -123,14 +124,14 @@ class FIXContainer(object):
             if isinstance(m, dict):
                 m = FIXContainer(tags=m)
             elif not isinstance(m, FIXContainer):
-                raise ValueError(
+                raise FIXMessageError(
                     f"groups must be a list of FIXContext or dict, got {type(m)}"
                 )
             group_container.add_group(m, -1)
 
         self.tags[tag] = group_container
 
-    def get_group(self, tag: str | int) -> list[FIXContainer]:
+    def get_group_list(self, tag: str | int) -> list[FIXContainer]:
         tag = str(tag)
         is_group = self.is_group(tag)
         if is_group is None:
@@ -142,15 +143,17 @@ class FIXContainer(object):
             )
         return self.tags[tag].groups
 
-    def get_group_by_tag(self, tag: str | int, gtag: str | int, gvalue) -> Any:
-        for group in self.get_group(tag):
-            if gtag in group.tags:
+    def get_group_by_tag(
+        self, tag: str | int, gtag: str | int, gvalue: str
+    ) -> FIXContainer:
+        for group in self.get_group_list(tag):
+            if gtag in group:
                 if group.get(gtag) == gvalue:
                     return group
         raise TagNotFoundError(f"get_group_by_tag: {tag=} {gtag=} {gvalue=} missing")
 
     def get_group_by_index(self, tag: str | int, index: int) -> FIXContainer:
-        g = self.get_group(tag)
+        g = self.get_group_list(tag)
 
         if index >= len(g):
             raise TagNotFoundError(

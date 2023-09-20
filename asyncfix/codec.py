@@ -33,7 +33,7 @@ class Codec(object):
 
     def _addTag(self, body, t, msg: FIXMessage):
         if msg.is_group(t):
-            groups = msg.get_group(t)
+            groups = msg.get_group_list(t)
             body.append("%s=%s" % (t, len(groups)))
             for group in groups:
                 for tag in group.tags:

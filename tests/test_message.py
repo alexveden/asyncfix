@@ -3,15 +3,14 @@ import unittest
 
 import pytest
 
-from asyncfix import FTag
-from asyncfix.message import (
+from asyncfix import FIXMessage, FTag
+from asyncfix.errors import (
     DuplicatedTagError,
-    FIXContainer,
-    FIXMessage,
     FIXMessageError,
     RepeatingTagError,
     TagNotFoundError,
 )
+from asyncfix.message import FIXContainer
 
 
 def test_init_construction():
@@ -52,6 +51,24 @@ def test_groups():
     msg = FIXMessage("AB")
 
     msg.set_group(2023, [{1: "a", 2: "b"}, FIXContainer({1: "c", 2: "d"})])
+
+    assert msg.get_group_by_tag(2023, 1, "a") == "1=a|2=b"
+
+    with pytest.raises(
+        TagNotFoundError, match="get_group_by_tag: tag=2023 gtag=1 gvalue='z' missing"
+    ):
+        assert msg.get_group_by_tag(2023, 1, "z") == "1=a|2=b"
+
+    with pytest.raises(
+        DuplicatedTagError, match="group with tag='2023' already exists"
+    ):
+        msg.set_group(2023, [{1: "a", 2: "b"}, FIXContainer({1: "c", 2: "d"})])
+
+    with pytest.raises(
+        FIXMessageError, match="groups must be a list of FIXContext or dict"
+    ):
+        msg.set_group(2022, [{1: "a", 2: "b"}, 2123])
+
     msg.add_group(2023, {1: "e", 4: "f"})
 
     with pytest.raises(FIXMessageError, match="Expected FIXContext in group, got "):
@@ -78,6 +95,12 @@ def test_groups():
         g = msg.get_group_by_index(2023, 3)
 
     assert msg.is_group(2023)
+
+    with pytest.raises(
+        FIXMessageError, match="You are trying to get group as simple tag"
+    ):
+        # Getting group as simple tag is not allowed
+        g = msg[2023]
 
 
 def test_msg_construction():

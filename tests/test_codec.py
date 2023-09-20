@@ -231,7 +231,7 @@ def test_decode_groups(fix_session):
     # print(repr(msg_out))
     # assert False, enc_msg
 
-    g = msg_out.get_group(FTag.NoSecurityAltID)
+    g = msg_out.get_group_list(FTag.NoSecurityAltID)
     assert g
     assert isinstance(g, list)
     assert len(g) == 2
@@ -247,7 +247,7 @@ def test_decode_groups(fix_session):
         UnmappedRepeatedGrpError,
         match="tag exists, but it does not belong to any group",
     ):
-        g = msg_out.get_group("20228")
+        g = msg_out.get_group_list("20228")
 
     with pytest.raises(TagNotFoundError, match="missing tag group tag="):
-        g = msg_out.get_group("129012099")
+        g = msg_out.get_group_list("129012099")
