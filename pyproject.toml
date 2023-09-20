@@ -31,3 +31,4 @@ Homepage = "https://github.com/alexveden/asyncfix"
 
 [tool.isort]
 profile = "black"
+extend_skip = ["__init__.py"]
