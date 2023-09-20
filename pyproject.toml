@@ -11,7 +11,7 @@ classifiers = [
     "Programming Language :: Python :: 3.8",
     "Development Status :: 2 - Pre-Alpha",
 ]
-keywords = ["async", "FIX", "protocol", "client", "server", "parser", "unit tests" ]
+keywords = ["asyncio", "FIX", "protocol", "client", "server", "parser", "unit tests", "simplefix" ]
 requires-python = ">=3.8"
 
 dependencies = []
@@ -19,6 +19,7 @@ dependencies = []
 [project.optional-dependencies]
 dev = [
   "pytest",
+  "isort==5.12.0",
   "flake8==6.1.0",
   "black==23.7.0",
   "pre-commit",
