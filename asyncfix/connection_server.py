@@ -1,18 +1,18 @@
 import asyncio
 import logging
 
-import asyncfix.FIX44 as FIXProtocol
 from asyncfix.connection import ConnectionState, FIXConnectionHandler, FIXEndPoint
 from asyncfix.engine import FIXEngine
 from asyncfix.journaler import DuplicateSeqNoError
 from asyncfix.message import FIXMessage
+from asyncfix.protocol import FIXProtocolBase
 
 
 class FIXServerConnectionHandler(FIXConnectionHandler):
     def __init__(
         self,
         engine: FIXEngine,
-        protocol: FIXProtocol,
+        protocol: FIXProtocolBase,
         socket_reader: asyncio.StreamReader,
         socket_writer: asyncio.StreamWriter,
         addr=None,
@@ -85,7 +85,7 @@ class FIXServerConnectionHandler(FIXConnectionHandler):
 
 
 class FIXServer(FIXEndPoint):
-    def __init__(self, engine: FIXEngine, protocol: FIXProtocol):
+    def __init__(self, engine: FIXEngine, protocol: FIXProtocolBase):
         FIXEndPoint.__init__(self, engine, protocol)
         self.server = None
 
@@ -107,6 +107,9 @@ class FIXServer(FIXEndPoint):
             connection = FIXServerConnectionHandler(
                 self.engine, self.protocol, reader, writer, addr, self
             )
+
+            asyncio.create_task(connection.handle_read())
+
             self.connections.append(connection)
             for handler in filter(
                 lambda x: x[1] == ConnectionState.CONNECTED, self.message_handlers

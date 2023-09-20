@@ -3,10 +3,11 @@ import logging
 import random
 from enum import Enum
 
+from asyncfix import FIXMessage, FMsg, FTag
 from asyncfix.connection import ConnectionState, FIXConnectionHandler, MessageDirection
 from asyncfix.connection_client import FIXClient
 from asyncfix.engine import FIXEngine
-from asyncfix.message import FIXMessage
+from asyncfix.protocol.protocol_fix44 import FIXProtocol44
 
 
 class Side(Enum):
@@ -20,7 +21,7 @@ class Client(FIXEngine):
         self.clOrdID = 0
         self.msgGenerator = None
         # create a FIX Client using the FIX 4.4 standard
-        self.client = FIXClient(self, "asyncfix.FIX44", "TARGET", "SENDER")
+        self.client = FIXClient(self, FIXProtocol44(), "TARGET", "SENDER")
         self.client.add_connection_listener(self.on_connect, ConnectionState.CONNECTED)
         self.client.add_connection_listener(
             self.on_disconnect, ConnectionState.DISCONNECTED
@@ -36,13 +37,11 @@ class Client(FIXEngine):
     async def on_connect(self, session: FIXConnectionHandler):
         logging.info("Established connection to %s" % (session.address(),))
 
-        session.add_message_handler(
-            self.on_login, MessageDirection.INBOUND, self.client.protocol.msgtype.LOGON
-        )
+        session.add_message_handler(self.on_login, MessageDirection.INBOUND, FMsg.LOGON)
         session.add_message_handler(
             self.on_execution_report,
             MessageDirection.INBOUND,
-            self.client.protocol.msgtype.EXECUTIONREPORT,
+            FMsg.EXECUTIONREPORT,
         )
 
     async def on_disconnect(self, session: FIXConnectionHandler):
@@ -50,7 +49,7 @@ class Client(FIXEngine):
 
         # we need to clean up our handlers, since this session is disconnected now
         session.remove_message_handler(
-            self.on_login, MessageDirection.INBOUND, self.client.protocol.msgtype.LOGON
+            self.on_login, MessageDirection.INBOUND, FMsg.LOGON
         )
         session.remove_message_handler(
             self.on_execution_report,
@@ -60,31 +59,30 @@ class Client(FIXEngine):
 
     async def send_order(self, connection: FIXConnectionHandler):
         self.clOrdID = self.clOrdID + 1
-        codec = connection.codec
-        msg = FIXMessage(codec.protocol.msgtype.NEWORDERSINGLE)
-        msg.set(codec.protocol.fixtags.Price, "%0.2f" % (random.random() * 2 + 10))
-        msg.set(codec.protocol.fixtags.OrderQty, int(random.random() * 100))
-        msg.set(codec.protocol.fixtags.Symbol, "VOD.L")
-        msg.set(codec.protocol.fixtags.SecurityID, "GB00BH4HKS39")
-        msg.set(codec.protocol.fixtags.SecurityIDSource, "4")
-        msg.set(codec.protocol.fixtags.Account, "TEST")
-        msg.set(codec.protocol.fixtags.HandlInst, "1")
-        msg.set(codec.protocol.fixtags.ExDestination, "XLON")
-        msg.set(codec.protocol.fixtags.Side, int(random.random() * 2) + 1)
-        msg.set(codec.protocol.fixtags.ClOrdID, str(self.clOrdID))
-        msg.set(codec.protocol.fixtags.Currency, "GBP")
+        msg = FIXMessage(FMsg.NEWORDERSINGLE)
+        msg.set(FTag.Price, "%0.2f" % (random.random() * 2 + 10))
+        msg.set(FTag.OrderQty, int(random.random() * 100))
+        msg.set(FTag.Symbol, "VOD.L")
+        msg.set(FTag.SecurityID, "GB00BH4HKS39")
+        msg.set(FTag.SecurityIDSource, "4")
+        msg.set(FTag.Account, "TEST")
+        msg.set(FTag.HandlInst, "1")
+        msg.set(FTag.ExDestination, "XLON")
+        msg.set(FTag.Side, int(random.random() * 2) + 1)
+        msg.set(FTag.ClOrdID, str(self.clOrdID))
+        msg.set(FTag.Currency, "GBP")
 
         await connection.send_msg(msg)
-        side = Side(int(msg.get(codec.protocol.fixtags.Side)))
+        side = Side(int(msg.get(FTag.Side)))
         logging.debug(
             "---> [%s] %s: %s %s %s@%s"
             % (
-                codec.protocol.msgtype.msgTypeToName(msg.msg_type),
-                msg.get(codec.protocol.fixtags.ClOrdID),
-                msg.get(codec.protocol.fixtags.Symbol),
+                msg.msg_type,
+                msg.get(FTag.ClOrdID),
+                msg.get(FTag.Symbol),
                 side.name,
-                msg.get(codec.protocol.fixtags.OrderQty),
-                msg.get(codec.protocol.fixtags.Price),
+                msg.get(FTag.OrderQty),
+                msg.get(FTag.Price),
             )
         )
 
@@ -95,31 +93,23 @@ class Client(FIXEngine):
     async def on_execution_report(
         self, connection: FIXConnectionHandler, msg: FIXMessage
     ):
-        codec = connection.codec
-
-        if codec.protocol.fixtags.ExecType in msg:
-            if msg.get(codec.protocol.fixtags.ExecType) == "0":
-                side = Side(int(msg.get(codec.protocol.fixtags.Side)))
+        if FTag.ExecType in msg:
+            if msg.get(FTag.ExecType) == "0":
+                side = Side(int(msg[FTag.Side]))
 
                 logging.debug(
                     "<--- [%s] %s: %s %s %s@%s"
                     % (
-                        codec.protocol.msgtype.msgTypeToName(
-                            msg.get(codec.protocol.fixtags.MsgType)
-                        ),
-                        msg.get(codec.protocol.fixtags.ClOrdID),
-                        msg.get(codec.protocol.fixtags.Symbol),
+                        msg[FTag.MsgType],
+                        msg[FTag.ClOrdID],
+                        msg[FTag.Symbol],
                         side.name,
-                        msg.get(codec.protocol.fixtags.OrderQty),
-                        msg.get(codec.protocol.fixtags.Price),
+                        msg[FTag.OrderQty],
+                        msg[FTag.Price],
                     )
                 )
-            elif msg.get(codec.protocol.fixtags.ExecType) == "4":
-                reason = (
-                    "Unknown"
-                    if codec.protocol.fixtags.Text not in msg
-                    else msg.get(codec.protocol.fixtags.Text)
-                )
+            elif msg.get(FTag.ExecType) == "0":
+                reason = "Unknown" if FTag.Text not in msg else msg[FTag.Text]
                 logging.info("Order Rejected '%s'" % (reason,))
         else:
             logging.error("Received execution report without ExecType")
@@ -130,8 +120,5 @@ if __name__ == "__main__":
         level=logging.DEBUG,
         format="%(asctime)s [%(filename)20s:%(lineno)-4s] %(levelname)5s - %(message)s",
     )
-
-    loop = asyncio.get_event_loop()
     client = Client()
     asyncio.run(client.start("localhost", 9898))
-    loop.run_forever()

@@ -2,10 +2,11 @@ import asyncio
 import logging
 from enum import Enum
 
+from asyncfix import FIXMessage, FMsg, FTag
 from asyncfix.connection import ConnectionState, FIXConnectionHandler, MessageDirection
 from asyncfix.connection_server import FIXServer
 from asyncfix.engine import FIXEngine
-from asyncfix.message import FIXMessage
+from asyncfix.protocol.protocol_fix44 import FIXProtocol44
 
 
 class Side(Enum):
@@ -17,7 +18,7 @@ class Server(FIXEngine):
     def __init__(self):
         FIXEngine.__init__(self, "server_example.store")
         # create a FIX Server using the FIX 4.4 standard
-        self.server = FIXServer(self, "asyncfix.FIX44")
+        self.server = FIXServer(self, FIXProtocol44())
 
         # we register some listeners since we want to know when
         #    the connection goes up or down
@@ -64,98 +65,64 @@ class Server(FIXEngine):
         )
 
     async def on_login(self, connection_handler: FIXConnectionHandler, msg: FIXMessage):
-        codec = connection_handler.codec
         logging.info(
-            "onLogin ["
-            + msg[codec.protocol.fixtags.SenderCompID]
-            + "] <---- "
-            + codec.protocol.msgtype.msgTypeToName(msg[codec.protocol.fixtags.MsgType])
+            "onLogin [" + msg[FTag.SenderCompID] + "] <---- " + msg[FTag.MsgType]
         )
 
     async def on_new_order(self, connection: FIXConnectionHandler, request: FIXMessage):
-        codec = connection.codec
         try:
-            side = Side(int(request.get(codec.protocol.fixtags.Side)))
+            side = Side(int(request.get(FTag.Side)))
             logging.debug(
                 "<--- [%s] %s: %s %s %s@%s"
                 % (
-                    codec.protocol.msgtype.msgTypeToName(
-                        request.get(codec.protocol.fixtags.MsgType)
-                    ),
-                    request.get(codec.protocol.fixtags.ClOrdID),
-                    request.get(codec.protocol.fixtags.Symbol),
+                    request.get(FTag.MsgType),
+                    request.get(FTag.ClOrdID),
+                    request.get(FTag.Symbol),
                     side.name,
-                    request.get(codec.protocol.fixtags.OrderQty),
-                    request.get(codec.protocol.fixtags.Price),
+                    request.get(FTag.OrderQty),
+                    request.get(FTag.Price),
                 )
             )
 
             # respond with an ExecutionReport Ack
-            msg = FIXMessage(codec.protocol.msgtype.EXECUTIONREPORT)
-            msg.set(
-                codec.protocol.fixtags.Price,
-                request.get(codec.protocol.fixtags.Price),
-            )
-            msg.set(
-                codec.protocol.fixtags.OrderQty,
-                request.get(codec.protocol.fixtags.OrderQty),
-            )
-            msg.set(
-                codec.protocol.fixtags.Symbol,
-                request.get(codec.protocol.fixtags.OrderQty),
-            )
+            msg = FIXMessage(FMsg.EXECUTIONREPORT)
+            msg.set(FTag.Price, request.get(FTag.Price))
+            msg.set(FTag.OrderQty, request.get(FTag.OrderQty))
+            msg.set(FTag.Symbol, request.get(FTag.OrderQty))
 
-            msg.set(codec.protocol.fixtags.SecurityID, "GB00BH4HKS39")
-            msg.set(codec.protocol.fixtags.SecurityIDSource, "4")
-            msg.set(
-                codec.protocol.fixtags.Symbol,
-                request.get(codec.protocol.fixtags.Symbol),
-            )
-            msg.set(
-                codec.protocol.fixtags.Account,
-                request.get(codec.protocol.fixtags.Account),
-            )
-            msg.set(codec.protocol.fixtags.HandlInst, "1")
-            msg.set(codec.protocol.fixtags.OrdStatus, "0")
-            msg.set(codec.protocol.fixtags.ExecType, "0")
-            msg.set(codec.protocol.fixtags.LeavesQty, "0")
-            msg.set(
-                codec.protocol.fixtags.Side,
-                request.get(codec.protocol.fixtags.Side),
-            )
-            msg.set(
-                codec.protocol.fixtags.ClOrdID,
-                request.get(codec.protocol.fixtags.ClOrdID),
-            )
-            msg.set(
-                codec.protocol.fixtags.Currency,
-                request.get(codec.protocol.fixtags.Currency),
-            )
+            msg.set(FTag.SecurityID, "GB00BH4HKS39")
+            msg.set(FTag.SecurityIDSource, "4")
+            msg.set(FTag.Symbol, request.get(FTag.Symbol))
+            msg.set(FTag.Account, request.get(FTag.Account))
+            msg.set(FTag.HandlInst, "1")
+            msg.set(FTag.OrdStatus, "0")
+            msg.set(FTag.ExecType, "0")
+            msg.set(FTag.LeavesQty, "0")
+            msg.set(FTag.Side, request.get(FTag.Side))
+            msg.set(FTag.ClOrdID, request.get(FTag.ClOrdID))
+            msg.set(FTag.Currency, request.get(FTag.Currency))
 
             await connection.send_msg(msg)
 
             logging.debug(
                 "---> [%s] %s: %s %s %s@%s"
                 % (
-                    codec.protocol.msgtype.msgTypeToName(msg.msg_type),
-                    msg.get(codec.protocol.fixtags.ClOrdID),
-                    request.get(codec.protocol.fixtags.Symbol),
+                    msg.msg_type,
+                    msg.get(FTag.ClOrdID),
+                    request.get(FTag.Symbol),
                     side.name,
-                    request.get(codec.protocol.fixtags.OrderQty),
-                    request.get(codec.protocol.fixtags.Price),
+                    request.get(FTag.OrderQty),
+                    request.get(FTag.Price),
                 )
             )
 
         except Exception as e:
-            msg = FIXMessage(codec.protocol.msgtype.EXECUTIONREPORT)
-            msg.set(codec.protocol.fixtags.OrdStatus, "4")
-            msg.set(codec.protocol.fixtags.ExecType, "4")
-            msg.set(codec.protocol.fixtags.LeavesQty, "0")
-            msg.set(codec.protocol.fixtags.Text, str(e))
-            msg.set(
-                codec.protocol.fixtags.ClOrdID,
-                request.get(codec.protocol.fixtags.ClOrdID),
-            )
+            msg = FIXMessage(FMsg.EXECUTIONREPORT)
+            msg.set(FTag.OrdStatus, "4")
+            msg.set(FTag.ExecType, "4")
+            msg.set(FTag.LeavesQty, "0")
+            msg.set(FTag.Text, str(e))
+            msg.set(FTag.ClOrdID, request.get(FTag.ClOrdID))
 
             await connection.send_msg(msg)
 

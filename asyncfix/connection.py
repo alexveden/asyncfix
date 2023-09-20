@@ -1,10 +1,10 @@
 import asyncio
-import importlib
 import logging
 import sys
 from enum import Enum
 from typing import Callable
 
+from asyncfix import FTag
 from asyncfix.codec import Codec
 from asyncfix.engine import FIXEngine
 from asyncfix.journaler import DuplicateSeqNoError
@@ -122,8 +122,8 @@ class FIXConnectionHandler(object):
         protocol: FIXProtocolBase = self.codec.protocol
         responses = []
 
-        begin_seq_no = msg[protocol.fixtags.BeginSeqNo]
-        end_seq_no = msg[protocol.fixtags.EndSeqNo]
+        begin_seq_no = msg[FTag.BeginSeqNo]
+        end_seq_no = msg[FTag.EndSeqNo]
         if int(end_seq_no) == 0:
             end_seq_no = sys.maxsize
         logging.info("Received resent request from %s to %s", begin_seq_no, end_seq_no)
@@ -133,27 +133,27 @@ class FIXConnectionHandler(object):
         gap_fill_begin = int(begin_seq_no)
         gap_fill_end = int(begin_seq_no)
         for replay_msg in replay_msgs:
-            msg_seq_num = int(replay_msg[protocol.fixtags.MsgSeqNum])
-            if replay_msg[protocol.fixtags.MsgType] in protocol.session_message_types:
+            msg_seq_num = int(replay_msg[FTag.MsgSeqNum])
+            if replay_msg[FTag.MsgType] in protocol.session_message_types:
                 gap_fill_end = msg_seq_num + 1
             else:
                 if self.engine.should_resend_message(self.session, replay_msg):
                     if gap_fill_begin < gap_fill_end:
                         # we need to send a gap fill message
                         gap_fill_msg = FIXMessage(protocol.msgtype.SEQUENCERESET)
-                        gap_fill_msg.set(protocol.fixtags.GapFillFlag, "Y")
-                        gap_fill_msg.set(protocol.fixtags.MsgSeqNum, gap_fill_begin)
-                        gap_fill_msg.set(protocol.fixtags.NewSeqNo, str(gap_fill_end))
+                        gap_fill_msg[FTag.GapFillFlag] = "Y"
+                        gap_fill_msg[FTag.MsgSeqNum] = gap_fill_begin
+                        gap_fill_msg[FTag.NewSeqNo] = str(gap_fill_end)
                         responses.append(gap_fill_msg)
 
                     # and then resent the replayMsg
-                    replay_msg.removeField(protocol.fixtags.BeginString)
-                    replay_msg.removeField(protocol.fixtags.BodyLength)
-                    replay_msg.removeField(protocol.fixtags.SendingTime)
-                    replay_msg.removeField(protocol.fixtags.SenderCompID)
-                    replay_msg.removeField(protocol.fixtags.TargetCompID)
-                    replay_msg.removeField(protocol.fixtags.CheckSum)
-                    replay_msg.setField(protocol.fixtags.PossDupFlag, "Y")
+                    del replay_msg[FTag.BeginString]
+                    del replay_msg[FTag.BodyLength]
+                    del replay_msg[FTag.SendingTime]
+                    del replay_msg[FTag.SenderCompID]
+                    del replay_msg[FTag.TargetCompID]
+                    del replay_msg[FTag.CheckSum]
+                    replay_msg[FTag.PossDupFlag] = "Y"
                     responses.append(replay_msg)
 
                     gap_fill_begin = msg_seq_num + 1
@@ -164,9 +164,9 @@ class FIXConnectionHandler(object):
         if gap_fill_begin < gap_fill_end:
             # we need to send a gap fill message
             gap_fill_msg = FIXMessage(protocol.msgtype.SEQUENCERESET)
-            gap_fill_msg.set(protocol.fixtags.GapFillFlag, "Y")
-            gap_fill_msg.set(protocol.fixtags.MsgSeqNum, gap_fill_begin)
-            gap_fill_msg.set(protocol.fixtags.NewSeqNo, str(gap_fill_end))
+            gap_fill_msg[FTag.GapFillFlag] = "Y"
+            gap_fill_msg[FTag.MsgSeqNum] = gap_fill_begin
+            gap_fill_msg[FTag.NewSeqNo] = str(gap_fill_end)
             responses.append(gap_fill_msg)
 
         return responses
@@ -211,7 +211,7 @@ class FIXConnectionHandler(object):
         protocol: FIXProtocolBase = self.codec.protocol
         logging.debug(f"processMessage \n\t {decoded_msg}")
 
-        begin_string = decoded_msg[protocol.fixtags.BeginString]
+        begin_string = decoded_msg[FTag.BeginString]
         if begin_string != protocol.beginstring:
             logging.warning(
                 "FIX BeginString is incorrect (expected: %s received: %s)",
@@ -220,7 +220,7 @@ class FIXConnectionHandler(object):
             await self.disconnect()
             return
 
-        msg_type = decoded_msg[protocol.fixtags.MsgType]
+        msg_type = decoded_msg[FTag.MsgType]
 
         try:
             responses = []
@@ -229,7 +229,7 @@ class FIXConnectionHandler(object):
                     decoded_msg
                 )
             else:
-                recv_seq_no = decoded_msg[protocol.fixtags.MsgSeqNum]
+                recv_seq_no = decoded_msg[FTag.MsgSeqNum]
 
             # validate the seq number
             (seq_no_state, last_known_seq_no) = self.session.validate_recv_seq_no(
@@ -263,7 +263,7 @@ class FIXConnectionHandler(object):
             await self.disconnect()
         except DuplicateSeqNoError:
             try:
-                if decoded_msg[protocol.fixtags.PossDupFlag] == "Y":
+                if decoded_msg[FTag.PossDupFlag] == "Y":
                     logging.debug("Received duplicate message with PossDupFlag set")
             except KeyError:
                 pass
@@ -302,15 +302,14 @@ class FIXConnectionHandler(object):
         except DuplicateSeqNoError:
             logging.error(
                 "We have sent a message with a duplicate seq no, failed to persist it"
-                " (MsgSeqNum: %s)"
-                % (decoded_msg[self.codec.protocol.fixtags.MsgSeqNum])
+                " (MsgSeqNum: %s)" % (decoded_msg[self.codec.FTag.MsgSeqNum])
             )
 
 
 class FIXEndPoint(object):
     def __init__(self, engine: FIXEngine, protocol: FIXProtocolBase):
         self.engine: FIXEngine = engine
-        self.protocol: FIXProtocolBase = importlib.import_module(protocol)
+        self.protocol: FIXProtocolBase = protocol
 
         self.connections: list[FIXConnectionHandler] = []
         self.message_handlers = []

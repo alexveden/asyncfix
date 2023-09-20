@@ -1,18 +1,19 @@
 import asyncio
 import logging
 
-import asyncfix.FIX44 as FIXProtocol
+from asyncfix import FMsg, FTag
 from asyncfix.connection import ConnectionState, FIXConnectionHandler, FIXEndPoint
 from asyncfix.engine import FIXEngine
 from asyncfix.journaler import DuplicateSeqNoError
 from asyncfix.message import FIXMessage
+from asyncfix.protocol import FIXProtocolBase
 
 
 class FIXClientConnectionHandler(FIXConnectionHandler):
     def __init__(
         self,
         engine: FIXEngine,
-        protocol: FIXProtocol,
+        protocol: FIXProtocolBase,
         target_comp_id: str,
         sender_comp_id: str,
         socket_reader: asyncio.StreamReader,
@@ -53,20 +54,19 @@ class FIXClientConnectionHandler(FIXConnectionHandler):
 
     async def logon(self):
         logon_msg = self.protocol.logon()
-        logon_msg.set(self.protocol.fixtags.HeartBtInt, self.heartbeat)
+        logon_msg.set(FTag.HeartBtInt, self.heartbeat, replace=True)
         await self.send_msg(logon_msg)
 
     async def handle_session_message(self, msg: FIXMessage):
-        protocol = self.codec.protocol
         responses = []
 
-        recv_seq_no = msg[protocol.fixtags.MsgSeqNum]
+        recv_seq_no = msg[FTag.MsgSeqNum]
 
-        msg_type = msg[protocol.fixtags.MsgType]
-        target_comp_d = msg[protocol.fixtags.TargetCompID]
-        sender_comp_id = msg[protocol.fixtags.SenderCompID]
+        msg_type = msg[FTag.MsgType]
+        target_comp_d = msg[FTag.TargetCompID]
+        sender_comp_id = msg[FTag.SenderCompID]
 
-        if msg_type == protocol.msgtype.LOGON:
+        if msg_type == FMsg.LOGON:
             if self.connection_state == ConnectionState.LOGGED_IN:
                 logging.warning(
                     "Client session already logged in - ignoring login request"
@@ -74,7 +74,7 @@ class FIXClientConnectionHandler(FIXConnectionHandler):
             else:
                 try:
                     self.connection_state = ConnectionState.LOGGED_IN
-                    self.heartbeat_period = float(msg[protocol.fixtags.HeartBtInt])
+                    self.heartbeat_period = float(msg[FTag.HeartBtInt])
                 except DuplicateSeqNoError:
                     logging.error(
                         "Failed to process login request with duplicate seq no"
@@ -88,19 +88,19 @@ class FIXClientConnectionHandler(FIXConnectionHandler):
                 await self.disconnect()
                 return
 
-            if msg_type == protocol.msgtype.LOGOUT:
+            if msg_type == FMsg.LOGOUT:
                 self.connection_state = ConnectionState.LOGGED_OUT
                 self.handle_close()
-            elif msg_type == protocol.msgtype.TESTREQUEST:
-                responses.append(protocol.heartbeat())
-            elif msg_type == protocol.msgtype.RESENDREQUEST:
+            elif msg_type == FMsg.TESTREQUEST:
+                responses.append(self.protocol.heartbeat())
+            elif msg_type == FMsg.RESENDREQUEST:
                 responses.extend(self._handle_resend_request(msg))
-            elif msg_type == protocol.msgtype.SEQUENCERESET:
+            elif msg_type == FMsg.SEQUENCERESET:
                 # we can treat GapFill and SequenceReset in the same way
                 # in both cases we will just reset the seq number to the
                 # NewSeqNo received in the message
-                new_seq_no = msg[protocol.fixtags.NewSeqNo]
-                if msg[protocol.fixtags.GapFillFlag] == "Y":
+                new_seq_no = msg[FTag.NewSeqNo]
+                if msg[FTag.GapFillFlag] == "Y":
                     logging.info(
                         "Received SequenceReset(GapFill) filling gap from %s to %s"
                         % (recv_seq_no, new_seq_no)
@@ -117,7 +117,7 @@ class FIXClient(FIXEndPoint):
     def __init__(
         self,
         engine: FIXEngine,
-        protocol: FIXProtocol,
+        protocol: FIXProtocolBase,
         target_comp_id,
         sender_comp_id,
         target_sub_id=None,
@@ -156,6 +156,7 @@ class FIXClient(FIXEndPoint):
             sender_sub_id=self.sender_sub_id,
             heartbeat_timeout=self.heartbeat_timeout,
         )
+        asyncio.create_task(connection.handle_read())
 
         self.connections.append(connection)
 

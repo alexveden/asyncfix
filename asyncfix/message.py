@@ -51,7 +51,7 @@ class FIXContainer(object):
             for t, v in tags.items():
                 self.set(t, v)
 
-    def set(self, tag: str | int, value):
+    def set(self, tag: str | int, value, replace: bool = False):
         try:
             # tag also might be an FTag enum (so cast to str first)
             int(str(tag))
@@ -64,7 +64,7 @@ class FIXContainer(object):
             # Case for setting tags as errors (allow overwriting by Exception)
             value = value
         else:
-            if t in self.tags:
+            if not replace and t in self.tags:
                 raise DuplicatedTagError(f"tag={t} already exists")
 
             value = str(value)
@@ -167,6 +167,9 @@ class FIXContainer(object):
 
     def __setitem__(self, tag: str | int, value):
         self.set(tag, value)
+
+    def __delitem__(self, tag: str | int):
+        del self.tags[str(tag)]
 
     def __contains__(self, item: str | int | dict[str, Any]):
         if isinstance(item, dict):
