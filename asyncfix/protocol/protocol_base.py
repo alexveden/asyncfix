@@ -1,0 +1,28 @@
+from aiopyfix.message import FIXMessage
+from . import FTag, FMsgType
+
+
+class FIXProtocolBase(object):
+    beginstring: str = "FIXProtocolBase"
+    repeating_groups: dict[str, list[str]] = {}
+    session_message_types: set = set()
+    fixtags: FTag = FTag
+    msgtype: FMsgType = FMsgType
+
+    def logon(self) -> FIXMessage:
+        raise NotImplementedError("Implement this method in child class")
+
+    def logout(self) -> FIXMessage:
+        raise NotImplementedError("Implement this method in child class")
+
+    def heartbeat(self) -> FIXMessage:
+        raise NotImplementedError("Implement this method in child class")
+
+    def test_request(self) -> FIXMessage:
+        raise NotImplementedError("Implement this method in child class")
+
+    def sequence_reset(self, responding_to, is_gap_fill) -> FIXMessage:
+        raise NotImplementedError("Implement this method in child class")
+
+    def resend_request(self, begin_seq_no, end_seq_no="0") -> FIXMessage:
+        raise NotImplementedError("Implement this method in child class")

@@ -1,0 +1,27 @@
+[project]
+name = "asyncfix"
+version = "0.0.7"
+description = "AsyncIO FIX Protocol client for Python"
+readme = "README.md"
+authors = [{ name = "Alex Veden", email = "i@alexveden.com" }]
+license = {text = "MIT License"}
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3.8",
+    "Development Status :: 2 - Pre-Alpha",
+]
+keywords = ["async", "FIX", "protocol", "client", "server", "parser", "unit tests" ]
+requires-python = ">=3.8"
+
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+  "pytest",
+  "flake8",
+  "black",
+]
+
+[project.urls]
+Homepage = "https://github.com/alexveden/asyncfix"
