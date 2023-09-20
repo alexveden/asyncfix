@@ -1,6 +1,6 @@
 from . import FTag, FMsgType
-from aiopyfix.message import FIXMessage
-from aiopyfix.protocol.protocol_base import FIXProtocolBase
+from asyncfix.message import FIXMessage
+from asyncfix.protocol.protocol_base import FIXProtocolBase
 
 
 class FIXProtocol44(FIXProtocolBase):

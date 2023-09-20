@@ -1,4 +1,4 @@
-from aiopyfix.message import FIXMessage
+from asyncfix.message import FIXMessage
 from . import FTag, FMsgType
 
 
