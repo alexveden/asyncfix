@@ -1,5 +1,6 @@
 import argparse
 import logging
+
 from asyncfix.journaler import Journaler
 from asyncfix.message import MessageDirection
 

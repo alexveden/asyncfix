@@ -1,6 +1,7 @@
-import sqlite3
 import pickle
-from asyncfix.message import MessageDirection, FIXMessage
+import sqlite3
+
+from asyncfix.message import FIXMessage, MessageDirection
 from asyncfix.session import FIXSession
 
 

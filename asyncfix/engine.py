@@ -1,6 +1,6 @@
 from asyncfix.journaler import Journaler
-from asyncfix.session import FIXSession
 from asyncfix.message import FIXMessage
+from asyncfix.session import FIXSession
 
 
 class FIXEngine(object):

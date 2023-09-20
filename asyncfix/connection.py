@@ -1,15 +1,16 @@
 import asyncio
-import logging
 import importlib
-from typing import Callable
+import logging
 import sys
-from asyncfix.protocol import FIXProtocolBase
+from enum import Enum
+from typing import Callable
+
 from asyncfix.codec import Codec
-from asyncfix.session import FIXSession
 from asyncfix.engine import FIXEngine
 from asyncfix.journaler import DuplicateSeqNoError
 from asyncfix.message import FIXMessage, MessageDirection
-from enum import Enum
+from asyncfix.protocol import FIXProtocolBase
+from asyncfix.session import FIXSession
 
 
 class ConnectionState(Enum):

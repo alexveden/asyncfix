@@ -1,7 +1,8 @@
 import unittest
+
 from asyncfix.connection import MessageDirection
 from asyncfix.journaler import Journaler
-from asyncfix.message import FIXMessage, FIXContext
+from asyncfix.message import FIXContext, FIXMessage
 from asyncfix.session import FIXSession
 
 

@@ -1,14 +1,11 @@
 import asyncio
 import logging
+
 import asyncfix.FIX44 as FIXProtocol
+from asyncfix.connection import ConnectionState, FIXConnectionHandler, FIXEndPoint
 from asyncfix.engine import FIXEngine
-from asyncfix.message import FIXMessage
 from asyncfix.journaler import DuplicateSeqNoError
-from asyncfix.connection import (
-    FIXEndPoint,
-    ConnectionState,
-    FIXConnectionHandler,
-)
+from asyncfix.message import FIXMessage
 
 
 class FIXServerConnectionHandler(FIXConnectionHandler):

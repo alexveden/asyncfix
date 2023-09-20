@@ -1,8 +1,10 @@
 from __future__ import annotations
-from typing import Any
+
 from collections import OrderedDict
-from asyncfix.protocol.msgtype import FMsgType
 from enum import Enum
+from typing import Any
+
+from asyncfix.protocol.msgtype import FMsgType
 
 
 def isclass(cl):
@@ -110,7 +112,7 @@ class FIXContext(object):
         if isinstance(group, dict):
             group = FIXContext(group)
         elif not isinstance(group, FIXContext):
-            raise FIXMessageError(f'Expected FIXContext in group, got {type(group)}')
+            raise FIXMessageError(f"Expected FIXContext in group, got {type(group)}")
 
         if tag in self:
             group_container = self.tags[tag]

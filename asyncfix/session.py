@@ -1,6 +1,7 @@
 import logging
-from asyncfix.protocol import FTag
+
 from asyncfix.message import MessageDirection
+from asyncfix.protocol import FTag
 
 
 class FIXSession:

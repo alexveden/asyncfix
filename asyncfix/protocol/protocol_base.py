@@ -1,5 +1,6 @@
 from asyncfix.message import FIXMessage
-from . import FTag, FMsgType
+
+from . import FMsgType, FTag
 
 
 class FIXProtocolBase(object):

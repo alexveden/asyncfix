@@ -1,7 +1,8 @@
-from datetime import datetime
 import logging
+from datetime import datetime
+
+from asyncfix.message import FIXContext, FIXMessage, RepeatingTagError
 from asyncfix.protocol import FIXProtocolBase
-from asyncfix.message import FIXMessage, FIXContext, RepeatingTagError
 from asyncfix.session import FIXSession
 
 

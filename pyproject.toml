@@ -19,9 +19,14 @@ dependencies = []
 [project.optional-dependencies]
 dev = [
   "pytest",
-  "flake8",
-  "black",
+  "flake8==6.1.0",
+  "black==23.7.0",
+  "pre-commit",
 ]
 
 [project.urls]
 Homepage = "https://github.com/alexveden/asyncfix"
+
+
+[tool.isort]
+profile = "black"

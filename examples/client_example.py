@@ -1,8 +1,9 @@
 import asyncio
-from enum import Enum
 import logging
 import random
-from asyncfix.connection import ConnectionState, MessageDirection, FIXConnectionHandler
+from enum import Enum
+
+from asyncfix.connection import ConnectionState, FIXConnectionHandler, MessageDirection
 from asyncfix.connection_client import FIXClient
 from asyncfix.engine import FIXEngine
 from asyncfix.message import FIXMessage

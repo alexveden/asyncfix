@@ -1,10 +1,11 @@
 import asyncio
-from enum import Enum
 import logging
-from asyncfix.connection import ConnectionState, MessageDirection, FIXConnectionHandler
+from enum import Enum
+
+from asyncfix.connection import ConnectionState, FIXConnectionHandler, MessageDirection
+from asyncfix.connection_server import FIXServer
 from asyncfix.engine import FIXEngine
 from asyncfix.message import FIXMessage
-from asyncfix.connection_server import FIXServer
 
 
 class Side(Enum):

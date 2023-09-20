@@ -1,14 +1,22 @@
-import importlib
 import datetime
-from asyncfix.codec import Codec
-from asyncfix.message import FIXMessage, FIXContext, RepeatingTagError, UnmappedRepeatedGrpError, TagNotFoundError
-from asyncfix.protocol import FIXProtocol44, FTag, FMsgType
+import importlib
+
 import pytest
+
+from asyncfix.codec import Codec
+from asyncfix.message import (
+    FIXContext,
+    FIXMessage,
+    RepeatingTagError,
+    TagNotFoundError,
+    UnmappedRepeatedGrpError,
+)
+from asyncfix.protocol import FIXProtocol44, FMsgType, FTag
 
 __author__ = "tom, alex"
 
-from unittest.mock import Mock, patch
 import unittest
+from unittest.mock import Mock, patch
 
 
 class FakeDate(datetime.datetime):
@@ -36,7 +44,7 @@ def test_decode():
     )
     msg, remaining = codec.decode(inMsg)
 
-    exp_str = "8=FIX.4.4|9=817|35=J|34=953|49=FIX_ALAUDIT|56=BFUT_ALAUDIT|43=N|52=20150615-09:21:42.459|70=00000002664ASLO1001|626=2|10626=#err#|71=0|60=20150615-10:21:42|857=1|73=1=>[11=00000006321ORLO1|38=100.0|800=100.0]|124=1=>[32=100.0|17=00000009758TRLO1|31=484.50]|54=2|53=100.0|55=FTI|207=XEUE|454=1=>[455=EOM5|456=A]|200=201506|541=20150619|461=FXXXXX|6=484.50|74=2|75=20150615|78=1=>[79=TEST123]|30009=#err#|467=#err#|9520=#err#|80=#err#|366=#err#|81=#err#|153=#err#|79=TEST124|453=3=>[448=TEST1|447=D|452=3|802=2=>[523=12345|803=3, 523=TEST1|803=19], 448=TEST1WA|447=D|452=38|802=4=>[523=Test1 Wait|803=10, 523= |803=26, 523=|803=3, 523=TestWaCRF2|803=28], 448=hagap|447=D|452=11|802=2=>[523=GB|803=25, 523=BarCapFutures.FETService|803=24]]|10=033" # noqa
+    exp_str = "8=FIX.4.4|9=817|35=J|34=953|49=FIX_ALAUDIT|56=BFUT_ALAUDIT|43=N|52=20150615-09:21:42.459|70=00000002664ASLO1001|626=2|10626=#err#|71=0|60=20150615-10:21:42|857=1|73=1=>[11=00000006321ORLO1|38=100.0|800=100.0]|124=1=>[32=100.0|17=00000009758TRLO1|31=484.50]|54=2|53=100.0|55=FTI|207=XEUE|454=1=>[455=EOM5|456=A]|200=201506|541=20150619|461=FXXXXX|6=484.50|74=2|75=20150615|78=1=>[79=TEST123]|30009=#err#|467=#err#|9520=#err#|80=#err#|366=#err#|81=#err#|153=#err#|79=TEST124|453=3=>[448=TEST1|447=D|452=3|802=2=>[523=12345|803=3, 523=TEST1|803=19], 448=TEST1WA|447=D|452=38|802=4=>[523=Test1 Wait|803=10, 523= |803=26, 523=|803=3, 523=TestWaCRF2|803=28], 448=hagap|447=D|452=11|802=2=>[523=GB|803=25, 523=BarCapFutures.FETService|803=24]]|10=033"  # noqa
     assert exp_str == str(msg)
 
 
@@ -176,7 +184,7 @@ def test_decode_invalid_start_fix_msg(fix_session):
     msg, parsed_len = codec.decode(enc_msg)
     assert isinstance(msg, FIXMessage)
     assert parsed_len == len(enc_msg)
- 
+
 
 def test_decode_groups(fix_session):
     protocol = FIXProtocol44()
@@ -198,14 +206,14 @@ def test_decode_groups(fix_session):
     msg_in.add_group(FTag.NoSecurityAltID, rptgrp2)
 
     g = FIXContext()
-    g.set('20323', '1')
-    g.set('20324', '3')
-    msg_in.add_group('20228', g)
+    g.set("20323", "1")
+    g.set("20324", "3")
+    msg_in.add_group("20228", g)
 
     g = FIXContext()
-    g.set('20323', '1')
-    g.set('20324', '3')
-    msg_in.add_group('20228', g)
+    g.set("20323", "1")
+    g.set("20324", "3")
+    msg_in.add_group("20228", g)
 
     protocol = FIXProtocol44()
     codec = Codec(protocol)
@@ -224,21 +232,24 @@ def test_decode_groups(fix_session):
 
     # print(repr(msg_out))
     # assert False, enc_msg
-    
+
     g = msg_out.get_group(FTag.NoSecurityAltID)
     assert g
     assert isinstance(g, list)
     assert len(g) == 2
-    assert g[0][FTag.SecurityAltID] == 'abc' 
-    assert g[0][FTag.SecurityAltIDSource] == 'bbb' 
-    assert g[1][FTag.SecurityAltID] == 'zzz' 
-    assert g[1][FTag.SecurityAltIDSource] == 'xxx' 
+    assert g[0][FTag.SecurityAltID] == "abc"
+    assert g[0][FTag.SecurityAltIDSource] == "bbb"
+    assert g[1][FTag.SecurityAltID] == "zzz"
+    assert g[1][FTag.SecurityAltIDSource] == "xxx"
 
-    with pytest.raises(RepeatingTagError, match='tag=.*was repeated'):
+    with pytest.raises(RepeatingTagError, match="tag=.*was repeated"):
         msg_out["20323"]
 
-    with pytest.raises(UnmappedRepeatedGrpError, match='tag exists, but it does not belong to any group'):
-        g = msg_out.get_group('20228')
+    with pytest.raises(
+        UnmappedRepeatedGrpError,
+        match="tag exists, but it does not belong to any group",
+    ):
+        g = msg_out.get_group("20228")
 
-    with pytest.raises(TagNotFoundError, match='missing tag group tag='):
-        g = msg_out.get_group('129012099')
+    with pytest.raises(TagNotFoundError, match="missing tag group tag="):
+        g = msg_out.get_group("129012099")

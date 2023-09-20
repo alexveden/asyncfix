@@ -1,7 +1,16 @@
 import pickle
+
 import pytest
+
+from asyncfix.message import (
+    DuplicatedTagError,
+    FIXContext,
+    FIXMessage,
+    FIXMessageError,
+    RepeatingTagError,
+    TagNotFoundError,
+)
 from asyncfix.protocol import FTag
-from asyncfix.message import FIXMessage, FIXContext, TagNotFoundError, DuplicatedTagError, FIXMessageError, RepeatingTagError
 
 __author__ = "tom, alex"
 
@@ -29,46 +38,49 @@ def test_tag_errors():
 
     assert msg.get("99", 100) == 100
 
-    with pytest.raises(DuplicatedTagError, match='tag=45 already exists'):
-        msg[45] = 'aaa'
+    with pytest.raises(DuplicatedTagError, match="tag=45 already exists"):
+        msg[45] = "aaa"
 
-    with pytest.raises(FIXMessageError, match='Tags must be only integers'):
-        msg['abs'] = 'aaa'
+    with pytest.raises(FIXMessageError, match="Tags must be only integers"):
+        msg["abs"] = "aaa"
 
     msg[45] = RepeatingTagError
-    with pytest.raises(RepeatingTagError, match='tag=45 was repeated, possible undefined '):
+    with pytest.raises(
+        RepeatingTagError, match="tag=45 was repeated, possible undefined "
+    ):
         msg[45]
 
 
 def test_groups():
     msg = FIXMessage("AB")
 
-    msg.set_group(2023,
-                  [{1: 'a', 2: 'b'}, FIXContext({1: 'c', 2: 'd'})])
-    msg.add_group(2023, {1: 'e', 4: 'f'})
+    msg.set_group(2023, [{1: "a", 2: "b"}, FIXContext({1: "c", 2: "d"})])
+    msg.add_group(2023, {1: "e", 4: "f"})
 
-    with pytest.raises(FIXMessageError, match='Expected FIXContext in group, got '):
+    with pytest.raises(FIXMessageError, match="Expected FIXContext in group, got "):
         msg.add_group(2023, None)
 
     g = msg.get_group_by_index(2023, 0)
     assert isinstance(g, FIXContext)
-    assert g[1] == 'a'
-    assert g[2] == 'b'
+    assert g[1] == "a"
+    assert g[2] == "b"
 
     g = msg.get_group_by_index(2023, 1)
     assert isinstance(g, FIXContext)
-    assert g[1] == 'c'
-    assert g[2] == 'd'
+    assert g[1] == "c"
+    assert g[2] == "d"
 
     g = msg.get_group_by_index(2023, 2)
     assert isinstance(g, FIXContext)
-    assert g[1] == 'e'
-    assert g[4] == 'f'
+    assert g[1] == "e"
+    assert g[4] == "f"
 
-    with pytest.raises(TagNotFoundError, match='index is out of range of tag=2023 group'):
+    with pytest.raises(
+        TagNotFoundError, match="index is out of range of tag=2023 group"
+    ):
         g = msg.get_group_by_index(2023, 3)
 
-    assert msg.is_group(2023) 
+    assert msg.is_group(2023)
 
 
 def test_msg_construction():
@@ -92,7 +104,7 @@ def test_msg_construction():
 
     msg.add_group("444", rptgrp1, 0)
 
-    rptgrp2 = FIXContext({611: 'zzz', 612: 'yyy', '613': 'xxx'})
+    rptgrp2 = FIXContext({611: "zzz", 612: "yyy", "613": "xxx"})
     msg.add_group("444", rptgrp2, 1)
 
     assert "45=dgd|32=aaaa|323=bbbb|444=2=>[611=aaa|612=bbb|613=ccc,"
