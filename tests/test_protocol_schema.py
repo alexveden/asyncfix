@@ -1,3 +1,4 @@
+import os
 import xml.etree.ElementTree as ET
 
 import pytest
@@ -11,154 +12,17 @@ from asyncfix.protocol.schema import (
     SchemaSet,
 )
 
-
-@pytest.fixture
-def fix_circular_invalid_xml():
-    simple_xml = """
-<fix type="FIX" major="4" minor="4" servicepack="0">
-<header>
-    <field name="BeginString" required="Y"/>
-    <field name="BodyLength" required="Y"/>
-    <field name="MsgType" required="Y"/>
-    <field name="SenderCompID" required="Y"/>
-    <field name="TargetCompID" required="Y"/>
-    <group name="NoHops" required="N">
-        <field name="HopCompID" required="N"/>
-        <field name="HopRefID" required="N"/>
-    </group>
-</header>
-<messages>
-    <message name="Heartbeat" msgtype="0" msgcat="admin">
-        <field name="TestReqID" required="N"/>
-    </message>
-    <message name="ExecutionReport" msgtype="8" msgcat="app">
-        <field name="OrderID" required="Y"/>
-        <field name="ClOrdID" required="N"/>
-        <component name="ContraGrp" required="N"/>
-        <group name="NoPartyIDs" required="N">
-            <field name="PartyID" required="N"/>
-            <field name="PartyRole" required="Y"/>
-        </group>
-    </message>
-</messages>
-<components>
-    <component name="ContraGrp">
-        <component name="CommissionData" required="N"/>
-        <component name="CommissionData2" required="N"/>
-        <group name="NoContraBrokers" required="N">
-            <field name="ContraBroker" required="N"/>
-            <field name="ContraTrader" required="N"/>
-        </group>
-    </component>
-    <component name="CommissionData">
-        <field name="Commission" required="N"/>
-        <field name="CommType" required="N"/>
-    </component>
-</components>
-<fields>
-    <field number="1" name="Account" type="STRING"/>
-    <field number="2" name="AdvId" type="STRING"/>
-    <field number="3" name="AdvRefID" type="STRING"/>
-    <field number="4" name="AdvSide" type="CHAR">
-        <value enum="B" description="BUY"/>
-        <value enum="S" description="SELL"/>
-        <value enum="X" description="CROSS"/>
-        <value enum="T" description="TRADE"/>
-    </field>
-    <field number="382" name="NoContraBrokers" type="NUMINGROUP"/>
-    <field number="375" name="ContraBroker" type="STRING"/>
-    <field number="337" name="ContraTrader" type="STRING"/>
-    <field number="12" name="Commission" type="AMT"/>
-    <field number="13" name="CommType" type="CHAR">
-        <value enum="1" description="PER_UNIT"/>
-        <value enum="2" description="PERCENT"/>
-        <value enum="3" description="ABSOLUTE"/>
-        <value enum="4" description="PERCENTAGE_WAIVED_CASH_DISCOUNT"/>
-        <value enum="5" description="PERCENTAGE_WAIVED_ENHANCED_UNITS"/>
-        <value enum="6" description="POINTS_PER_BOND_OR_CONTRACT"/>
-    </field>
-</fields>
-
-</fix>
-    """
-    return ET.ElementTree(ET.fromstring(simple_xml))
+TEST_DIR = os.path.abspath(os.path.dirname(__file__))
 
 
 @pytest.fixture
 def fix_simple_xml():
-    simple_xml = """
-<fix type="FIX" major="4" minor="4" servicepack="0">
-<header>
-    <field name="BeginString" required="Y"/>
-    <field name="BodyLength" required="Y"/>
-    <field name="MsgType" required="Y"/>
-    <field name="SenderCompID" required="Y"/>
-    <field name="TargetCompID" required="Y"/>
-    <group name="NoHops" required="N">
-        <field name="HopCompID" required="N"/>
-        <field name="HopRefID" required="N"/>
-    </group>
-</header>
-<messages>
-    <message name="Heartbeat" msgtype="0" msgcat="admin">
-        <field name="TestReqID" required="N"/>
-    </message>
-    <message name="ExecutionReport" msgtype="8" msgcat="app">
-        <field name="OrderID" required="Y"/>
-        <field name="ClOrdID" required="N"/>
-        <component name="ContraGrp" required="N"/>
-        <group name="NoPartyIDs" required="N">
-            <field name="PartyID" required="N"/>
-            <field name="PartyRole" required="Y"/>
-        </group>
-    </message>
-</messages>
-<components>
-    <component name="ContraGrp">
-        <component name="CommissionData" required="N"/>
-        <group name="NoContraBrokers" required="N">
-            <field name="ContraBroker" required="N"/>
-            <field name="ContraTrader" required="N"/>
-        </group>
-    </component>
-    <component name="CommissionData">
-        <field name="Commission" required="N"/>
-        <field name="CommType" required="N"/>
-    </component>
-</components>
-<fields>
-    <field number="1" name="Account" type="STRING"/>
-    <field number="2" name="AdvId" type="STRING"/>
-    <field number="3" name="AdvRefID" type="STRING"/>
-    <field number="4" name="AdvSide" type="CHAR">
-        <value enum="B" description="BUY"/>
-        <value enum="S" description="SELL"/>
-        <value enum="X" description="CROSS"/>
-        <value enum="T" description="TRADE"/>
-    </field>
-    <field number="382" name="NoContraBrokers" type="NUMINGROUP"/>
-    <field number="375" name="ContraBroker" type="STRING"/>
-    <field number="337" name="ContraTrader" type="STRING"/>
-    <field number="12" name="Commission" type="AMT"/>
-    <field number="13" name="CommType" type="CHAR">
-        <value enum="1" description="PER_UNIT"/>
-        <value enum="2" description="PERCENT"/>
-        <value enum="3" description="ABSOLUTE"/>
-        <value enum="4" description="PERCENTAGE_WAIVED_CASH_DISCOUNT"/>
-        <value enum="5" description="PERCENTAGE_WAIVED_ENHANCED_UNITS"/>
-        <value enum="6" description="POINTS_PER_BOND_OR_CONTRACT"/>
-    </field>
-<field number="112" name="TestReqID" type="STRING"/>
-<field number="37" name="OrderID" type="STRING"/>
-<field number="11" name="ClOrdID" type="STRING"/>
-<field number="453" name="NoPartyIDs" type="NUMINGROUP"/>
-<field number="448" name="PartyID" type="STRING"/>
-<field number="452" name="PartyRole" type="INT"/>
-</fields>
+    return ET.parse(os.path.join(TEST_DIR, "schema_fix_simple.xml"))
 
-</fix>
-    """
-    return ET.ElementTree(ET.fromstring(simple_xml))
+
+@pytest.fixture
+def fix_circular_invalid_xml():
+    return ET.parse(os.path.join(TEST_DIR, "schema_fix_comp_circular.xml"))
 
 
 def test_schema_field():
@@ -181,6 +45,7 @@ def test_schema_field():
     assert f == "Account"
     assert f == "1"
     assert f == 1
+    assert f != float("123")
 
     fields = {f: 1, f2: 2}
 
@@ -201,6 +66,10 @@ def test_schema_set():
     s = SchemaSet("myset")
     s.add(f, True)
     s.add(f2, False)
+    assert hash(s) == hash("myset")
+
+    with pytest.raises(ValueError, match="Unsupported field_or_set type, got"):
+        s.add("notsupported", False)
 
     assert f in s
     assert f2 in s
@@ -285,8 +154,9 @@ def test_xml_init(fix_simple_xml):
     assert f.validate_value("B")
     assert not f.validate_value("Z")
 
-    assert len(schema.components) == 2
+    assert len(schema.components) == 3
     assert "ContraGrp" in schema.components
+    assert "ContraGrp2" in schema.components
     assert "CommissionData" in schema.components
     c = schema.components["ContraGrp"]
     assert isinstance(c, SchemaComponent)

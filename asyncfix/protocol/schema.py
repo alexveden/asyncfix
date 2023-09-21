@@ -175,9 +175,7 @@ class FIXSchema:
 
         el_name = element.attrib["name"]
 
-        if el_name in self.components:
-            return self.components[el_name]
-
+        assert el_name not in self.components, "Duplicate component name or double run"
         component = self._parse_msg_set(SchemaComponent(el_name), element)
 
         if component:
@@ -202,12 +200,10 @@ class FIXSchema:
             ),
             element,
         )
+        assert message, "Message probably refers to circular refs in comp or groups"
 
-        if message:
-            self.messages[el_name] = message
-            return message
-        else:
-            return None
+        self.messages[el_name] = message
+        return message
 
     def _parse_field(self, element: ET.Element):
         assert element.tag == "field"
@@ -226,6 +222,8 @@ class FIXSchema:
         self.field2tag[f.name] = f
 
     def _parse(self, root: ET.Element):
+        assert not self.field2tag, "already parsed"
+
         for element in root.find("fields"):
             self._parse_field(element)
 
