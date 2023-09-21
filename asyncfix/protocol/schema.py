@@ -41,13 +41,20 @@ class SchemaSet:
         self.name: str = name
         self.field: SchemaField = field  # this is set for groups, with attached field
         if field:
-            if field.ftype != "NUMINGROUP":
+            if not (
+                ("No" in field.name or "Num" in field.name)
+                and field.ftype in ["NUMINGROUP", "INT"]
+            ):
+                # warnings.warn('')
                 raise ValueError(
-                    "SchemaSet expected to have group field with NUMINGROUP type, got"
-                    f" {field}"
+                    "SchemaSet expected to have group field with NUMINGROUP|INT type,"
+                    f" name contais No/Num, got {field}"
                 )
         self.members: dict[SchemaField | SchemaSet, SchemaField | SchemaSet] = {}
         self.required: dict[SchemaField | SchemaSet, bool] = {}
+
+    def keys(self) -> list[str]:
+        return [m.name for m in self.members]
 
     def add(self, field_or_set: SchemaField | SchemaSet, required: bool):
         if isinstance(field_or_set, SchemaField):
@@ -87,10 +94,6 @@ class SchemaSet:
 
 class SchemaGroup(SchemaSet):
     def __init__(self, field: SchemaField, required: bool):
-        assert (
-            field.ftype == "NUMINGROUP"
-        ), f"Group field must have NUMINGROUP type: {field}"
-
         super().__init__(field.name, field)
         self.field_required = required
 
@@ -121,7 +124,6 @@ class FIXSchema:
 
     def _parse_msg_set(self, component, element):
         has_circular_refs = False
-        assert len(element) > 0, "empty component"
         for val in element:
             assert val.tag in ["field", "group", "component"]
 
@@ -154,20 +156,14 @@ class FIXSchema:
         assert element.tag == "group"
 
         el_name = element.attrib["name"]
-        if el_name in self.groups:
-            # Already exists
-            return self.groups[el_name]
 
         gfield = self.field2tag[el_name]
         group = self._parse_msg_set(
             SchemaGroup(gfield, element.attrib["required"].upper() == "Y"),
             element,
         )
-        if group:
-            self.groups[el_name] = group
-            return group
-        else:
-            return None
+        # assert group, f'group parse erorr, {element.attrib}'
+        return group
 
     def _parse_component(self, element: ET.Element) -> SchemaComponent | None:
         assert self.field2tag, "parse fields first!"
@@ -228,7 +224,7 @@ class FIXSchema:
             self._parse_field(element)
 
         all_components = [e for e in root.find("components")]
-
+        full_count = len(all_components)
         prev_cnt = len(all_components)
         while all_components:
             i = 0
@@ -248,9 +244,14 @@ class FIXSchema:
                     )
                 else:
                     prev_cnt = len(all_components)
+        assert full_count == len(self.components), "Component count mismatch"
 
+        n_msg = 0
         for element in root.find("messages"):
             self._parse_message(element)
+            n_msg += 1
+
+        assert n_msg == len(self.messages), "Message count mismatch"
 
     def validate(self, msg: FIXMessage):
         pass

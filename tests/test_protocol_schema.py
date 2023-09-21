@@ -83,7 +83,7 @@ def test_schema_set():
     # Error type for group
     fg = SchemaField("73", "NoOrders", "STRING")
     with pytest.raises(
-        ValueError, match="SchemaSet expected to have group field with NUMINGROUP type"
+        ValueError, match="SchemaSet expected to have group field with "
     ):
         SchemaSet("NoOrders", field=fg)
 
@@ -163,8 +163,6 @@ def test_xml_init(fix_simple_xml):
     assert c.name == "ContraGrp"
     assert c.field is None
 
-    assert "NoContraBrokers" in schema.groups
-
     # Check messages
     assert schema.messages
     m = schema.messages["ExecutionReport"]
@@ -174,9 +172,9 @@ def test_xml_init(fix_simple_xml):
     assert isinstance(m["NoPartyIDs"], SchemaGroup)
 
     # Ensure group ordered!
-    g = schema.groups["NoContraBrokers"]
+    g = m["NoPartyIDs"]
     assert isinstance(g, SchemaGroup)
-    assert ["ContraBroker", "ContraTrader"] == [str(m.name) for m in g.members.keys()]
+    assert ["PartyID", "PartyRole"] == list(g.members)
 
 
 def test_xml_circular_init(fix_circular_invalid_xml):
@@ -188,3 +186,73 @@ def test_xml_circular_init(fix_circular_invalid_xml):
         ),
     ):
         schema = FIXSchema(fix_circular_invalid_xml)
+
+
+def test_xml_real_schema():
+    tree = ET.parse(os.path.join(TEST_DIR, "FIX44.xml"))
+    schema = FIXSchema(tree)
+
+    assert len(schema.messages) == 93
+    assert len(schema.components) == 104
+    assert len(schema.field2tag) == 912
+
+    assert "ExecutionReport" in schema.messages
+
+
+def test_xml_real_schema_tt():
+    tree = ET.parse(os.path.join(TEST_DIR, "TT-FIX44.xml"))
+    schema = FIXSchema(tree)
+
+    assert len(schema.messages) == 40
+    assert len(schema.components) == 0
+    assert len(schema.field2tag) == 611
+
+    assert "ExecutionReport" in schema.messages
+
+    # Each message can have different group members of the same group
+    m = schema.messages["MarketDataSnapshot"]
+    g = m["NoMDEntries"]
+    assert isinstance(g, SchemaGroup)
+    assert g.keys() == [
+        "MDEntryType",
+        "MDEntryPx",
+        "MDEntrySize",
+        "MDEntryDate",
+        "MDEntryTime",
+        "MDEntryPositionNo",
+        "NumberOfOrders",
+    ]
+
+    # Each message can have different group members of the same group
+    m = schema.messages["MarketDataIncrementalRefresh"]
+    g = m["NoMDEntries"]
+    assert isinstance(g, SchemaGroup)
+    assert g.keys() == [
+        "MDUpdateAction",
+        "MDEntryType",
+        "Symbol",
+        "SecurityDesc",
+        "Product",
+        "SecurityType",
+        "SecuritySubType",
+        "MaturityMonthYear",
+        "MaturityDate",
+        "MaturityDay",
+        "PutOrCall",
+        "StrikePrice",
+        "OptAttribute",
+        "DeliveryTerm",
+        "DeliveryDate",
+        "SecurityID",
+        "SecurityExchange",
+        "ExDestination",
+        "CFICode",
+        "Currency",
+        "MDEntryPx",
+        "MDEntrySize",
+        "MDEntryDate",
+        "MDEntryTime",
+        "MDEntryPositionNo",
+        "SecondaryOrderID",
+        "NumberOfOrders",
+    ]
