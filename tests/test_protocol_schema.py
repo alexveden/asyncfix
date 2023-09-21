@@ -40,7 +40,10 @@ def test_schema_field():
 
     f.values["test"] = "1"
     assert f.values == {"test": "1"}
-    assert not f.validate_value("adslkajdlskj")
+    with pytest.raises(
+        FIXMessageError, match="Field=Account value expected to be one of the "
+    ):
+        assert not f.validate_value("adslkajdlskj")
     assert f.validate_value("test")
 
     assert f != f2
@@ -155,7 +158,10 @@ def test_xml_init(fix_simple_xml):
 
     assert f == f2
     assert f.validate_value("B")
-    assert not f.validate_value("Z")
+    with pytest.raises(
+        FIXMessageError, match="Field=AdvSide value expected to be one of the "
+    ):
+        assert not f.validate_value("Z")
 
     assert len(schema.components) == 3
     assert "ContraGrp" in schema.components
@@ -198,6 +204,31 @@ def test_xml_real_schema():
     assert len(schema.messages) == 93
     assert len(schema.components) == 104
     assert len(schema.field2tag) == 912
+    assert schema.types == {
+        "AMT",
+        "BOOLEAN",
+        "CHAR",
+        "COUNTRY",
+        "CURRENCY",
+        "DATA",
+        "EXCHANGE",
+        "FLOAT",
+        "INT",
+        "LENGTH",
+        "LOCALMKTDATE",
+        "MONTHYEAR",
+        "MULTIPLEVALUESTRING",
+        "NUMINGROUP",
+        "PERCENTAGE",
+        "PRICE",
+        "PRICEOFFSET",
+        "QTY",
+        "SEQNUM",
+        "STRING",
+        "UTCDATEONLY",
+        "UTCTIMEONLY",
+        "UTCTIMESTAMP",
+    }
 
     assert "ExecutionReport" in schema.messages
 
@@ -209,6 +240,29 @@ def test_xml_real_schema_tt():
     assert len(schema.messages) == 40
     assert len(schema.components) == 0
     assert len(schema.field2tag) == 611
+    assert schema.types == {
+        "AMT",
+        "BOOLEAN",
+        "CHAR",
+        "CURRENCY",
+        "DATA",
+        "DAYOFMONTH",
+        "EXCHANGE",
+        "FLOAT",
+        "INT",
+        "LENGTH",
+        "LOCALMKTDATE",
+        "MONTHYEAR",
+        "MULTIPLESTRINGVALUE",
+        "NUMINGROUP",
+        "PRICE",
+        "QTY",
+        "SEQNUM",
+        "STRING",
+        "UTCDATEONLY",
+        "UTCTIMEONLY",
+        "UTCTIMESTAMP",
+    }
 
     assert "ExecutionReport" in schema.messages
 
@@ -325,3 +379,333 @@ def test_schema_validation(fix_simple_xml):
     assert len(mock_valgrp.call_args[0][0]) == 1
     assert mock_valgrp.call_args[1] == {}
     assert mock_valgrp.call_args[0][0][0] == {1: "test"}
+
+
+def test_field_type_validation__int():
+    f = SchemaField("1", "test", "INT")
+
+    assert f.validate_value("1")
+    assert f.validate_value("0")
+    assert f.validate_value("-1")
+
+    with pytest.raises(
+        FIXMessageError, match="validation error .*: invalid literal for int"
+    ):
+        assert f.validate_value("as")
+
+    with pytest.raises(
+        FIXMessageError, match="validation error .*: invalid literal for int"
+    ):
+        assert f.validate_value("10.2")
+
+    with pytest.raises(
+        FIXMessageError, match="validation error .*: invalid literal for int"
+    ):
+        assert f.validate_value("10.0")
+
+
+def test_field_type_validation__seqnum():
+    f = SchemaField("1", "test", "SEQNUM")
+
+    assert f.validate_value("1")
+
+    with pytest.raises(
+        FIXMessageError, match="validation error .*: invalid literal for int"
+    ):
+        assert f.validate_value("as")
+
+    with pytest.raises(
+        FIXMessageError, match="validation error .*: invalid literal for int"
+    ):
+        assert f.validate_value("10.2")
+
+    with pytest.raises(
+        FIXMessageError, match="validation error .*: invalid literal for int"
+    ):
+        assert f.validate_value("10.0")
+
+    with pytest.raises(FIXMessageError, match="validation error .*: zero value"):
+        assert f.validate_value("0")
+
+    with pytest.raises(FIXMessageError, match="validation error .*: negative value"):
+        assert f.validate_value("-1")
+
+
+def test_field_type_validation__numingroup():
+    f = SchemaField("1", "test", "NUMINGROUP")
+
+    assert f.validate_value("1")
+
+    with pytest.raises(
+        FIXMessageError, match="validation error .*: invalid literal for int"
+    ):
+        assert f.validate_value("as")
+
+    with pytest.raises(
+        FIXMessageError, match="validation error .*: invalid literal for int"
+    ):
+        assert f.validate_value("10.2")
+
+    with pytest.raises(
+        FIXMessageError, match="validation error .*: invalid literal for int"
+    ):
+        assert f.validate_value("10.0")
+
+    with pytest.raises(FIXMessageError, match="validation error .*: zero value"):
+        assert f.validate_value("0")
+
+    with pytest.raises(FIXMessageError, match="validation error .*: negative value"):
+        assert f.validate_value("-1")
+
+
+def test_field_type_validation__dayofmonth():
+    f = SchemaField("1", "test", "DAYOFMONTH")
+
+    for i in range(1, 32):
+        assert f.validate_value(str(i))
+
+    with pytest.raises(
+        FIXMessageError, match="validation error .*: invalid literal for int"
+    ):
+        assert f.validate_value("as")
+
+    with pytest.raises(
+        FIXMessageError, match="validation error .*: invalid literal for int"
+    ):
+        assert f.validate_value("10.2")
+
+    with pytest.raises(
+        FIXMessageError, match="validation error .*: invalid literal for int"
+    ):
+        assert f.validate_value("10.0")
+
+    with pytest.raises(FIXMessageError, match="validation error .*: out of range "):
+        assert f.validate_value("0")
+
+    with pytest.raises(FIXMessageError, match="validation error .*: out of range"):
+        assert f.validate_value("32")
+
+
+def test_field_type_validation__float():
+    f = SchemaField("1", "test", "FLOAT")
+
+    assert f.validate_value("1")
+    assert f.validate_value("0.0")
+    assert f.validate_value("1.1231")
+    assert f.validate_value("-1.12310923810281")
+
+    with pytest.raises(
+        FIXMessageError, match="validation error .*: could not convert string to float"
+    ):
+        assert f.validate_value("as")
+
+    with pytest.raises(
+        FIXMessageError, match="validation error .*: not isfinite number"
+    ):
+        assert f.validate_value("nan")
+
+    with pytest.raises(
+        FIXMessageError, match="validation error .*: not isfinite number"
+    ):
+        assert f.validate_value("inf")
+
+
+def test_field_type_validation__qty():
+    f = SchemaField("1", "test", "QTY")
+
+    assert f.validate_value("1")
+    assert f.validate_value("0.0")
+    assert f.validate_value("1.1231")
+    assert f.validate_value("-1.12310923810281")
+
+    with pytest.raises(
+        FIXMessageError, match="validation error .*: could not convert string to float"
+    ):
+        assert f.validate_value("as")
+
+    with pytest.raises(
+        FIXMessageError, match="validation error .*: not isfinite number"
+    ):
+        assert f.validate_value("nan")
+
+    with pytest.raises(
+        FIXMessageError, match="validation error .*: not isfinite number"
+    ):
+        assert f.validate_value("inf")
+
+
+def test_field_type_validation__price():
+    f = SchemaField("1", "test", "PRICE")
+
+    assert f.validate_value("1")
+    assert f.validate_value("0.0")
+    assert f.validate_value("1.1231")
+    assert f.validate_value("-1.12310923810281")
+
+    with pytest.raises(
+        FIXMessageError, match="validation error .*: could not convert string to float"
+    ):
+        assert f.validate_value("as")
+
+    with pytest.raises(
+        FIXMessageError, match="validation error .*: not isfinite number"
+    ):
+        assert f.validate_value("nan")
+
+    with pytest.raises(
+        FIXMessageError, match="validation error .*: not isfinite number"
+    ):
+        assert f.validate_value("inf")
+
+
+def test_field_type_validation__priceoffset():
+    f = SchemaField("1", "test", "PRICEOFFSET")
+
+    assert f.validate_value("1")
+    assert f.validate_value("0.0")
+    assert f.validate_value("1.1231")
+    assert f.validate_value("-1.12310923810281")
+
+    with pytest.raises(
+        FIXMessageError, match="validation error .*: could not convert string to float"
+    ):
+        assert f.validate_value("as")
+
+    with pytest.raises(
+        FIXMessageError, match="validation error .*: not isfinite number"
+    ):
+        assert f.validate_value("nan")
+
+    with pytest.raises(
+        FIXMessageError, match="validation error .*: not isfinite number"
+    ):
+        assert f.validate_value("inf")
+
+
+def test_field_type_validation__amt():
+    f = SchemaField("1", "test", "AMT")
+
+    assert f.validate_value("1")
+    assert f.validate_value("0.0")
+    assert f.validate_value("1.1231")
+    assert f.validate_value("-1.12310923810281")
+
+    with pytest.raises(
+        FIXMessageError, match="validation error .*: could not convert string to float"
+    ):
+        assert f.validate_value("as")
+
+    with pytest.raises(
+        FIXMessageError, match="validation error .*: not isfinite number"
+    ):
+        assert f.validate_value("nan")
+
+    with pytest.raises(
+        FIXMessageError, match="validation error .*: not isfinite number"
+    ):
+        assert f.validate_value("inf")
+
+
+def test_field_type_validation__percentage():
+    f = SchemaField("1", "test", "PERCENTAGE")
+
+    assert f.validate_value("1")
+    assert f.validate_value("0.0")
+    assert f.validate_value("1.1231")
+    assert f.validate_value("-1.12310923810281")
+
+    with pytest.raises(
+        FIXMessageError, match="validation error .*: could not convert string to float"
+    ):
+        assert f.validate_value("as")
+
+    with pytest.raises(
+        FIXMessageError, match="validation error .*: not isfinite number"
+    ):
+        assert f.validate_value("nan")
+
+    with pytest.raises(
+        FIXMessageError, match="validation error .*: not isfinite number"
+    ):
+        assert f.validate_value("inf")
+
+
+def test_field_type_validation__string():
+    f = SchemaField("1", "test", "STRING")
+
+    assert f.validate_value("1")
+    assert f.validate_value("A")
+    assert f.validate_value("-1.12310923810281")
+    assert f.validate_value("Hey this is alphanum string ! Also, some @tags, #test")
+
+    with pytest.raises(
+        FIXMessageError, match="validation error .*: Value contains SOH char"
+    ):
+        assert f.validate_value("a\x01s")
+
+    with pytest.raises(
+        FIXMessageError, match="validation error .*: Value contains `=` char"
+    ):
+        assert f.validate_value("as some tag=values")
+
+
+def test_field_type_validation__char():
+    f = SchemaField("1", "test", "CHAR")
+
+    assert f.validate_value("1")
+    assert f.validate_value("A")
+    assert f.validate_value("z")
+    assert f.validate_value("!")
+
+    with pytest.raises(FIXMessageError, match="max legth exceeded"):
+        assert f.validate_value("as")
+
+
+def test_field_type_validation__boolean():
+    f = SchemaField("1", "test", "BOOLEAN")
+
+    assert f.validate_value("Y")
+    assert f.validate_value("N")
+
+    with pytest.raises(FIXMessageError, match="out of subset"):
+        assert f.validate_value("Z")
+
+    with pytest.raises(FIXMessageError, match="max legth exceeded"):
+        assert f.validate_value("ZA")
+
+
+def test_field_type_validation__multiplestringvalue():
+    f = SchemaField("1", "test", "MULTIPLESTRINGVALUE")
+
+    assert f.validate_value("Y AS NA za")
+    assert f.validate_value("N N 2 1 n")
+
+
+def test_field_type_validation__country():
+    f = SchemaField("1", "test", "COUNTRY")
+
+    assert f.validate_value("RU")
+    assert f.validate_value("US")
+
+    with pytest.raises(FIXMessageError, match="max legth exceeded"):
+        assert f.validate_value("ZAR")
+
+
+def test_field_type_validation__currency():
+    f = SchemaField("1", "test", "CURRENCY")
+
+    assert f.validate_value("RUB")
+    assert f.validate_value("USD")
+
+    with pytest.raises(FIXMessageError, match="max legth exceeded"):
+        assert f.validate_value("EURU")
+
+
+def test_field_type_validation__exchange():
+    f = SchemaField("1", "test", "EXCHANGE")
+
+    assert f.validate_value("NYSE")
+    assert f.validate_value("NQ")
+
+    with pytest.raises(FIXMessageError, match="max legth exceeded"):
+        assert f.validate_value("EUREx")

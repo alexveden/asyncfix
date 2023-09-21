@@ -1,11 +1,60 @@
 from __future__ import annotations
 
 import dataclasses
+import re
 import xml.etree.ElementTree as ET
+from math import isfinite
 
 from asyncfix import FIXMessage
 from asyncfix.errors import FIXMessageError
 from asyncfix.message import FIXContainer
+
+# Forbids any non alphanumeric chars + ' ' + '-'
+_RE_NON_ALPHANUM = re.compile(r"[^\w -]+")
+_RE_NON_CONTROL = re.compile("[\x01]+")
+
+
+def _value_validate_str(value, max_len=None, subset=None, alpha_num=False):
+    assert value
+    assert type(value) is str
+    if "\x01" in value:
+        return "Value contains SOH char"
+    if "=" in value:
+        return "Value contains `=` char"
+
+    if max_len and len(value) > max_len:
+        return "max legth exceeded"
+    if subset and value not in subset:
+        return f"out of subset: {subset}"
+    if alpha_num and _RE_NON_ALPHANUM.match(value):
+        return "value contains non alphanumeric letters"
+
+
+def _value_validate_number(
+    value: str,
+    num_type: type,
+    no_zero=False,
+    no_negative=False,
+    no_nonfinite=False,
+    num_range=None,
+) -> str | None:
+    assert value
+    assert num_type in (int, float)
+
+    try:
+        v = num_type(value)
+        if no_zero and v == 0:
+            raise ValueError("zero value")
+        if no_negative and v < 0:
+            raise ValueError("negative value")
+        if no_nonfinite and not isfinite(float(v)):
+            raise ValueError("not isfinite number")
+        if num_range and not (v >= num_range[0] and v <= num_range[1]):
+            raise ValueError(f"out of range {num_range}")
+        # all good
+        return None
+    except ValueError as exc:
+        return str(exc)
 
 
 @dataclasses.dataclass
@@ -32,9 +81,51 @@ class SchemaField:
     def validate_value(self, value: str) -> bool:
         # TODO: add type validation too
         assert isinstance(value, str), "value must be a string"
+        assert value, "empty value"
+
         if self.values:
-            return value in self.values
+            if value not in self.values:
+                raise FIXMessageError(
+                    f"Field={self.name} value expected to be one of the"
+                    f" {list(self.values.keys())}, got ({value=})"
+                )
+            return True
         else:
+            t = self.ftype.upper()
+            err = None
+            if t == "INT":
+                err = _value_validate_number(value, int)
+            elif t in ["SEQNUM", "NUMINGROUP"]:
+                err = _value_validate_number(
+                    value,
+                    int,
+                    no_zero=True,
+                    no_negative=True,
+                )
+            elif t == "DAYOFMONTH":
+                err = _value_validate_number(value, int, num_range=(1, 31))
+            elif t in {"FLOAT", "QTY", "PRICE", "PRICEOFFSET", "AMT", "PERCENTAGE"}:
+                err = _value_validate_number(value, float, no_nonfinite=True)
+            elif t in {"STRING", "MULTIPLESTRINGVALUE"}:
+                err = _value_validate_str(value)
+            elif t in {"CHAR"}:
+                err = _value_validate_str(value, max_len=1)
+            elif t in {"BOOLEAN"}:
+                err = _value_validate_str(value, max_len=1, subset={"Y", "N"})
+            elif t in {"COUNTRY"}:
+                err = _value_validate_str(value, max_len=2)
+            elif t in {"CURRENCY"}:
+                err = _value_validate_str(value, max_len=3)
+            elif t in {"EXCHANGE"}:
+                err = _value_validate_str(value, max_len=4)
+            elif t in {"DATA", "LENGTH"}:
+                # just hoping the data is ok
+                err = None
+            else:
+                raise FIXMessageError(f"Unsupported datatype: {t} for field={self}")
+            if err:
+                raise FIXMessageError(f"{self} validation error (value={value}): {err}")
+
             return True
 
 
@@ -130,6 +221,7 @@ class FIXSchema:
         self.messages: dict[str, SchemaMessage] = {}
         self.messages_types: dict[str, SchemaMessage] = {}
         self.header = {}
+        self.types = set()
 
         self._parse(xml.getroot())
 
@@ -226,6 +318,7 @@ class FIXSchema:
                 assert val.tag == "value"
                 f.values[val.attrib["enum"]] = val.attrib["description"]
 
+        self.types.add(f.ftype)
         self.tag2field[f.tag] = f
         self.field2tag[f.name] = f
 
