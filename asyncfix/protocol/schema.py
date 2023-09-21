@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import dataclasses
+import datetime as dtm
 import re
+import warnings
 import xml.etree.ElementTree as ET
 from math import isfinite
 
@@ -9,9 +11,47 @@ from asyncfix import FIXMessage
 from asyncfix.errors import FIXMessageError
 from asyncfix.message import FIXContainer
 
-# Forbids any non alphanumeric chars + ' ' + '-'
-_RE_NON_ALPHANUM = re.compile(r"[^\w -]+")
-_RE_NON_CONTROL = re.compile("[\x01]+")
+
+def _value_validate_datetime(value, format):
+    if "." in value and "%S" in format and "%f" not in format:
+        format = f"{format}.%f"
+
+    try:
+        dtm.datetime.strptime(value, format)
+        return None  # all good
+    except Exception as exc:
+        return str(exc)
+
+
+def _value_validate_monthyear(value):
+    """
+    Special case for MonthYear type
+        String representing month of a year. An optional day of the month can be
+          appended or an optional week code.
+        Valid formats:
+        YYYYMM
+        YYYYMMDD
+        YYYYMMWW
+
+        Valid values:
+        YYYY = 0000-9999; MM = 01-12; DD = 01-31;
+        WW = w1, w2, w3, w4, w5.
+    """
+    if "w" in value:
+        week = value[-2:]
+        if week not in {"w1", "w2", "w3", "w4", "w5"}:
+            return f"YYYYMMWW [ww must be in w1,w2,w3,w4,w5], got {week}"
+        format = "%Y%m"
+        value = value[:-2]
+        if len(value) != 6:
+            return "remainder YYYYMM invalid"
+    else:
+        if len(value) == 6:
+            format = "%Y%m"
+        else:
+            format = "%Y%m%d"
+
+    return _value_validate_datetime(value, format)
 
 
 def _value_validate_str(value, max_len=None, subset=None, alpha_num=False):
@@ -26,7 +66,7 @@ def _value_validate_str(value, max_len=None, subset=None, alpha_num=False):
         return "max legth exceeded"
     if subset and value not in subset:
         return f"out of subset: {subset}"
-    if alpha_num and _RE_NON_ALPHANUM.match(value):
+    if alpha_num and re.search(r"\W+", value):
         return "value contains non alphanumeric letters"
 
 
@@ -79,7 +119,6 @@ class SchemaField:
             return False
 
     def validate_value(self, value: str) -> bool:
-        # TODO: add type validation too
         assert isinstance(value, str), "value must be a string"
         assert value, "empty value"
 
@@ -113,16 +152,25 @@ class SchemaField:
             elif t in {"BOOLEAN"}:
                 err = _value_validate_str(value, max_len=1, subset={"Y", "N"})
             elif t in {"COUNTRY"}:
-                err = _value_validate_str(value, max_len=2)
+                err = _value_validate_str(value, max_len=2, alpha_num=True)
             elif t in {"CURRENCY"}:
-                err = _value_validate_str(value, max_len=3)
+                err = _value_validate_str(value, max_len=3, alpha_num=True)
             elif t in {"EXCHANGE"}:
-                err = _value_validate_str(value, max_len=4)
+                err = _value_validate_str(value, max_len=4, alpha_num=True)
+            elif t in {"LOCALMKTDATE", "UTCDATEONLY"}:
+                err = _value_validate_datetime(value, "%Y%m%d")
+            elif t in {"UTCTIMESTAMP"}:
+                err = _value_validate_datetime(value, "%Y%m%d %H:%M:%S")
+            elif t in {"UTCTIMEONLY"}:
+                err = _value_validate_datetime(value, "%H:%M:%S")
+            elif t == "MONTHYEAR":
+                err = _value_validate_monthyear(value)
             elif t in {"DATA", "LENGTH"}:
                 # just hoping the data is ok
                 err = None
             else:
-                raise FIXMessageError(f"Unsupported datatype: {t} for field={self}")
+                warnings.warn(f"Unsupported datatype: {t} for field={self}")
+
             if err:
                 raise FIXMessageError(f"{self} validation error (value={value}): {err}")
 

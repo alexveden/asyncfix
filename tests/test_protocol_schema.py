@@ -700,6 +700,11 @@ def test_field_type_validation__currency():
     with pytest.raises(FIXMessageError, match="max legth exceeded"):
         assert f.validate_value("EURU")
 
+    with pytest.raises(
+        FIXMessageError, match="value contains non alphanumeric letters"
+    ):
+        assert f.validate_value("EU@")
+
 
 def test_field_type_validation__exchange():
     f = SchemaField("1", "test", "EXCHANGE")
@@ -709,3 +714,114 @@ def test_field_type_validation__exchange():
 
     with pytest.raises(FIXMessageError, match="max legth exceeded"):
         assert f.validate_value("EUREx")
+
+
+def test_field_type_validation__localmktdate():
+    f = SchemaField("1", "test", "LOCALMKTDATE")
+
+    assert f.validate_value("20230921")
+
+    with pytest.raises(
+        FIXMessageError, match="time data 'EUREx' does not match format '%Y%m%d'"
+    ):
+        assert f.validate_value("EUREx")
+
+    with pytest.raises(FIXMessageError, match="unconverted data remains"):
+        assert f.validate_value("20230921 14:00:00.12312")
+
+    with pytest.raises(FIXMessageError, match="day is out of range for month"):
+        assert f.validate_value("20230231")
+
+
+def test_field_type_validation__utsdateonly():
+    f = SchemaField("1", "test", "UTCDATEONLY")
+
+    assert f.validate_value("20230921")
+
+    with pytest.raises(
+        FIXMessageError, match="time data 'EUREx' does not match format '%Y%m%d'"
+    ):
+        assert f.validate_value("EUREx")
+
+    with pytest.raises(FIXMessageError, match="unconverted data remains"):
+        assert f.validate_value("20230921 14:00:00.12312")
+
+    with pytest.raises(FIXMessageError, match="day is out of range for month"):
+        assert f.validate_value("20230231")
+
+
+def test_field_type_validation__utctimestamp():
+    f = SchemaField("1", "test", "UTCTIMESTAMP")
+
+    assert f.validate_value("20230921 14:00:00")
+    assert f.validate_value("20230921 14:00:00.123")
+    assert f.validate_value("20230921 14:00:00.123456")
+
+    with pytest.raises(FIXMessageError, match=" does not match format "):
+        assert f.validate_value("EUREx")
+
+    with pytest.raises(FIXMessageError, match="unconverted data remains"):
+        assert f.validate_value("20230921 14:00:00.123456789")
+
+
+def test_field_type_validation__utctimeonly():
+    f = SchemaField("1", "test", "UTCTIMEONLY")
+
+    assert f.validate_value("14:00:00")
+    assert f.validate_value("14:00:00.123")
+    assert f.validate_value("14:00:00.123456")
+
+    with pytest.raises(FIXMessageError, match=" does not match format "):
+        assert f.validate_value("EUREx")
+
+    with pytest.raises(FIXMessageError, match="unconverted data remains"):
+        assert f.validate_value("14:00:00.123456789")
+
+    with pytest.raises(FIXMessageError, match=" does not match format "):
+        assert f.validate_value("20230921 14:00:00.123456789")
+
+
+def test_field_type_validation__monthyear():
+    f = SchemaField("1", "test", "MONTHYEAR")
+
+    assert f.validate_value("202309")
+    assert f.validate_value("20230921")
+    assert f.validate_value("202309w1")
+    assert f.validate_value("202309w2")
+    assert f.validate_value("202309w3")
+    assert f.validate_value("202309w4")
+    assert f.validate_value("202309w5")
+
+    with pytest.raises(FIXMessageError, match=" does not match format "):
+        assert f.validate_value("EUREx")
+
+    with pytest.raises(FIXMessageError, match="remainder YYYYMM invalid"):
+        assert f.validate_value("20230925w5")
+
+    with pytest.raises(FIXMessageError, match="ww must be in w1,w2,w3,w4,w5"):
+        assert f.validate_value("202309w6")
+
+
+def test_field_type_validation__data():
+    f = SchemaField("1", "test", "DATA")
+
+    # pass all
+    assert f.validate_value("202309\x01")
+
+
+def test_field_type_validation__length():
+    f = SchemaField("1", "test", "LENGTH")
+
+    # pass all
+    assert f.validate_value("202309")
+    assert f.validate_value("-202309")
+
+
+def test_field_type_validation__unsupported():
+    f = SchemaField("1", "test", "UNSUPPORTED")
+
+    # pass all
+    with patch("asyncfix.protocol.schema.warnings.warn") as mock_warn:
+        assert f.validate_value("202309")
+        assert mock_warn.called
+        assert "UNSUPPORTED" in mock_warn.call_args[0][0]
