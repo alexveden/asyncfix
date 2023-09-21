@@ -4,6 +4,8 @@ import dataclasses
 import xml.etree.ElementTree as ET
 
 from asyncfix import FIXMessage
+from asyncfix.errors import FIXMessageError
+from asyncfix.message import FIXContainer
 
 
 @dataclasses.dataclass
@@ -97,6 +99,9 @@ class SchemaGroup(SchemaSet):
         super().__init__(field.name, field)
         self.field_required = required
 
+    def validate_group(self, groups: list[FIXContainer]):
+        pass
+
 
 class SchemaComponent(SchemaSet):
     def __init__(self, name: str):
@@ -109,6 +114,11 @@ class SchemaMessage(SchemaSet):
         self.msg_type = msg_type
         self.msg_cat = msg_cat
 
+    def __repr__(self):
+        return (
+            f"SchemaMessage(name={self.name}, type={self.msg_type}, cat={self.msg_cat})"
+        )
+
 
 class FIXSchema:
     def __init__(self, xml: ET.ElementTree):
@@ -118,6 +128,7 @@ class FIXSchema:
         self.groups: dict[str, SchemaGroup] = {}
         self.components: dict[str, SchemaComponent] = {}
         self.messages: dict[str, SchemaMessage] = {}
+        self.messages_types: dict[str, SchemaMessage] = {}
         self.header = {}
 
         self._parse(xml.getroot())
@@ -199,6 +210,7 @@ class FIXSchema:
         assert message, "Message probably refers to circular refs in comp or groups"
 
         self.messages[el_name] = message
+        self.messages_types[message.msg_type] = message
         return message
 
     def _parse_field(self, element: ET.Element):
@@ -254,7 +266,39 @@ class FIXSchema:
         assert n_msg == len(self.messages), "Message count mismatch"
 
     def validate(self, msg: FIXMessage):
-        pass
+        if msg.msg_type not in self.messages_types:
+            raise FIXMessageError(f"msg_type=`{msg.msg_type}` not in schema")
 
-    def generate_protocol_code(self, path: str):
-        pass
+        schema_msg = self.messages_types[msg.msg_type]
+
+        schema_fields = set()
+        for fname, req in schema_msg.required.items():
+            f = schema_msg[fname]
+            schema_fields.add(fname)
+
+            if req:
+                if isinstance(f, SchemaField):
+                    if f.tag not in msg:
+                        raise FIXMessageError(f"Missing required field={f}")
+
+        for tag, val in msg.tags.items():
+            if tag not in self.tag2field:
+                raise FIXMessageError(f"msg tag={tag} not in schema")
+            field = self.tag2field[tag]
+            if field not in schema_msg:
+                raise FIXMessageError(
+                    f"msg field={field} is not allowed in {schema_msg}"
+                )
+
+            fschema = schema_msg[field]
+            if isinstance(fschema, SchemaField):
+                if msg.is_group(tag):
+                    raise FIXMessageError(
+                        f"msg tag={tag} val={val} must be a tag, got group"
+                    )
+                fschema.validate_value(val)
+
+            elif isinstance(fschema, SchemaGroup):
+                if not msg.is_group(tag):
+                    raise FIXMessageError(f"msg tag={tag} val={val} must be a group")
+                fschema.validate_group(msg.get_group_list(tag))

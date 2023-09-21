@@ -1,8 +1,11 @@
 import os
 import xml.etree.ElementTree as ET
+from unittest.mock import patch
 
 import pytest
 
+from asyncfix import FIXMessage, FMsg, FTag
+from asyncfix.errors import FIXMessageError
 from asyncfix.protocol.schema import (
     FIXSchema,
     SchemaComponent,
@@ -256,3 +259,69 @@ def test_xml_real_schema_tt():
         "SecondaryOrderID",
         "NumberOfOrders",
     ]
+
+
+def test_schema_validation(fix_simple_xml):
+    schema = FIXSchema(fix_simple_xml)
+
+    m = FIXMessage(FMsg.EXECUTIONREPORT, {FTag.OrderID: "1234"})
+    schema.validate(m)
+
+    m = FIXMessage("1ASD")
+    with pytest.raises(FIXMessageError, match="msg_type=`1ASD` not in schema"):
+        schema.validate(m)
+
+    m = FIXMessage(FMsg.EXECUTIONREPORT, {})
+    with pytest.raises(
+        FIXMessageError,
+        match="Missing required field=SchemaField.*tag='37', name='OrderID',",
+    ):
+        schema.validate(m)
+
+    m = FIXMessage(FMsg.EXECUTIONREPORT, {FTag.OrderID: "1234", "12309812": "12"})
+    with pytest.raises(
+        FIXMessageError,
+        match="msg tag=12309812 not in schema",
+    ):
+        schema.validate(m)
+
+    m = FIXMessage(FMsg.EXECUTIONREPORT, {FTag.OrderID: "1234", FTag.AdvSide: "1"})
+    with pytest.raises(
+        FIXMessageError,
+        match=(
+            "msg field=SchemaField.*name='AdvSide'.*not allowed in"
+            " SchemaMessage.*name=ExecutionReport"
+        ),
+    ):
+        schema.validate(m)
+
+    m = FIXMessage(
+        FMsg.EXECUTIONREPORT, {FTag.OrderID: "1234", FTag.NoContraBrokers: "1"}
+    )
+    with pytest.raises(
+        FIXMessageError,
+        match="msg tag=382 val=1 must be a group",
+    ):
+        schema.validate(m)
+
+    m = FIXMessage(FMsg.EXECUTIONREPORT)
+    m.set_group(FTag.OrderID, [{1: "1`231"}])
+    with pytest.raises(
+        FIXMessageError,
+        match="msg tag=37 val=.* must be a tag, got group",
+    ):
+        schema.validate(m)
+
+    m = FIXMessage(FMsg.EXECUTIONREPORT, {FTag.OrderID: "1234"})
+    m.set_group(FTag.NoPartyIDs, [{1: "test"}])
+    with (
+        patch("asyncfix.protocol.schema.SchemaGroup.validate_group") as mock_valgrp,
+        patch("asyncfix.protocol.schema.SchemaField.validate_value") as mock_valfield,
+    ):
+        schema.validate(m)
+
+    assert mock_valgrp.called
+    assert mock_valgrp.call_count == 1
+    assert len(mock_valgrp.call_args[0][0]) == 1
+    assert mock_valgrp.call_args[1] == {}
+    assert mock_valgrp.call_args[0][0][0] == {1: "test"}
