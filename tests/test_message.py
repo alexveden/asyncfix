@@ -107,6 +107,27 @@ def test_groups():
         g = msg[2023]
 
 
+def test_init_group_construction():
+    msg = FIXMessage(
+        "AB",
+        {
+            11: "clordis",
+            "1": "account",
+            2023: [{1: "a", 2: "b"}, FIXContainer({1: "c", 2: "d"})],
+        },
+    )
+
+    g = msg.get_group_by_index(2023, 0)
+    assert isinstance(g, FIXContainer)
+    assert g[1] == "a"
+    assert g[2] == "b"
+
+    g = msg.get_group_by_index(2023, 1)
+    assert isinstance(g, FIXContainer)
+    assert g[1] == "c"
+    assert g[2] == "d"
+
+
 def test_msg_construction():
     msg = FIXMessage("AB")
     msg["45"] = "dgd"

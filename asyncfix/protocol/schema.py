@@ -12,91 +12,6 @@ from asyncfix.errors import FIXMessageError
 from asyncfix.message import FIXContainer
 
 
-def _value_validate_datetime(value, format):
-    if "." in value and "%S" in format and "%f" not in format:
-        format = f"{format}.%f"
-
-    try:
-        dtm.datetime.strptime(value, format)
-        return None  # all good
-    except Exception as exc:
-        return str(exc)
-
-
-def _value_validate_monthyear(value):
-    """
-    Special case for MonthYear type
-        String representing month of a year. An optional day of the month can be
-          appended or an optional week code.
-        Valid formats:
-        YYYYMM
-        YYYYMMDD
-        YYYYMMWW
-
-        Valid values:
-        YYYY = 0000-9999; MM = 01-12; DD = 01-31;
-        WW = w1, w2, w3, w4, w5.
-    """
-    if "w" in value:
-        week = value[-2:]
-        if week not in {"w1", "w2", "w3", "w4", "w5"}:
-            return f"YYYYMMWW [ww must be in w1,w2,w3,w4,w5], got {week}"
-        format = "%Y%m"
-        value = value[:-2]
-        if len(value) != 6:
-            return "remainder YYYYMM invalid"
-    else:
-        if len(value) == 6:
-            format = "%Y%m"
-        else:
-            format = "%Y%m%d"
-
-    return _value_validate_datetime(value, format)
-
-
-def _value_validate_str(value, max_len=None, subset=None, alpha_num=False):
-    assert value
-    assert type(value) is str
-    if "\x01" in value:
-        return "Value contains SOH char"
-    if "=" in value:
-        return "Value contains `=` char"
-
-    if max_len and len(value) > max_len:
-        return "max legth exceeded"
-    if subset and value not in subset:
-        return f"out of subset: {subset}"
-    if alpha_num and re.search(r"\W+", value):
-        return "value contains non alphanumeric letters"
-
-
-def _value_validate_number(
-    value: str,
-    num_type: type,
-    no_zero=False,
-    no_negative=False,
-    no_nonfinite=False,
-    num_range=None,
-) -> str | None:
-    assert value
-    assert num_type in (int, float)
-
-    try:
-        v = num_type(value)
-        if no_zero and v == 0:
-            raise ValueError("zero value")
-        if no_negative and v < 0:
-            raise ValueError("negative value")
-        if no_nonfinite and not isfinite(float(v)):
-            raise ValueError("not isfinite number")
-        if num_range and not (v >= num_range[0] and v <= num_range[1]):
-            raise ValueError(f"out of range {num_range}")
-        # all good
-        return None
-    except ValueError as exc:
-        return str(exc)
-
-
 @dataclasses.dataclass
 class SchemaField:
     tag: str
@@ -133,38 +48,42 @@ class SchemaField:
             t = self.ftype.upper()
             err = None
             if t == "INT":
-                err = _value_validate_number(value, int)
+                err = SchemaField._value_validate_number(value, int)
             elif t in ["SEQNUM", "NUMINGROUP"]:
-                err = _value_validate_number(
+                err = SchemaField._value_validate_number(
                     value,
                     int,
                     no_zero=True,
                     no_negative=True,
                 )
             elif t == "DAYOFMONTH":
-                err = _value_validate_number(value, int, num_range=(1, 31))
+                err = SchemaField._value_validate_number(value, int, num_range=(1, 31))
             elif t in {"FLOAT", "QTY", "PRICE", "PRICEOFFSET", "AMT", "PERCENTAGE"}:
-                err = _value_validate_number(value, float, no_nonfinite=True)
+                err = SchemaField._value_validate_number(
+                    value, float, no_nonfinite=True
+                )
             elif t in {"STRING", "MULTIPLESTRINGVALUE"}:
-                err = _value_validate_str(value)
+                err = SchemaField._value_validate_str(value)
             elif t in {"CHAR"}:
-                err = _value_validate_str(value, max_len=1)
+                err = SchemaField._value_validate_str(value, max_len=1)
             elif t in {"BOOLEAN"}:
-                err = _value_validate_str(value, max_len=1, subset={"Y", "N"})
+                err = SchemaField._value_validate_str(
+                    value, max_len=1, subset={"Y", "N"}
+                )
             elif t in {"COUNTRY"}:
-                err = _value_validate_str(value, max_len=2, alpha_num=True)
+                err = SchemaField._value_validate_str(value, max_len=2, alpha_num=True)
             elif t in {"CURRENCY"}:
-                err = _value_validate_str(value, max_len=3, alpha_num=True)
+                err = SchemaField._value_validate_str(value, max_len=3, alpha_num=True)
             elif t in {"EXCHANGE"}:
-                err = _value_validate_str(value, max_len=4, alpha_num=True)
+                err = SchemaField._value_validate_str(value, max_len=4, alpha_num=True)
             elif t in {"LOCALMKTDATE", "UTCDATEONLY"}:
-                err = _value_validate_datetime(value, "%Y%m%d")
+                err = SchemaField._value_validate_datetime(value, "%Y%m%d")
             elif t in {"UTCTIMESTAMP"}:
-                err = _value_validate_datetime(value, "%Y%m%d %H:%M:%S")
+                err = SchemaField._value_validate_datetime(value, "%Y%m%d %H:%M:%S")
             elif t in {"UTCTIMEONLY"}:
-                err = _value_validate_datetime(value, "%H:%M:%S")
+                err = SchemaField._value_validate_datetime(value, "%H:%M:%S")
             elif t == "MONTHYEAR":
-                err = _value_validate_monthyear(value)
+                err = SchemaField._value_validate_monthyear(value)
             elif t in {"DATA", "LENGTH"}:
                 # just hoping the data is ok
                 err = None
@@ -175,6 +94,91 @@ class SchemaField:
                 raise FIXMessageError(f"{self} validation error (value={value}): {err}")
 
             return True
+
+    @staticmethod
+    def _value_validate_datetime(value, format):
+        if "." in value and "%S" in format and "%f" not in format:
+            format = f"{format}.%f"
+
+        try:
+            dtm.datetime.strptime(value, format)
+            return None  # all good
+        except Exception as exc:
+            return str(exc)
+
+    @staticmethod
+    def _value_validate_monthyear(value):
+        """
+        Special case for MonthYear type
+            String representing month of a year. An optional day of the month can be
+              appended or an optional week code.
+            Valid formats:
+            YYYYMM
+            YYYYMMDD
+            YYYYMMWW
+
+            Valid values:
+            YYYY = 0000-9999; MM = 01-12; DD = 01-31;
+            WW = w1, w2, w3, w4, w5.
+        """
+        if "w" in value:
+            week = value[-2:]
+            if week not in {"w1", "w2", "w3", "w4", "w5"}:
+                return f"YYYYMMWW [ww must be in w1,w2,w3,w4,w5], got {week}"
+            format = "%Y%m"
+            value = value[:-2]
+            if len(value) != 6:
+                return "remainder YYYYMM invalid"
+        else:
+            if len(value) == 6:
+                format = "%Y%m"
+            else:
+                format = "%Y%m%d"
+
+        return SchemaField._value_validate_datetime(value, format)
+
+    @staticmethod
+    def _value_validate_str(value, max_len=None, subset=None, alpha_num=False):
+        assert value
+        assert type(value) is str
+        if "\x01" in value:
+            return "Value contains SOH char"
+        if "=" in value:
+            return "Value contains `=` char"
+
+        if max_len and len(value) > max_len:
+            return "max legth exceeded"
+        if subset and value not in subset:
+            return f"out of subset: {subset}"
+        if alpha_num and re.search(r"\W+", value):
+            return "value contains non alphanumeric letters"
+
+    @staticmethod
+    def _value_validate_number(
+        value: str,
+        num_type: type,
+        no_zero=False,
+        no_negative=False,
+        no_nonfinite=False,
+        num_range=None,
+    ) -> str | None:
+        assert value
+        assert num_type in (int, float)
+
+        try:
+            v = num_type(value)
+            if no_zero and v == 0:
+                raise ValueError("zero value")
+            if no_negative and v < 0:
+                raise ValueError("negative value")
+            if no_nonfinite and not isfinite(float(v)):
+                raise ValueError("not isfinite number")
+            if num_range and not (v >= num_range[0] and v <= num_range[1]):
+                raise ValueError(f"out of range {num_range}")
+            # all good
+            return None
+        except ValueError as exc:
+            return str(exc)
 
 
 class SchemaSet:

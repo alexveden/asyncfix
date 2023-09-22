@@ -44,12 +44,17 @@ class _FIXRepeatingGroupContainer:
 
 
 class FIXContainer(object):
-    def __init__(self, tags: dict[str | int, [str, float, int]] = None):
+    def __init__(
+        self, tags: dict[str | int, [str, float, int, list[dict | FIXContainer]]] = None
+    ):
         self.tags: dict[str, str | _FIXRepeatingGroupContainer] = OrderedDict()
 
         if tags:
             for t, v in tags.items():
-                self.set(t, v)
+                if isinstance(v, list):
+                    self.set_group(t, v)
+                else:
+                    self.set(t, v)
 
     def set(self, tag: str | int, value, replace: bool = False):
         try:
