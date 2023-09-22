@@ -27,9 +27,9 @@
 <components>
     <component name="ContraGrp">
         <group name="NoContraBrokers" required="N">
-            <component name="CommissionData" required="N"/>
             <field name="ContraBroker" required="N"/>
-            <field name="ContraTrader" required="N"/>
+            <field name="ContraTrader" required="Y"/>
+            <component name="CommissionData" required="N"/>
         </group>
     </component>
     <component name="CommissionData">

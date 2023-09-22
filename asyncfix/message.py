@@ -167,6 +167,9 @@ class FIXContainer(object):
 
         return g[index]
 
+    def items(self):
+        return self.tags.items()
+
     def __getitem__(self, tag: str | int) -> Any:
         return self.get(tag)
 

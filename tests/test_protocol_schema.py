@@ -77,6 +77,9 @@ def test_schema_set():
     with pytest.raises(ValueError, match="Unsupported field_or_set type, got"):
         s.add("notsupported", False)
 
+    with pytest.raises(ValueError, match="tag property is not supported"):
+        s.tag
+
     assert f in s
     assert f2 in s
     assert "Account" in s
@@ -92,6 +95,18 @@ def test_schema_set():
         ValueError, match="SchemaSet expected to have group field with "
     ):
         SchemaSet("NoOrders", field=fg)
+
+    with pytest.raises(FIXMessageError, match="item looks like tag"):
+        assert "1" in s
+
+    with pytest.raises(FIXMessageError, match="item looks like tag"):
+        assert 1 in s
+
+    with pytest.raises(FIXMessageError, match="item looks like tag"):
+        s["1"]
+
+    with pytest.raises(FIXMessageError, match="item looks like tag"):
+        s[1]
 
 
 def test_schema_set_included_components():
@@ -125,6 +140,7 @@ def test_schema_set__add_group():
 
     fg = SchemaField("73", "NoOrders", "NUMINGROUP")
     g = SchemaGroup(fg, False)
+    assert g.tag == fg.tag
     assert not g.field_required
     assert g.field is fg
     assert g == fg
@@ -328,7 +344,7 @@ def test_schema_validation(fix_simple_xml):
     m = FIXMessage(FMsg.EXECUTIONREPORT, {})
     with pytest.raises(
         FIXMessageError,
-        match="Missing required field=SchemaField.*tag='37', name='OrderID',",
+        match="Missing required field=SchemaField.*OrderID|37",
     ):
         schema.validate(m)
 
@@ -342,10 +358,7 @@ def test_schema_validation(fix_simple_xml):
     m = FIXMessage(FMsg.EXECUTIONREPORT, {FTag.OrderID: "1234", FTag.AdvSide: "1"})
     with pytest.raises(
         FIXMessageError,
-        match=(
-            "msg field=SchemaField.*name='AdvSide'.*not allowed in"
-            " SchemaMessage.*name=ExecutionReport"
-        ),
+        match="msg field=AdvSide.*not allowed in SchemaMessage.*name=ExecutionReport",
     ):
         schema.validate(m)
 
@@ -825,3 +838,92 @@ def test_field_type_validation__unsupported():
         assert f.validate_value("202309")
         assert mock_warn.called
         assert "UNSUPPORTED" in mock_warn.call_args[0][0]
+
+
+def test_schema_validation_group(fix_simple_xml):
+    schema = FIXSchema(fix_simple_xml)
+    assert schema[FTag.NoPartyIDs].tag == "453"
+    assert schema[453].tag == "453"
+    assert schema["453"].tag == "453"
+    assert schema["NoPartyIDs"].tag == "453"
+
+    m = schema.messages_types[FMsg.EXECUTIONREPORT]
+
+    assert m.msg_type == FMsg.EXECUTIONREPORT
+    g = m["NoPartyIDs"]
+    assert isinstance(g, SchemaGroup)
+
+    with pytest.raises(
+        FIXMessageError, match="contains unsupported tag for SchemaGroup"
+    ):
+        msg_g = FIXMessage(
+            FMsg.EXECUTIONREPORT,
+            {
+                FTag.NoPartyIDs: [
+                    {FTag.PartyID: "asd", FTag.Account: "1"},
+                    {FTag.PartyID: "asd", FTag.PartyRole: "asda"},
+                ]
+            },
+        )
+        g.validate_group(msg_g.get_group_list(FTag.NoPartyIDs))
+
+    with pytest.raises(FIXMessageError, match="does not contain mandatory first tag"):
+        msg_g = FIXMessage(
+            FMsg.EXECUTIONREPORT,
+            {
+                FTag.NoPartyIDs: [
+                    {FTag.PartyRole: "1"},
+                    {FTag.PartyID: "asd", FTag.PartyRole: "asda"},
+                ]
+            },
+        )
+        g.validate_group(msg_g.get_group_list(FTag.NoPartyIDs))
+
+    g = m["NoContraBrokers"]
+    with pytest.raises(
+        FIXMessageError, match="missing required field SchemaField.*ContraTrader|"
+    ):
+        msg_g = FIXMessage(
+            FMsg.EXECUTIONREPORT,
+            {
+                FTag.NoContraBrokers: [
+                    {FTag.ContraBroker: "1"},
+                ]
+            },
+        )
+        g.validate_group(msg_g.get_group_list(FTag.NoContraBrokers))
+
+    g = m["NoContraBrokers"]
+    with pytest.raises(FIXMessageError, match="incorrect tag order"):
+        msg_g = FIXMessage(
+            FMsg.EXECUTIONREPORT,
+            {
+                FTag.NoContraBrokers: [
+                    {
+                        FTag.ContraBroker: "1",
+                        FTag.Commission: "10",
+                        FTag.ContraTrader: "1",
+                    },
+                ]
+            },
+        )
+        g.validate_group(msg_g.get_group_list(FTag.NoContraBrokers))
+
+    g = m["NoContraBrokers"]
+    with pytest.raises(
+        FIXMessageError,
+        match="Commission|12 validation error .* could not convert string to float:",
+    ):
+        msg_g = FIXMessage(
+            FMsg.EXECUTIONREPORT,
+            {
+                FTag.NoContraBrokers: [
+                    {
+                        FTag.ContraBroker: "1",
+                        FTag.ContraTrader: "1",
+                        FTag.Commission: "asd",
+                    },
+                ]
+            },
+        )
+        g.validate_group(msg_g.get_group_list(FTag.NoContraBrokers))

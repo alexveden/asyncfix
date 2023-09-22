@@ -7,7 +7,7 @@ import warnings
 import xml.etree.ElementTree as ET
 from math import isfinite
 
-from asyncfix import FIXMessage
+from asyncfix import FIXMessage, FTag
 from asyncfix.errors import FIXMessageError
 from asyncfix.message import FIXContainer
 
@@ -180,6 +180,12 @@ class SchemaField:
         except ValueError as exc:
             return str(exc)
 
+    def __str__(self):
+        return f"{self.name}|{self.tag}"
+
+    def __repr__(self):
+        return f"SchemaField({str(self)}, type={self.ftype})"
+
 
 class SchemaSet:
     def __init__(self, name: str, field: SchemaField | None = None):
@@ -197,6 +203,13 @@ class SchemaSet:
                 )
         self.members: dict[SchemaField | SchemaSet, SchemaField | SchemaSet] = {}
         self.required: dict[SchemaField | SchemaSet, bool] = {}
+
+    @property
+    def tag(self) -> str:
+        if self.field:
+            return self.field.tag
+        else:
+            raise ValueError(f"tag property is not supported for {self}")
 
     def keys(self) -> list[str]:
         return [m.name for m in self.members]
@@ -230,11 +243,19 @@ class SchemaSet:
         else:
             return self.name == o
 
-    def __contains__(self, item):
-        return item in self.members
+    def __contains__(self, item: str | SchemaField) -> bool:
+        try:
+            int(str(item))
+            raise FIXMessageError("item looks like tag, use name or SchemaField")
+        except ValueError:
+            return item in self.members
 
-    def __getitem__(self, item):
-        return self.members[item]
+    def __getitem__(self, item: str | SchemaField) -> SchemaField | SchemaSet:
+        try:
+            int(str(item))
+            raise FIXMessageError("item looks like tag, use name or SchemaField")
+        except ValueError:
+            return self.members[item]
 
 
 class SchemaGroup(SchemaSet):
@@ -243,7 +264,47 @@ class SchemaGroup(SchemaSet):
         self.field_required = required
 
     def validate_group(self, groups: list[FIXContainer]):
-        pass
+        tag_order = {f.tag: i for i, f in enumerate(self.members.values())}
+        tag_fields = {f.tag: f for f in self.members.values()}
+
+        for fmsg in groups:
+            has_first_tag = False
+            prev_tag = -1
+
+            for t, v in fmsg.items():
+                if t not in tag_order:
+                    raise FIXMessageError(
+                        f"fixmessage={groups} contains unsupported tag for {self}"
+                    )
+                ord_idx = tag_order[t]
+
+                if ord_idx == 0:
+                    has_first_tag = True
+                if prev_tag > ord_idx:
+                    raise FIXMessageError(
+                        f"fixmessage={groups} incorrect tag order {self}"
+                    )
+
+                field = tag_fields[t]
+                field.validate_value(v)
+
+                prev_tag = ord_idx
+
+            if not has_first_tag:
+                raise FIXMessageError(
+                    f"fixmessage={groups} does not contain mandatory first tag {self}"
+                )
+
+            for st, sv in tag_fields.items():
+                if isinstance(sv, SchemaField):
+                    if sv.tag not in fmsg and self.required[sv]:
+                        raise FIXMessageError(
+                            f"fixmessage={groups} missing required field {repr(sv)}"
+                        )
+
+    def __repr__(self):
+        members = [str(m) for m in self.members.keys()]
+        return f"SchemaGroup({self.field.name}, {members})"
 
 
 class SchemaComponent(SchemaSet):
@@ -268,7 +329,6 @@ class FIXSchema:
         assert isinstance(xml, ET.ElementTree)
         self.tag2field: dict[str, SchemaField] = {}
         self.field2tag: dict[str, SchemaField] = {}
-        self.groups: dict[str, SchemaGroup] = {}
         self.components: dict[str, SchemaComponent] = {}
         self.messages: dict[str, SchemaMessage] = {}
         self.messages_types: dict[str, SchemaMessage] = {}
@@ -424,7 +484,7 @@ class FIXSchema:
             if req:
                 if isinstance(f, SchemaField):
                     if f.tag not in msg:
-                        raise FIXMessageError(f"Missing required field={f}")
+                        raise FIXMessageError(f"Missing required field={repr(f)}")
 
         for tag, val in msg.tags.items():
             if tag not in self.tag2field:
@@ -447,3 +507,10 @@ class FIXSchema:
                 if not msg.is_group(tag):
                     raise FIXMessageError(f"msg tag={tag} val={val} must be a group")
                 fschema.validate_group(msg.get_group_list(tag))
+
+    def __getitem__(self, item: int | str | FTag) -> SchemaField:
+        try:
+            tag = str(int(str(item)))
+            return self.tag2field[tag]
+        except ValueError:
+            return self.field2tag[str(item)]
