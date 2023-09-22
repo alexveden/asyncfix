@@ -48,42 +48,42 @@ class SchemaField:
             t = self.ftype.upper()
             err = None
             if t == "INT":
-                err = SchemaField._value_validate_number(value, int)
+                err = SchemaField._validate_value_number(value, int)
             elif t in ["SEQNUM", "NUMINGROUP"]:
-                err = SchemaField._value_validate_number(
+                err = SchemaField._validate_value_number(
                     value,
                     int,
                     no_zero=True,
                     no_negative=True,
                 )
             elif t == "DAYOFMONTH":
-                err = SchemaField._value_validate_number(value, int, num_range=(1, 31))
+                err = SchemaField._validate_value_number(value, int, num_range=(1, 31))
             elif t in {"FLOAT", "QTY", "PRICE", "PRICEOFFSET", "AMT", "PERCENTAGE"}:
-                err = SchemaField._value_validate_number(
+                err = SchemaField._validate_value_number(
                     value, float, no_nonfinite=True
                 )
             elif t in {"STRING", "MULTIPLESTRINGVALUE"}:
-                err = SchemaField._value_validate_str(value)
+                err = SchemaField._validate_value_str(value)
             elif t in {"CHAR"}:
-                err = SchemaField._value_validate_str(value, max_len=1)
+                err = SchemaField._validate_value_str(value, max_len=1)
             elif t in {"BOOLEAN"}:
-                err = SchemaField._value_validate_str(
+                err = SchemaField._validate_value_str(
                     value, max_len=1, subset={"Y", "N"}
                 )
             elif t in {"COUNTRY"}:
-                err = SchemaField._value_validate_str(value, max_len=2, alpha_num=True)
+                err = SchemaField._validate_value_str(value, max_len=2, alpha_num=True)
             elif t in {"CURRENCY"}:
-                err = SchemaField._value_validate_str(value, max_len=3, alpha_num=True)
+                err = SchemaField._validate_value_str(value, max_len=3, alpha_num=True)
             elif t in {"EXCHANGE"}:
-                err = SchemaField._value_validate_str(value, max_len=4, alpha_num=True)
+                err = SchemaField._validate_value_str(value, max_len=4, alpha_num=True)
             elif t in {"LOCALMKTDATE", "UTCDATEONLY"}:
-                err = SchemaField._value_validate_datetime(value, "%Y%m%d")
+                err = SchemaField._validate_value_datetime(value, "%Y%m%d")
             elif t in {"UTCTIMESTAMP"}:
-                err = SchemaField._value_validate_datetime(value, "%Y%m%d %H:%M:%S")
+                err = SchemaField._validate_value_datetime(value, "%Y%m%d %H:%M:%S")
             elif t in {"UTCTIMEONLY"}:
-                err = SchemaField._value_validate_datetime(value, "%H:%M:%S")
+                err = SchemaField._validate_value_datetime(value, "%H:%M:%S")
             elif t == "MONTHYEAR":
-                err = SchemaField._value_validate_monthyear(value)
+                err = SchemaField._validate_value_monthyear(value)
             elif t in {"DATA", "LENGTH"}:
                 # just hoping the data is ok
                 err = None
@@ -96,7 +96,7 @@ class SchemaField:
             return True
 
     @staticmethod
-    def _value_validate_datetime(value, format):
+    def _validate_value_datetime(value, format):
         if "." in value and "%S" in format and "%f" not in format:
             format = f"{format}.%f"
 
@@ -107,7 +107,7 @@ class SchemaField:
             return str(exc)
 
     @staticmethod
-    def _value_validate_monthyear(value):
+    def _validate_value_monthyear(value):
         """
         Special case for MonthYear type
             String representing month of a year. An optional day of the month can be
@@ -135,10 +135,10 @@ class SchemaField:
             else:
                 format = "%Y%m%d"
 
-        return SchemaField._value_validate_datetime(value, format)
+        return SchemaField._validate_value_datetime(value, format)
 
     @staticmethod
-    def _value_validate_str(value, max_len=None, subset=None, alpha_num=False):
+    def _validate_value_str(value, max_len=None, subset=None, alpha_num=False):
         assert value
         assert type(value) is str
         if "\x01" in value:
@@ -154,7 +154,7 @@ class SchemaField:
             return "value contains non alphanumeric letters"
 
     @staticmethod
-    def _value_validate_number(
+    def _validate_value_number(
         value: str,
         num_type: type,
         no_zero=False,
