@@ -482,7 +482,7 @@ class FIXSchema:
 
         assert n_msg == len(self.messages), "Message count mismatch"
 
-    def validate(self, msg: FIXMessage):
+    def validate(self, msg: FIXMessage) -> bool:
         if msg.msg_type not in self.messages_types:
             raise FIXMessageError(f"msg_type=`{msg.msg_type}` not in schema")
 
@@ -519,6 +519,8 @@ class FIXSchema:
                 if not msg.is_group(tag):
                     raise FIXMessageError(f"msg tag={tag} val={val} must be a group")
                 fschema.validate_group(msg.get_group_list(tag))
+
+        return True
 
     def __getitem__(self, item: int | str | FTag) -> SchemaField:
         try:
