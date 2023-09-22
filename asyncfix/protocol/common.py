@@ -5,6 +5,12 @@ class FOrdSide(enum.Enum):
     def __str__(self):
         return str(self.value)
 
+    def __eq__(self, o):
+        return self.value == str(o)
+
+    def __hash__(self):
+        return hash(self.value)
+
     BUY = "1"
     SELL = "2"
     BUY_MINUS = "3"
@@ -26,6 +32,12 @@ class FOrdSide(enum.Enum):
 class FOrdType(enum.Enum):
     def __str__(self):
         return str(self.value)
+
+    def __eq__(self, o):
+        return self.value == str(o)
+
+    def __hash__(self):
+        return hash(self.value)
 
     MARKET = "1"
     LIMIT = "2"
@@ -49,6 +61,12 @@ class FOrdType(enum.Enum):
 class FOrdStatus(enum.Enum):
     def __str__(self):
         return str(self.value)
+
+    def __eq__(self, o):
+        return self.value == str(o)
+
+    def __hash__(self):
+        return hash(self.value)
 
     CREATED = "Z"  # IMPORTANT: this one is for internal use, non FIX!
     NEW = "0"

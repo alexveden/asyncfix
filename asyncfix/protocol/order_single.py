@@ -15,16 +15,21 @@ class FIXNewOrderSingle:
         qty: float,
         ord_type: FOrdType | str = FOrdType.LIMIT,
         account: str | dict = "000000",
+        target_price: float | None = None,
     ):
         self.clord_id = clord_id
+        self.orig_clord_id = None
         self.ticker = cl_ticker
         self.side = side
         self.price = price
         self.qty = qty
+        self.leaves_qty = 0.0
+        self.cum_qty = 0.0
         self.ord_type = ord_type
         self.account = account
         self.clord_id_cnt = 0
-        self.ord_status: FOrdStatus = FOrdStatus.NEW
+        self.status: FOrdStatus = FOrdStatus.CREATED
+        self.target_price = target_price if target_price is not None else price
 
     def next_clord(self):
         self.clord_id_cnt += 1
