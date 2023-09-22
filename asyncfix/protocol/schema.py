@@ -79,7 +79,7 @@ class SchemaField:
             elif t in {"LOCALMKTDATE", "UTCDATEONLY"}:
                 err = SchemaField._validate_value_datetime(value, "%Y%m%d")
             elif t in {"UTCTIMESTAMP"}:
-                err = SchemaField._validate_value_datetime(value, "%Y%m%d %H:%M:%S")
+                err = SchemaField._validate_value_datetime(value, "%Y%m%d-%H:%M:%S")
             elif t in {"UTCTIMEONLY"}:
                 err = SchemaField._validate_value_datetime(value, "%H:%M:%S")
             elif t == "MONTHYEAR":

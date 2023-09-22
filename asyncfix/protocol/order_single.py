@@ -39,7 +39,7 @@ class FIXNewOrderSingle:
     def current_datetime():
         return datetime.utcnow().strftime("%Y%m%d-%H:%M:%S.%f")[:-3]
 
-    def fix_new(self) -> FIXMessage:
+    def new_req(self) -> FIXMessage:
         """
         Creates NewOrderSingle message
         """
@@ -51,6 +51,7 @@ class FIXNewOrderSingle:
 
         # setting account field (may vary for different FIX brokers)
         self.set_account(o)
+        o[FTag.OrdType] = self.ord_type
         o[FTag.Side] = self.side
         o[FTag.TransactTime] = self.current_datetime()
 

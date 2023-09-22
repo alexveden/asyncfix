@@ -59,5 +59,7 @@ target/
 .idea
 *.store
 
-
+.ipynb_checkpoints
+*.ipynb
+*.pyx
 tmux_run.sh

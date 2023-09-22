@@ -6,6 +6,7 @@ from math import nan
 
 import pytest
 
+from asyncfix import FTag, FMsg
 from asyncfix.protocol.common import FExecType, FOrdSide, FOrdStatus, FOrdType
 from asyncfix.protocol.fix_tester import FIXTester
 from asyncfix.protocol.order_single import FIXNewOrderSingle
@@ -41,40 +42,28 @@ def test_init_order_single_default_short():
     assert o.target_price == 100
     assert o.ord_type == FOrdType.LIMIT
 
-    m = o.msg
+    m = o.new_req()
 
     # Account
-    assert m[1] == 1010
+    assert m[FTag.Account] == "000000"
 
     # Tag 11: ClOrdID
-    assert m[11] == 0
-
-    #  Tag 22: SecurityIDSource - quote cache ticker index
-    assert m[22] == 10
+    assert m[FTag.ClOrdID] == 'clordTest'
 
     # Tag 38: Order Qty
-    assert m[38] == 20
+    assert m[FTag.OrderQty] == "20"
 
     # Tag 40: Order Type
-    assert m[40] == "2"  # Limit order
+    assert m[FTag.OrdType] == "2"  # Limit order
 
     # Tag 44: Order Price
-    assert m[44] == 100
-
-    #  Tag 48: SecurityID - set to instrument_info (uint64_t instrument_id) -- it's going to be stable
-    assert m[48] == 123
+    assert m[FTag.Price] == "100.0"
 
     # Tag 54: Side
     assert m[54] == "2"  # sell
 
     #  Tag 55: Symbol set to v2 symbol
-    # FIX: assert strcmp(FIXMsg.get_str(m, 55), q.v2_ticker) == 0
-
-    # Tag 59: Time in force
-    assert m[59] == "0"  # sell
-
-    # Tag 60: Transact time
-    # FIX: assert timedelta_ns(datetime_nsnow(), FIXMsg.get_utc_timestamp(m, 60)[0], TIMEDELTA_MILLI) < 20
+    assert m[FTag.Symbol] == "US.F.TICKER"
 
     # Overall message is valid!
     assert FIX_SCHEMA.validate(m)
@@ -100,42 +89,30 @@ def test_init_order_single_long():
     assert o.orig_clord_id is None
     assert o.side == FOrdSide.BUY
     assert o.target_price == 220
-    assert o.ord_type == "1"
+    assert o.ord_type == FOrdType.MARKET
 
-    m = o.msg
+    m = o.new_req()
 
     # Account
-    assert m[1] == 1010
+    assert m[1] == "000000"
 
     # Tag 11: ClOrdID
-    assert m[11] == 0
-
-    #  Tag 22: SecurityIDSource - quote cache ticker index
-    assert m[22] == 10
+    assert m[11] == "clordTest"
 
     # Tag 38: Order Qty
-    assert m[38] == 20
+    assert m[38] == "20"
 
     # Tag 40: Order Type
-    assert m[40] == "m"  # Limit order
+    assert m[40] == "1"
 
     # Tag 44: Order Price
-    assert m[44] == 200
-
-    #  Tag 48: SecurityID - set to instrument_info (uint64_t instrument_id) -- it's going to be stable
-    assert m[48] == 123
+    assert m[44] == "200.0"
 
     # Tag 54: Side
     assert m[54] == "1"  # buy
 
     #  Tag 55: Symbol set to v2 symbol
-    # FIX: assert strcmp(FIXMsg.get_str(m, 55), q.v2_ticker) == 0
-
-    # Tag 59: Time in force
-    assert m[59] == "1"
-
-    # Tag 60: Transact time
-    # FIX: assert timedelta_ns(datetime_nsnow(), FIXMsg.get_utc_timestamp(m, 60)[0], TIMEDELTA_MILLI) < 20
+    assert m[55] == 'US.F.TICKER'
 
     # Overall message is valid!
     assert FIX_SCHEMA.validate(m)

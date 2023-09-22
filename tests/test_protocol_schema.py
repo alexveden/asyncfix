@@ -766,15 +766,15 @@ def test_field_type_validation__utsdateonly():
 def test_field_type_validation__utctimestamp():
     f = SchemaField("1", "test", "UTCTIMESTAMP")
 
-    assert f.validate_value("20230921 14:00:00")
-    assert f.validate_value("20230921 14:00:00.123")
-    assert f.validate_value("20230921 14:00:00.123456")
+    assert f.validate_value("20230921-14:00:00")
+    assert f.validate_value("20230921-14:00:00.123")
+    assert f.validate_value("20230921-14:00:00.123456")
 
     with pytest.raises(FIXMessageError, match=" does not match format "):
         assert f.validate_value("EUREx")
 
     with pytest.raises(FIXMessageError, match="unconverted data remains"):
-        assert f.validate_value("20230921 14:00:00.123456789")
+        assert f.validate_value("20230921-14:00:00.123456789")
 
 
 def test_field_type_validation__utctimeonly():
