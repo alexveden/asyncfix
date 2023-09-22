@@ -21,7 +21,7 @@ repos:
   hooks:
     - id: pytest-check
       name: pytest-check
-      stages: [commit]
+      stages: [push]
       types: [python]
       entry: pytest
       language: system
