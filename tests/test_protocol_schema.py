@@ -927,3 +927,58 @@ def test_schema_validation_group(fix_simple_xml):
             },
         )
         g.validate_group(msg_g.get_group_list(FTag.NoContraBrokers))
+
+
+def test_schema_validation_group_nested(fix_simple_xml):
+    schema = FIXSchema(fix_simple_xml)
+    m = schema.messages_types[FMsg.EXECUTIONREPORT]
+
+    g = m["NoContraBrokers"]
+
+    with pytest.raises(
+        FIXMessageError,
+        match="tag=382 must be a group ",
+    ):
+        msg_g = FIXMessage(
+            FMsg.EXECUTIONREPORT,
+            {
+                FTag.NoContraBrokers: [
+                    {
+                        FTag.ContraBroker: "1",
+                        FTag.ContraTrader: "1",
+                        FTag.Commission: "10",
+                    },
+                    {
+                        FTag.ContraBroker: "1",
+                        FTag.ContraTrader: "1",
+                        FTag.Commission: "10",
+                        FTag.NoContraBrokers: "2",
+                    },
+                ]
+            },
+        )
+        g.validate_group(msg_g.get_group_list(FTag.NoContraBrokers))
+
+    with pytest.raises(
+        FIXMessageError,
+        match=r"fixmessage=\[337=1\] does not contain mandatory first tag ",
+    ):
+        msg_g = FIXMessage(
+            FMsg.EXECUTIONREPORT,
+            {
+                FTag.NoContraBrokers: [
+                    {
+                        FTag.ContraBroker: "1",
+                        FTag.ContraTrader: "1",
+                        FTag.Commission: "10",
+                    },
+                    {
+                        FTag.ContraBroker: "1",
+                        FTag.ContraTrader: "1",
+                        FTag.Commission: "10",
+                        FTag.NoContraBrokers: [{FTag.ContraTrader: "1"}],
+                    },
+                ]
+            },
+        )
+        g.validate_group(msg_g.get_group_list(FTag.NoContraBrokers))

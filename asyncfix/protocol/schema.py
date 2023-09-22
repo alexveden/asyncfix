@@ -286,7 +286,19 @@ class SchemaGroup(SchemaSet):
                     )
 
                 field = tag_fields[t]
-                field.validate_value(v)
+
+                if isinstance(field, SchemaField):
+                    field.validate_value(v)
+                else:
+                    # Nested group!?
+                    assert isinstance(field, SchemaGroup)
+                    if not fmsg.is_group(t):
+                        raise FIXMessageError(
+                            f"fixmessage={groups}, tag={t} must be a group {self}"
+                        )
+
+                    # validate nested group
+                    field.validate_group(fmsg.get_group_list(t))
 
                 prev_tag = ord_idx
 

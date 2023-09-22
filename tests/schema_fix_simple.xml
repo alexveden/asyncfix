@@ -30,6 +30,7 @@
             <field name="ContraBroker" required="N"/>
             <field name="ContraTrader" required="Y"/>
             <component name="CommissionData" required="N"/>
+            <component name="ContraGrp2" required="N"/>
         </group>
     </component>
     <component name="CommissionData">
