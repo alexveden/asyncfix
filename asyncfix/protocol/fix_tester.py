@@ -1,6 +1,6 @@
-from math import nan, isnan
+from math import isnan, nan
 
-from asyncfix import FIXMessage, FTag, FMsg
+from asyncfix import FIXMessage, FMsg, FTag
 
 from .common import FExecType, FOrdStatus
 from .order_single import FIXNewOrderSingle

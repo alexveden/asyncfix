@@ -1,6 +1,6 @@
 from datetime import datetime
-
 from math import isnan
+
 from asyncfix import FIXMessage, FMsg, FTag
 from asyncfix.errors import FIXError
 
@@ -319,14 +319,14 @@ class FIXNewOrderSingle:
             return 0
 
     def process_execution_report(self, m: FIXMessage) -> int:
-        assert m.msg_type == FMsg.EXECUTIONREPORT, 'unexpected msg type'
+        assert m.msg_type == FMsg.EXECUTIONREPORT, "unexpected msg type"
 
         clord_id = m[FTag.ClOrdID]
         cum_qty = float(m[FTag.CumQty])
         order_status = m[FTag.OrdStatus]
 
         if clord_id != self.clord_id and clord_id != self.orig_clord_id:
-            raise FIXError('orig_clord_id mismatch')
+            raise FIXError("orig_clord_id mismatch")
 
         exec_type = m[FTag.ExecType]
         leaves_qty = float(m[FTag.LeavesQty])
@@ -394,7 +394,7 @@ class FIXNewOrderSingle:
 
     def cancel_req(self) -> FIXMessage:
         if not self.can_cancel():
-            raise FIXError(f'{self} Fix order is not allowed for cancel')
+            raise FIXError(f"{self} Fix order is not allowed for cancel")
 
         assert not self.orig_clord_id
         self.orig_clord_id = self.clord_id
@@ -412,7 +412,7 @@ class FIXNewOrderSingle:
 
     def replace_req(self, price: float, qty: float) -> FIXMessage:
         if not self.can_replace():
-            raise FIXError('Order cannot be replaced')
+            raise FIXError("Order cannot be replaced")
 
         if isnan(price) or price == self.price:
             price = self.price
@@ -420,7 +420,7 @@ class FIXNewOrderSingle:
             qty = self.qty
 
         if price == self.price and qty == self.qty:
-            raise FIXError('no price / qty change in replace_req')
+            raise FIXError("no price / qty change in replace_req")
 
         assert not self.orig_clord_id
         self.orig_clord_id = self.clord_id

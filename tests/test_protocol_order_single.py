@@ -6,7 +6,7 @@ from math import nan
 
 import pytest
 
-from asyncfix import FTag, FMsg
+from asyncfix import FMsg, FTag
 from asyncfix.errors import FIXError
 from asyncfix.protocol.common import FExecType, FOrdSide, FOrdStatus, FOrdType
 from asyncfix.protocol.fix_tester import FIXTester
@@ -735,7 +735,7 @@ def test_cancel_req__zero_filled_order():
     assert o.cum_qty == 0
     assert o.leaves_qty == 0
 
-    assert not o.can_replace() 
+    assert not o.can_replace()
     assert not o.can_cancel()
     assert o.is_finished() == 1
 
@@ -1074,9 +1074,9 @@ def test_cancel_req__not_acknoledged_order_by_gate():
     assert ft.order_register_single(o) == 1
     assert o.status == FOrdStatus.CREATED, f"o.status={chr(o.status)}"
 
-    with pytest.raises(FIXError, match='order is not allowed for cancel'):
+    with pytest.raises(FIXError, match="order is not allowed for cancel"):
         cxl_req = o.cancel_req()
-    assert not o.can_replace() 
+    assert not o.can_replace()
     assert not o.can_cancel()
 
     msg = ft.fix_exec_report_msg(
@@ -1084,9 +1084,9 @@ def test_cancel_req__not_acknoledged_order_by_gate():
     )
     assert o.process_execution_report(msg) == 1
 
-    with pytest.raises(FIXError, match='order is not allowed for cancel'):
+    with pytest.raises(FIXError, match="order is not allowed for cancel"):
         cxl_req = o.cancel_req()
-    assert not o.can_replace() 
+    assert not o.can_replace()
     assert not o.can_cancel()
 
 
@@ -1193,7 +1193,7 @@ def test_replace_req():
     assert m[54] == "2"  # sell
 
     #  Tag 55: Symbol set to v2 symbol
-    assert m[55] == 'US.F.TICKER'
+    assert m[55] == "US.F.TICKER"
 
     # Overall message is valid!
     assert FIX_SCHEMA.validate(m)
@@ -1209,10 +1209,10 @@ def test_replace_req_only_price():
     FIX_SCHEMA.validate(m)
 
     # Tag 38: Order Qty
-    assert m[38] == '20'
+    assert m[38] == "20"
 
     # Tag 44: Order Price
-    assert m[44] == '200'
+    assert m[44] == "200"
 
 
 def test_replace_req_only_qty():
@@ -1225,10 +1225,10 @@ def test_replace_req_only_qty():
     FIX_SCHEMA.validate(m)
 
     # Tag 38: Order Qty
-    assert m[38] == '30'
+    assert m[38] == "30"
 
     # Tag 44: Order Price
-    assert m[44] == '100.0'
+    assert m[44] == "100.0"
 
 
 def test_replace_req__not_set():
@@ -1237,15 +1237,15 @@ def test_replace_req__not_set():
     )
     o.status = FOrdStatus.NEW
 
-    with pytest.raises(FIXError, match='no price / qty change in replace_req'):
+    with pytest.raises(FIXError, match="no price / qty change in replace_req"):
         m = o.replace_req(nan, nan)
 
     # No change in price/qty
-    with pytest.raises(FIXError, match='no price / qty change in replace_req'):
+    with pytest.raises(FIXError, match="no price / qty change in replace_req"):
         m = o.replace_req(o.price, o.qty)
 
     # No change in price/qty
-    with pytest.raises(FIXError, match='no price / qty change in replace_req'):
+    with pytest.raises(FIXError, match="no price / qty change in replace_req"):
         m = o.replace_req(o.price, 0)
 
 
@@ -1708,7 +1708,7 @@ def test_replace_req__replace_price_only_but_rejected_because_fill():
 
     msg = ft.fix_cxlrep_reject_msg(cxl_req, FOrdStatus.FILLED)
     assert o.process_cancel_rej_report(msg) == 1
-    assert not o.can_replace() 
+    assert not o.can_replace()
     assert not o.can_cancel()
     assert o.is_finished() == 1
 
