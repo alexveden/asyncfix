@@ -443,6 +443,7 @@ def test_exec_sequence__vanilla_fill():
     ft = FIXTester(FIX_SCHEMA)
     assert ft.order_register_single(o) == 1
     assert o.status == FOrdStatus.CREATED, f"o.status={chr(o.status)}"
+    assert o.order_id is None
     assert not o.can_cancel()
     assert not o.can_replace()
     assert o.is_finished() == 0
@@ -451,6 +452,7 @@ def test_exec_sequence__vanilla_fill():
         o, o.clord_id, FExecType.PENDING_NEW, FOrdStatus.PENDING_NEW
     )
     assert o.process_execution_report(msg) == 1
+    assert o.order_id is not None
     assert o.status == FOrdStatus.PENDING_NEW, f"o.status={chr(o.status)}"
     assert not o.can_cancel()
     assert not o.can_replace()
@@ -1956,10 +1958,6 @@ def test_exec_report_clord_mismatch():
 
 
 def test_cancel_req__cancel_reject_invalid_transition():
-    """
-    B.1.a – Cancel request issued for a zero-filled order
-    :return:
-    """
     o = FIXNewOrderSingle(
         "clordTest", "US.F.TICKER", side=FOrdSide.BUY, price=200.0, qty=10
     )

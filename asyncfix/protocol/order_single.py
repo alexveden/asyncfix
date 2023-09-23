@@ -376,6 +376,7 @@ class FIXNewOrderSingle:
             self.status, m.msg_type, exec_type, order_status, raise_on_err=False
         )
 
+        self.order_id = m[FTag.OrderID]
         self.leaves_qty = leaves_qty
         self.cum_qty = cum_qty
 

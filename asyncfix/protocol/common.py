@@ -1,7 +1,7 @@
 import enum
 
 
-class FOrdSide(enum.Enum):
+class StrEnum(enum.Enum):
     def __str__(self):
         return str(self.value)
 
@@ -11,6 +11,8 @@ class FOrdSide(enum.Enum):
     def __hash__(self):
         return hash(self.value)
 
+
+class FOrdSide(StrEnum):
     BUY = "1"
     SELL = "2"
     BUY_MINUS = "3"
@@ -29,16 +31,7 @@ class FOrdSide(enum.Enum):
     BORROW = "G"
 
 
-class FOrdType(enum.Enum):
-    def __str__(self):
-        return str(self.value)
-
-    def __eq__(self, o):
-        return self.value == str(o)
-
-    def __hash__(self):
-        return hash(self.value)
-
+class FOrdType(StrEnum):
     MARKET = "1"
     LIMIT = "2"
     STOP = "3"
@@ -58,16 +51,7 @@ class FOrdType(enum.Enum):
     PEGGED = "P"
 
 
-class FOrdStatus(enum.Enum):
-    def __str__(self):
-        return str(self.value)
-
-    def __eq__(self, o):
-        return self.value == str(o)
-
-    def __hash__(self):
-        return hash(self.value)
-
+class FOrdStatus(StrEnum):
     CREATED = "Z"  # IMPORTANT: this one is for internal use, non FIX!
     NEW = "0"
     PARTIALLY_FILLED = "1"
@@ -85,16 +69,7 @@ class FOrdStatus(enum.Enum):
     PENDING_REPLACE = "E"
 
 
-class FExecType(enum.Enum):
-    def __str__(self):
-        return str(self.value)
-
-    def __eq__(self, o):
-        return self.value == str(o)
-
-    def __hash__(self):
-        return hash(self.value)
-
+class FExecType(StrEnum):
     NEW = "0"
     DONE_FOR_DAY = "3"
     CANCELED = "4"

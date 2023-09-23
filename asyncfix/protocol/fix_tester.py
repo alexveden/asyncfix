@@ -59,12 +59,16 @@ class FIXTester:
         m[11] = clord_id
         m[41] = orig_clord_id
         m[39] = ord_status
+
+        assert cxl_req.msg_type in [
+            FMsg.ORDERCANCELREQUEST,
+            FMsg.ORDERCANCELREPLACEREQUEST,
+        ]
+
         if cxl_req.msg_type == FMsg.ORDERCANCELREQUEST:
             m[FTag.CxlRejResponseTo] = "1"
         elif cxl_req.msg_type == FMsg.ORDERCANCELREPLACEREQUEST:
             m[FTag.CxlRejResponseTo] = "2"
-        else:
-            assert False, f"Unexpected message type: {cxl_req}"
 
         if self.schema:
             self.schema.validate(m)
