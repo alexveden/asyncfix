@@ -196,190 +196,150 @@ class FIXNewOrderSingle:
                  None - if transition is valid, but need to wait for a good state
                  raises FIXError - when transition is invalid
         """
-        if fix_msg_type == "8":  # Execution report
-            if status == FOrdStatus.CREATED:
-                # CREATED -> (PendingNew, Rejected)
-                if msg_status == FOrdStatus.PENDING_NEW:
-                    return FOrdStatus.PENDING_NEW
-                elif msg_status == FOrdStatus.REJECTED:
-                    return FOrdStatus.REJECTED
-                else:
-                    if raise_on_err:
-                        raise FIXError("FIX Order state transition error")
-                    else:
-                        return None
-            elif status == FOrdStatus.PENDING_NEW:
-                # PendingNew -> (Rejected, New, Filled, Canceled)
-                if msg_status == FOrdStatus.REJECTED:
-                    return FOrdStatus.REJECTED
-                elif msg_status == FOrdStatus.NEW:
-                    return FOrdStatus.NEW
-                elif msg_status == FOrdStatus.FILLED:
-                    return FOrdStatus.FILLED
-                elif msg_status == FOrdStatus.PARTIALLY_FILLED:
-                    return FOrdStatus.PARTIALLY_FILLED
-                elif msg_status == FOrdStatus.CANCELED:
-                    return FOrdStatus.CANCELED
-                elif msg_status == FOrdStatus.SUSPENDED:
-                    return FOrdStatus.SUSPENDED
-                else:
-                    if raise_on_err:
-                        raise FIXError("FIX Order state transition error")
-                    else:
-                        return None
-            elif status == FOrdStatus.NEW:
-                # New -> (Rejected, New, Suspended, PartiallyFilled, Filled,
-                #         Canceled, Expired, DFD)
-                if (
-                    msg_status == FOrdStatus.PENDING_NEW
-                    or msg_status == FOrdStatus.CREATED
-                    or msg_status == FOrdStatus.ACCEPTED_FOR_BIDDING
-                ):
-                    if raise_on_err:
-                        raise FIXError("FIX Order state transition error")
-                    else:
-                        return None
-                elif msg_status == FOrdStatus.NEW:
-                    # Reinstatement, allowed but not trigger state change
-                    return None
-                return msg_status
-            elif (
-                status == FOrdStatus.FILLED
-                or status == FOrdStatus.CANCELED
-                or status == FOrdStatus.REJECTED
-                or status == FOrdStatus.EXPIRED
-            ):
-                # Order in terminal state - no status change allowed!
-                return None
-            elif status == FOrdStatus.SUSPENDED:
-                # Order algorithmically was suspended
-                if msg_status == FOrdStatus.NEW:
-                    return FOrdStatus.NEW
-                elif msg_status == FOrdStatus.PARTIALLY_FILLED:
-                    return FOrdStatus.PARTIALLY_FILLED
-                elif msg_status == FOrdStatus.CANCELED:
-                    return FOrdStatus.CANCELED
-                elif msg_status == FOrdStatus.SUSPENDED:
-                    # Possible duplidates or delayed fills
-                    return None
-                else:
-                    if raise_on_err:
-                        raise FIXError("FIX Order state transition error")
-                    else:
-                        return None
-            elif status == FOrdStatus.PARTIALLY_FILLED:
-                if msg_status == FOrdStatus.FILLED:
-                    return FOrdStatus.FILLED
-                elif msg_status == FOrdStatus.PARTIALLY_FILLED:
-                    return FOrdStatus.PARTIALLY_FILLED
-                elif msg_status == FOrdStatus.PENDING_REPLACE:
-                    return FOrdStatus.PENDING_REPLACE
-                elif msg_status == FOrdStatus.PENDING_CANCEL:
-                    return FOrdStatus.PENDING_CANCEL
-                elif msg_status == FOrdStatus.CANCELED:
-                    return FOrdStatus.CANCELED
-                elif msg_status == FOrdStatus.EXPIRED:
-                    return FOrdStatus.EXPIRED
-                elif msg_status == FOrdStatus.SUSPENDED:
-                    return FOrdStatus.SUSPENDED
-                elif msg_status == FOrdStatus.STOPPED:
-                    return FOrdStatus.STOPPED
-                else:
-                    if raise_on_err:
-                        raise FIXError("FIX Order state transition error")
-                    else:
-                        return None
-            elif status == FOrdStatus.PENDING_CANCEL:
-                if msg_status == FOrdStatus.CANCELED:
-                    return FOrdStatus.CANCELED
-                elif msg_status == FOrdStatus.CREATED:
-                    if raise_on_err:
-                        raise FIXError("FIX Order state transition error")
-                    else:
-                        return None
-                else:
-                    return None
-            elif status == FOrdStatus.PENDING_REPLACE:
-                if msg_exec_type == FExecType.REPLACED:
-                    # Successfully replaced
-                    if (
-                        msg_status == FOrdStatus.NEW
-                        or msg_status == FOrdStatus.PARTIALLY_FILLED
-                        or msg_status == FOrdStatus.FILLED
-                        or msg_status == FOrdStatus.CANCELED
-                    ):
-                        return msg_status
-                    else:
-                        if raise_on_err:
-                            raise FIXError("FIX Order state transition error")
-                        else:
-                            return None
-                else:
-                    if (
-                        msg_status == FOrdStatus.CREATED
-                        or msg_status == FOrdStatus.ACCEPTED_FOR_BIDDING
-                    ):
-                        if raise_on_err:
-                            raise FIXError("FIX Order state transition error")
-                        else:
-                            return None
-                    else:
-                        # Technically does not count any status,
-                        # until get replace reject or exec_type = FExecType.REPLACED
-                        return None
+        status_transitions = {}
 
-            else:
-                if raise_on_err:
-                    raise FIXError("FIX Order state transition error")
-                else:
-                    return None
+        if fix_msg_type == FMsg.EXECUTIONREPORT:
+            status_transitions = {
+                None: {None: FIXError},
+                # key {initial status}: {
+                #    msg_status: <transition>,
+                #       <transition>: None - ignore, True - transit, FIXError - raise
+                #
+                #      REJECTED: True,     #  this is allowed status transition
+                #      PENDING_NEW: None,  #  transition allowed but no status change
+                #      CREATED: FIXError,  #  error transition
+                #      None:  [None, True, FIXError] # default transition
+                #  }
+                FOrdStatus.CREATED: {
+                    FOrdStatus.PENDING_NEW: True,
+                    FOrdStatus.REJECTED: True,
+                    None: FIXError,
+                },
+                FOrdStatus.PENDING_NEW: {
+                    FOrdStatus.REJECTED: True,
+                    FOrdStatus.NEW: True,
+                    FOrdStatus.FILLED: True,
+                    FOrdStatus.PARTIALLY_FILLED: True,
+                    FOrdStatus.CANCELED: True,
+                    FOrdStatus.SUSPENDED: True,
+                    None: FIXError,
+                },
+                FOrdStatus.NEW: {
+                    FOrdStatus.NEW: None,
+                    FOrdStatus.PENDING_NEW: FIXError,
+                    FOrdStatus.CREATED: FIXError,
+                    FOrdStatus.ACCEPTED_FOR_BIDDING: FIXError,
+                    None: True,
+                },
+                FOrdStatus.FILLED: {
+                    None: None,
+                },
+                FOrdStatus.CANCELED: {
+                    None: None,
+                },
+                FOrdStatus.REJECTED: {
+                    None: None,
+                },
+                FOrdStatus.EXPIRED: {
+                    None: None,
+                },
+                FOrdStatus.SUSPENDED: {
+                    FOrdStatus.NEW: True,
+                    FOrdStatus.PARTIALLY_FILLED: True,
+                    FOrdStatus.CANCELED: True,
+                    FOrdStatus.SUSPENDED: None,
+                    None: FIXError,
+                },
+                FOrdStatus.PARTIALLY_FILLED: {
+                    FOrdStatus.FILLED: True,
+                    FOrdStatus.PARTIALLY_FILLED: True,
+                    FOrdStatus.PENDING_REPLACE: True,
+                    FOrdStatus.PENDING_CANCEL: True,
+                    FOrdStatus.CANCELED: True,
+                    FOrdStatus.EXPIRED: True,
+                    FOrdStatus.SUSPENDED: True,
+                    FOrdStatus.STOPPED: True,
+                    None: FIXError,
+                },
+                FOrdStatus.PENDING_CANCEL: {
+                    FOrdStatus.CANCELED: True,
+                    FOrdStatus.CREATED: FIXError,
+                    None: None,
+                },
+                FOrdStatus.PENDING_REPLACE: {
+                    "exec_type": {
+                        FExecType.REPLACED: {
+                            FOrdStatus.NEW: True,
+                            FOrdStatus.PARTIALLY_FILLED: True,
+                            FOrdStatus.FILLED: True,
+                            FOrdStatus.CANCELED: True,
+                            None: FIXError,
+                        },
+                        None: {
+                            FOrdStatus.CREATED: FIXError,
+                            FOrdStatus.ACCEPTED_FOR_BIDDING: FIXError,
+                            None: None,
+                        },
+                    },
+                },
+            }
 
-        elif fix_msg_type == "9":  # Order Cancel reject
-            if (
-                msg_status == FOrdStatus.CREATED
-                or msg_status == FOrdStatus.ACCEPTED_FOR_BIDDING
-            ):
-                if raise_on_err:
-                    raise FIXError("FIX Order state transition error")
-                else:
-                    return None
-            return msg_status
-        elif fix_msg_type == "F" or fix_msg_type == "G":
-            # 'F' - Order cancel request (order requests self cancel)
-            # 'G' -  Order replace request (order requests self change)
-            if (
-                status == FOrdStatus.PENDING_CANCEL
-                or status == FOrdStatus.PENDING_REPLACE
-            ):
-                # Status is pending, we must wait
-                return None
-            elif (
-                status == FOrdStatus.NEW
-                or status == FOrdStatus.SUSPENDED
-                or status == FOrdStatus.PARTIALLY_FILLED
-            ):
-                # Order is active and good for cancel/replacement
-                return status
-            else:
-                if raise_on_err:
-                    raise FIXError("FIX Order state transition error")
-                else:
-                    return None
-        else:
+        elif fix_msg_type == FMsg.ORDERCANCELREJECT:  # '9'
+            status_transitions = {
+                None: {
+                    FOrdStatus.CREATED: FIXError,
+                    FOrdStatus.ACCEPTED_FOR_BIDDING: FIXError,
+                    None: True,
+                }
+            }
+        elif (
+            fix_msg_type == FMsg.ORDERCANCELREQUEST
+            or fix_msg_type == FMsg.ORDERCANCELREPLACEREQUEST
+        ):
+            status_transitions = {
+                FOrdStatus.PENDING_CANCEL: {None: None},
+                FOrdStatus.PENDING_REPLACE: {None: None},
+                FOrdStatus.NEW: {None: True},
+                FOrdStatus.SUSPENDED: {None: True},
+                FOrdStatus.PARTIALLY_FILLED: {None: True},
+                None: {None: FIXError},
+            }
+
+        if not status_transitions:
+            raise FIXError(f"No status transition table for {fix_msg_type=}")
+
+        s = status_transitions.get(status, status_transitions[None])
+        if isinstance(s, dict) and "exec_type" in s:
+            s = s["exec_type"].get(msg_exec_type, s["exec_type"][None])
+        default = s[None]
+        result = s.get(msg_status, default)
+
+        if result is FIXError:
+            # Invalid transition
             if raise_on_err:
                 raise FIXError("FIX Order state transition error")
             else:
                 return None
+        else:
+            if result is None:
+                # Valid transition no status change
+                return None
+            else:
+                # Do status change
+                return msg_status
 
     def process_cancel_rej_report(self, m: FIXMessage) -> bool:
         """
         Processes incoming cancel reject report message
         """
-        assert m.msg_type == FMsg.ORDERCANCELREJECT, "incorrect message"
+        if m.msg_type != FMsg.ORDERCANCELREJECT:
+            raise FIXError("incorrect message type")
 
         order_status = m[FTag.OrdStatus]
 
-        new_status = self.change_status(self.status, m.msg_type, 0, order_status)
+        new_status = self.change_status(
+            self.status, m.msg_type, 0, order_status, raise_on_err=False
+        )
         #
         if order_status == FOrdStatus.REJECTED:
             # Very weird (emergency) case, because the ClOrdId does not exist
@@ -399,7 +359,8 @@ class FIXNewOrderSingle:
         Raises:
             FIXError: if ClOrdID mismatch
         """
-        assert m.msg_type == FMsg.EXECUTIONREPORT, "unexpected msg type"
+        if m.msg_type != FMsg.EXECUTIONREPORT:
+            raise FIXError("incorrect message type")
 
         clord_id = m[FTag.ClOrdID]
         cum_qty = float(m[FTag.CumQty])
@@ -456,7 +417,11 @@ class FIXNewOrderSingle:
         """
         return (
             FIXNewOrderSingle.change_status(
-                self.status, "F", 0, FOrdStatus.PENDING_CANCEL, raise_on_err=False
+                self.status,
+                FMsg.ORDERCANCELREQUEST,
+                0,  # Exec Type - omitted!
+                FOrdStatus.PENDING_CANCEL,
+                raise_on_err=False,
             )
             is not None
         )
@@ -467,7 +432,11 @@ class FIXNewOrderSingle:
         """
         return (
             FIXNewOrderSingle.change_status(
-                self.status, "G", 0, FOrdStatus.PENDING_REPLACE, raise_on_err=False
+                self.status,
+                FMsg.ORDERCANCELREPLACEREQUEST,
+                0,  # Exec Type - omitted!
+                FOrdStatus.PENDING_REPLACE,
+                raise_on_err=False,
             )
             is not None
         )

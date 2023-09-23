@@ -142,6 +142,12 @@ def test_simple_execution_report_state_created__2__rejected():
     assert o.status == FOrdStatus.REJECTED, f"o.status={chr(o.status)}"
 
 
+def test_state_transition__unsupported_msg():
+    # fmt: off
+    assert pytest.raises(FIXError, FIXNewOrderSingle.change_status, FOrdStatus.CREATED, FMsg.ADVERTISEMENT, 0, FOrdStatus.PENDING_NEW) 
+    # fmt: on
+
+
 def test_state_transition__created__execution_report():
     # fmt: off
     assert pytest.raises(FIXError, FIXNewOrderSingle.change_status, FOrdStatus.CREATED, '8', FExecType.TRADE, FOrdStatus.CREATED) 
@@ -730,6 +736,10 @@ def test_cancel_req__zero_filled_order():
     msg = ft.fix_exec_report_msg(
         o, o.clord_id, FExecType.CANCELED, FOrdStatus.CANCELED, cum_qty=0, leaves_qty=0
     )
+
+    with pytest.raises(FIXError, match="incorrect message type"):
+        o.process_execution_report(cxl_req)
+
     assert o.process_execution_report(msg) == 1
     assert o.qty == 10
     assert o.cum_qty == 0
@@ -1281,6 +1291,9 @@ def test_replace_req__zero_filled__increased_qty():
     assert o.price == 200
     assert o.qty == 10
 
+    with pytest.raises(FIXError, match="Order cannot be replaced"):
+        cxl_req = ft.fix_rep_request(o, 300, 11)
+
     msg = ft.fix_exec_report_msg(
         o,
         o.clord_id,
@@ -1425,7 +1438,10 @@ def test_replace_req__part_filled__increased_qty_while_pending_replace_fractiona
         last_qty=10.9,
     )
     assert o.process_execution_report(msg) == 1
-    assert o.process_cancel_rej_report(msg) == -3  # WRONG MSG TYPE!
+
+    with pytest.raises(FIXError, match="incorrect message type"):
+        o.process_cancel_rej_report(msg)
+
     assert o.status == FOrdStatus.FILLED
     assert not o.can_replace()
     assert not o.can_cancel()
@@ -1915,3 +1931,64 @@ def test_replace_req__decreased_qty__also_less_than_cum_qty():
     assert o.qty == 8
     assert o.cum_qty == 8
     assert o.leaves_qty == 0
+
+
+def test_exec_report_clord_mismatch():
+    o = FIXNewOrderSingle(
+        "clordTest", "US.F.TICKER", side=FOrdSide.BUY, price=200.0, qty=10
+    )
+
+    ft = FIXTester(FIX_SCHEMA)
+    assert ft.order_register_single(o) == 1
+    assert o.status == FOrdStatus.CREATED, f"o.status={chr(o.status)}"
+
+    msg = ft.fix_exec_report_msg(
+        o, "unknown clord", FExecType.PENDING_NEW, FOrdStatus.PENDING_NEW
+    )
+    with pytest.raises(FIXError, match="orig_clord_id mismatch"):
+        o.process_execution_report(msg)
+
+    o.orig_clord_id = "1234"
+    msg = ft.fix_exec_report_msg(
+        o, "1234", FExecType.PENDING_NEW, FOrdStatus.PENDING_NEW
+    )
+    o.process_execution_report(msg)
+
+
+def test_cancel_req__cancel_reject_invalid_transition():
+    """
+    B.1.a – Cancel request issued for a zero-filled order
+    :return:
+    """
+    o = FIXNewOrderSingle(
+        "clordTest", "US.F.TICKER", side=FOrdSide.BUY, price=200.0, qty=10
+    )
+
+    ft = FIXTester(FIX_SCHEMA)
+    assert ft.order_register_single(o) == 1
+    assert o.status == FOrdStatus.CREATED, f"o.status={chr(o.status)}"
+
+    msg = ft.fix_exec_report_msg(
+        o, o.clord_id, FExecType.PENDING_NEW, FOrdStatus.PENDING_NEW
+    )
+    assert o.process_execution_report(msg) == 1
+
+    msg = ft.fix_exec_report_msg(
+        o, o.clord_id, FExecType.NEW, FOrdStatus.NEW, cum_qty=0, leaves_qty=10
+    )
+    assert o.process_execution_report(msg) == 1
+    assert o.status == FOrdStatus.NEW
+
+    cxl_req = ft.fix_cxl_request(o)
+    assert o.status == FOrdStatus.PENDING_CANCEL
+    assert o.can_replace() == 0
+    assert o.can_cancel() == 0
+    assert o.is_finished() == 0
+
+    msg = ft.fix_cxlrep_reject_msg(cxl_req, FOrdStatus.ACCEPTED_FOR_BIDDING)
+
+    assert not o.process_cancel_rej_report(msg)
+    assert o.status == FOrdStatus.PENDING_CANCEL
+    assert o.can_replace() == 0
+    assert o.can_cancel() == 0
+    assert o.is_finished() == 0
