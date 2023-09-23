@@ -89,6 +89,12 @@ class FExecType(enum.Enum):
     def __str__(self):
         return str(self.value)
 
+    def __eq__(self, o):
+        return self.value == str(o)
+
+    def __hash__(self):
+        return hash(self.value)
+
     NEW = "0"
     DONE_FOR_DAY = "3"
     CANCELED = "4"

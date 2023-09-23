@@ -117,7 +117,7 @@ def test_simple_execution_report_state_created__2__pending_new():
         "clordTest", "US.F.TICKER", side=FOrdSide.BUY, price=200.0, qty=20
     )
 
-    ft = FIXTester()
+    ft = FIXTester(FIX_SCHEMA)
     assert ft.order_register_single(o) == 1
     assert o.status == FOrdStatus.CREATED, f"o.status={chr(o.status)}"
 
@@ -133,7 +133,7 @@ def test_simple_execution_report_state_created__2__rejected():
         "clordTest", "US.F.TICKER", side=FOrdSide.BUY, price=200.0, qty=20
     )
 
-    ft = FIXTester()
+    ft = FIXTester(FIX_SCHEMA)
     assert ft.order_register_single(o) == 1
     assert o.status == FOrdStatus.CREATED, f"o.status={chr(o.status)}"
 
@@ -434,7 +434,7 @@ def test_exec_sequence__vanilla_fill():
     o = FIXNewOrderSingle(
         "clordTest", "US.F.TICKER", side=FOrdSide.BUY, price=200.0, qty=10
     )
-    ft = FIXTester()
+    ft = FIXTester(FIX_SCHEMA)
     assert ft.order_register_single(o) == 1
     assert o.status == FOrdStatus.CREATED, f"o.status={chr(o.status)}"
     assert not o.can_cancel()
@@ -528,7 +528,7 @@ def test_exec_sequence__vanilla_fill_reject__pendingnew():
         "clordTest", "US.F.TICKER", side=FOrdSide.BUY, price=200.0, qty=10
     )
 
-    ft = FIXTester()
+    ft = FIXTester(FIX_SCHEMA)
     assert ft.order_register_single(o) == 1
     assert o.status == FOrdStatus.CREATED, f"o.status={chr(o.status)}"
 
@@ -563,7 +563,7 @@ def test_exec_sequence__vanilla_fill__reject_new():
         "clordTest", "US.F.TICKER", side=FOrdSide.BUY, price=200.0, qty=10
     )
 
-    ft = FIXTester()
+    ft = FIXTester(FIX_SCHEMA)
     assert ft.order_register_single(o) == 1
     assert o.status == FOrdStatus.CREATED, f"o.status={chr(o.status)}"
 
@@ -603,7 +603,7 @@ def test_exec_sequence__vanilla_suspended():
         "clordTest", "US.F.TICKER", side=FOrdSide.BUY, price=200.0, qty=10
     )
 
-    ft = FIXTester()
+    ft = FIXTester(FIX_SCHEMA)
     assert ft.order_register_single(o) == 1
     assert o.status == FOrdStatus.CREATED, f"o.status={chr(o.status)}"
 
@@ -677,9 +677,10 @@ def test_cancel_req():
     o.status = FOrdStatus.NEW
 
     m = o.cancel_req()
+    FIX_SCHEMA.validate(m)
 
     # Tag 11: ClOrdID
-    assert m[11] == "0"
+    assert m[11] == "clordTest-1"
 
     # Tag 41: OrigClOrdID
     assert m[41] == o.clord_id
@@ -706,7 +707,7 @@ def test_cancel_req__zero_filled_order():
         "clordTest", "US.F.TICKER", side=FOrdSide.BUY, price=200.0, qty=10
     )
 
-    ft = FIXTester()
+    ft = FIXTester(FIX_SCHEMA)
     assert ft.order_register_single(o) == 1
     assert o.status == FOrdStatus.CREATED, f"o.status={chr(o.status)}"
 
@@ -748,7 +749,7 @@ def test_cancel_req__zero_filled_order__cancel_reject():
         "clordTest", "US.F.TICKER", side=FOrdSide.BUY, price=200.0, qty=10
     )
 
-    ft = FIXTester()
+    ft = FIXTester(FIX_SCHEMA)
     assert ft.order_register_single(o) == 1
     assert o.status == FOrdStatus.CREATED, f"o.status={chr(o.status)}"
 
@@ -792,7 +793,7 @@ def test_cancel_req__zero_filled_order__cancel_reject_after_pending():
         "clordTest", "US.F.TICKER", side=FOrdSide.BUY, price=200.0, qty=10
     )
 
-    ft = FIXTester()
+    ft = FIXTester(FIX_SCHEMA)
     assert ft.order_register_single(o) == 1
     assert o.status == FOrdStatus.CREATED, f"o.status={chr(o.status)}"
 
@@ -852,7 +853,7 @@ def test_cancel_req__part_filled_order__with_some_execution_between():
         "clordTest", "US.F.TICKER", side=FOrdSide.BUY, price=200.0, qty=10
     )
 
-    ft = FIXTester()
+    ft = FIXTester(FIX_SCHEMA)
     assert ft.order_register_single(o) == 1
     assert o.status == FOrdStatus.CREATED, f"o.status={chr(o.status)}"
 
@@ -963,7 +964,7 @@ def test_cancel_req__order_filled_before_cancel_accepted_different_clord():
         "clordTest", "US.F.TICKER", side=FOrdSide.BUY, price=200.0, qty=10
     )
 
-    ft = FIXTester()
+    ft = FIXTester(FIX_SCHEMA)
     assert ft.order_register_single(o) == 1
     assert o.status == FOrdStatus.CREATED, f"o.status={chr(o.status)}"
 
@@ -1069,7 +1070,7 @@ def test_cancel_req__not_acknoledged_order_by_gate():
         "clordTest", "US.F.TICKER", side=FOrdSide.BUY, price=200.0, qty=10
     )
 
-    ft = FIXTester()
+    ft = FIXTester(FIX_SCHEMA)
     assert ft.order_register_single(o) == 1
     assert o.status == FOrdStatus.CREATED, f"o.status={chr(o.status)}"
 
@@ -1094,7 +1095,7 @@ def test_cancel_req__multiple_requests_are_blocked():
         "clordTest", "US.F.TICKER", side=FOrdSide.BUY, price=200.0, qty=10
     )
 
-    ft = FIXTester()
+    ft = FIXTester(FIX_SCHEMA)
     assert ft.order_register_single(o) == 1
     assert o.status == FOrdStatus.CREATED, f"o.status={chr(o.status)}"
 
@@ -1124,7 +1125,7 @@ def test_cancel_req__order_filled_before_cancel_accepted():
         "clordTest", "US.F.TICKER", side=FOrdSide.BUY, price=200.0, qty=10
     )
 
-    ft = FIXTester()
+    ft = FIXTester(FIX_SCHEMA)
     assert ft.order_register_single(o) == 1
     assert o.status == FOrdStatus.CREATED, f"o.status={chr(o.status)}"
 
@@ -1170,37 +1171,29 @@ def test_replace_req():
     o = FIXNewOrderSingle(
         "clordTest", "US.F.TICKER", side=FOrdSide.SELL, price=100.0, qty=20
     )
-    assert FIXMsg.is_valid(o.msg) == 1
     o.status = FOrdStatus.NEW
 
+    old_clord = o.clord_id
     m = o.replace_req(200, 30)
+    FIX_SCHEMA.validate(m)
 
     # Tag 11: ClOrdID
-    assert m[11] == 0
+    assert m[11] == "clordTest-1"
 
     # Tag 41: OrigClOrdID
-    assert m[41] == o.clord_id
-
-    #  Tag 22: SecurityIDSource - quote cache ticker index
-    assert m[22] == 10
+    assert m[41] == old_clord
 
     # Tag 38: Order Qty
-    assert m[38] == 30
+    assert m[38] == "30"
 
     # Tag 44: Order Price
-    assert m[44] == 200
-
-    #  Tag 48: SecurityID - set to instrument_info (uint64_t instrument_id) -- it's going to be stable
-    assert m[48] == 123
+    assert m[44] == "200"
 
     # Tag 54: Side
     assert m[54] == "2"  # sell
 
     #  Tag 55: Symbol set to v2 symbol
-    # FIX: assert strcmp(FIXMsg.get_str(m, 55), q.v2_ticker) == 0
-
-    # Tag 60: Transact time
-    # FIX: assert timedelta_ns(datetime_nsnow(), FIXMsg.get_utc_timestamp(m, 60)[0], TIMEDELTA_MILLI) < 20
+    assert m[55] == 'US.F.TICKER'
 
     # Overall message is valid!
     assert FIX_SCHEMA.validate(m)
@@ -1210,51 +1203,50 @@ def test_replace_req_only_price():
     o = FIXNewOrderSingle(
         "clordTest", "US.F.TICKER", side=FOrdSide.SELL, price=100.0, qty=20
     )
-    assert FIXMsg.is_valid(o.msg) == 1
     o.status = FOrdStatus.NEW
 
     m = o.replace_req(200, o.qty)
+    FIX_SCHEMA.validate(m)
 
     # Tag 38: Order Qty
-    assert m[38] == 20
+    assert m[38] == '20'
 
     # Tag 44: Order Price
-    assert m[44] == 200
+    assert m[44] == '200'
 
 
 def test_replace_req_only_qty():
     o = FIXNewOrderSingle(
         "clordTest", "US.F.TICKER", side=FOrdSide.SELL, price=100.0, qty=20
     )
-    assert FIXMsg.is_valid(o.msg) == 1
     o.status = FOrdStatus.NEW
 
     m = o.replace_req(nan, 30)
+    FIX_SCHEMA.validate(m)
 
     # Tag 38: Order Qty
-    assert m[38] == 30
+    assert m[38] == '30'
 
     # Tag 44: Order Price
-    assert m[44] == 100
+    assert m[44] == '100.0'
 
 
 def test_replace_req__not_set():
     o = FIXNewOrderSingle(
         "clordTest", "US.F.TICKER", side=FOrdSide.SELL, price=100.0, qty=20
     )
-    assert FIXMsg.is_valid(o.msg) == 1
     o.status = FOrdStatus.NEW
 
-    m = o.replace_req(nan, nan)
-    assert o.last_fix_error == -3
+    with pytest.raises(FIXError, match='no price / qty change in replace_req'):
+        m = o.replace_req(nan, nan)
 
     # No change in price/qty
-    m = o.replace_req(o.price, o.qty)
-    assert o.last_fix_error == -3
+    with pytest.raises(FIXError, match='no price / qty change in replace_req'):
+        m = o.replace_req(o.price, o.qty)
 
     # No change in price/qty
-    m = o.replace_req(o.price, 0)
-    assert o.last_fix_error == -3
+    with pytest.raises(FIXError, match='no price / qty change in replace_req'):
+        m = o.replace_req(o.price, 0)
 
 
 def test_replace_req__zero_filled__increased_qty():
@@ -1266,7 +1258,7 @@ def test_replace_req__zero_filled__increased_qty():
         "clordTest", "US.F.TICKER", side=FOrdSide.BUY, price=200.0, qty=10
     )
 
-    ft = FIXTester()
+    ft = FIXTester(FIX_SCHEMA)
     assert ft.order_register_single(o) == 1
     assert o.status == FOrdStatus.CREATED, f"o.status={chr(o.status)}"
 
@@ -1323,7 +1315,7 @@ def test_replace_req__zero_filled__increased_qty():
     assert o.is_finished() == 0
     assert o.price == 300
     assert o.qty == 11
-    assert o.orig_clord_id == 0
+    assert o.orig_clord_id is None
 
 
 def test_replace_req__part_filled__increased_qty_while_pending_replace_fractional_fill():
@@ -1335,7 +1327,7 @@ def test_replace_req__part_filled__increased_qty_while_pending_replace_fractiona
         "clordTest", "US.F.TICKER", side=FOrdSide.BUY, price=200.0, qty=10
     )
 
-    ft = FIXTester()
+    ft = FIXTester(FIX_SCHEMA)
     assert ft.order_register_single(o) == 1
     assert o.status == FOrdStatus.CREATED, f"o.status={chr(o.status)}"
 
@@ -1420,8 +1412,8 @@ def test_replace_req__part_filled__increased_qty_while_pending_replace_fractiona
     assert o.qty == 12
     assert o.cum_qty == 1.1
     assert o.leaves_qty == 10.9
-    assert o.orig_clord_id == 0
-    assert o.clord_id > old_clord
+    assert o.orig_clord_id is None
+    assert o.clord_id != old_clord
 
     msg = ft.fix_exec_report_msg(
         o,
@@ -1435,8 +1427,8 @@ def test_replace_req__part_filled__increased_qty_while_pending_replace_fractiona
     assert o.process_execution_report(msg) == 1
     assert o.process_cancel_rej_report(msg) == -3  # WRONG MSG TYPE!
     assert o.status == FOrdStatus.FILLED
-    assert o.can_replace() < 0
-    assert o.can_cancel() < 0
+    assert not o.can_replace()
+    assert not o.can_cancel()
     assert o.is_finished() == 1
     # Don't change order price/qty until confirmed
     assert o.price == 300
@@ -1454,7 +1446,7 @@ def test_replace_req__zero_filled__cxlrep_reject_when_new():
         "clordTest", "US.F.TICKER", side=FOrdSide.BUY, price=200.0, qty=10
     )
 
-    ft = FIXTester()
+    ft = FIXTester(FIX_SCHEMA)
     assert ft.order_register_single(o) == 1
     assert o.status == FOrdStatus.CREATED, f"o.status={chr(o.status)}"
 
@@ -1478,7 +1470,6 @@ def test_replace_req__zero_filled__cxlrep_reject_when_new():
     assert o.qty == 10
 
     msg = ft.fix_cxlrep_reject_msg(cxl_req, FOrdStatus.NEW)
-    assert o.process_execution_report(msg) == -3  # Wrong MSG type!
     assert o.process_cancel_rej_report(msg) == 1
     assert o.can_replace() > 0
     assert o.can_cancel() > 0
@@ -1499,7 +1490,7 @@ def test_replace_req__filled_order_rejected_after_filled():
         "clordTest", "US.F.TICKER", side=FOrdSide.BUY, price=200.0, qty=10
     )
 
-    ft = FIXTester()
+    ft = FIXTester(FIX_SCHEMA)
     assert ft.order_register_single(o) == 1
     assert o.status == FOrdStatus.CREATED, f"o.status={chr(o.status)}"
 
@@ -1544,8 +1535,8 @@ def test_replace_req__filled_order_rejected_after_filled():
 
     msg = ft.fix_cxlrep_reject_msg(cxl_req, FOrdStatus.FILLED)
     assert o.process_cancel_rej_report(msg) == 1
-    assert o.can_replace() < 0
-    assert o.can_cancel() < 0
+    assert not o.can_replace()
+    assert not o.can_cancel()
     assert o.is_finished() == 1
 
     # Don't change order price/qty until confirmed
@@ -1565,7 +1556,7 @@ def test_replace_req__filled_order_rejected__filled_increase_passed():
         "clordTest", "US.F.TICKER", side=FOrdSide.BUY, price=200.0, qty=10
     )
 
-    ft = FIXTester()
+    ft = FIXTester(FIX_SCHEMA)
     assert ft.order_register_single(o) == 1
     assert o.status == FOrdStatus.CREATED, f"o.status={chr(o.status)}"
 
@@ -1675,7 +1666,7 @@ def test_replace_req__replace_price_only_but_rejected_because_fill():
         "clordTest", "US.F.TICKER", side=FOrdSide.BUY, price=200.0, qty=10
     )
 
-    ft = FIXTester()
+    ft = FIXTester(FIX_SCHEMA)
     assert ft.order_register_single(o) == 1
     assert o.status == FOrdStatus.CREATED, f"o.status={chr(o.status)}"
 
@@ -1717,8 +1708,8 @@ def test_replace_req__replace_price_only_but_rejected_because_fill():
 
     msg = ft.fix_cxlrep_reject_msg(cxl_req, FOrdStatus.FILLED)
     assert o.process_cancel_rej_report(msg) == 1
-    assert o.can_replace() < 0
-    assert o.can_cancel() < 0
+    assert not o.can_replace() 
+    assert not o.can_cancel()
     assert o.is_finished() == 1
 
     # Don't change order price/qty until confirmed
@@ -1738,7 +1729,7 @@ def test_replace_req__decreased_qty():
         "clordTest", "US.F.TICKER", side=FOrdSide.BUY, price=200.0, qty=10
     )
 
-    ft = FIXTester()
+    ft = FIXTester(FIX_SCHEMA)
     assert ft.order_register_single(o) == 1
     assert o.status == FOrdStatus.CREATED, f"o.status={chr(o.status)}"
 
@@ -1812,7 +1803,7 @@ def test_replace_req__decreased_qty_exact_match_to_fill():
         "clordTest", "US.F.TICKER", side=FOrdSide.BUY, price=200.0, qty=10
     )
 
-    ft = FIXTester()
+    ft = FIXTester(FIX_SCHEMA)
     assert ft.order_register_single(o) == 1
     assert o.status == FOrdStatus.CREATED, f"o.status={chr(o.status)}"
 
@@ -1854,8 +1845,8 @@ def test_replace_req__decreased_qty_exact_match_to_fill():
     )
     assert o.process_execution_report(msg) == 1
     assert o.status == FOrdStatus.FILLED
-    assert o.can_replace() < 0
-    assert o.can_cancel() < 0
+    assert not o.can_replace()
+    assert not o.can_cancel()
     assert o.is_finished() == 1
 
     assert o.price == 200
@@ -1874,7 +1865,7 @@ def test_replace_req__decreased_qty__also_less_than_cum_qty():
         "clordTest", "US.F.TICKER", side=FOrdSide.BUY, price=200.0, qty=10
     )
 
-    ft = FIXTester()
+    ft = FIXTester(FIX_SCHEMA)
     assert ft.order_register_single(o) == 1
     assert o.status == FOrdStatus.CREATED, f"o.status={chr(o.status)}"
 
@@ -1916,8 +1907,8 @@ def test_replace_req__decreased_qty__also_less_than_cum_qty():
     )
     assert o.process_execution_report(msg) == 1
     assert o.status == FOrdStatus.FILLED
-    assert o.can_replace() < 0
-    assert o.can_cancel() < 0
+    assert not o.can_replace()
+    assert not o.can_cancel()
     assert o.is_finished() == 1
 
     assert o.price == 200

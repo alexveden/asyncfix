@@ -4,11 +4,23 @@ from asyncfix import FIXMessage, FTag, FMsg
 
 from .common import FExecType, FOrdStatus
 from .order_single import FIXNewOrderSingle
+from .schema import FIXSchema
 
 
 class FIXTester:
-    def __init__(self):
+    def __init__(self, schema: FIXSchema | None = None):
         self.registered_orders = {}
+        self.schema = schema
+        self.order_id = 0
+        self.exec_id = 10000
+
+    def next_order_id(self) -> int:
+        self.order_id += 1
+        return self.order_id
+
+    def next_exec_id(self) -> int:
+        self.exec_id += 1
+        return self.exec_id
 
     def order_register_single(self, o: FIXNewOrderSingle):
         self.registered_orders[o.clord_id] = o
@@ -16,6 +28,8 @@ class FIXTester:
 
     def fix_cxl_request(self, o: FIXNewOrderSingle) -> FIXMessage:
         m = o.cancel_req()
+        if self.schema:
+            self.schema.validate(m)
         assert o.can_cancel()  # new assert 2023-09-23
         o.status = FOrdStatus.PENDING_CANCEL
         self.registered_orders[o.clord_id] = o
@@ -24,7 +38,13 @@ class FIXTester:
     def fix_rep_request(
         self, o: FIXNewOrderSingle, price: float = nan, qty: float = nan
     ) -> FIXMessage:
-        pass
+        m = o.replace_req(price, qty)
+        if self.schema:
+            self.schema.validate(m)
+        assert o.can_replace()
+        o.status = FOrdStatus.PENDING_REPLACE
+        self.registered_orders[o.clord_id] = o
+        return m
 
     def fix_cxlrep_reject_msg(
         self,
@@ -45,6 +65,9 @@ class FIXTester:
             m[FTag.CxlRejResponseTo] = "2"
         else:
             assert False, f"Unexpected message type: {cxl_req}"
+
+        if self.schema:
+            self.schema.validate(m)
 
         return m
 
@@ -67,10 +90,15 @@ class FIXTester:
         assert clord_id
         m[FTag.ClOrdID] = clord_id
 
+        order_id = order.order_id if order.order_id is None else self.next_order_id()
+        m[FTag.OrderID] = order_id
+        m[FTag.ExecID] = self.next_exec_id()
+
         if orig_clord_id:
             m[FTag.OrigClOrdID] = orig_clord_id
         m[FTag.ExecType] = exec_type
         m[FTag.OrdStatus] = ord_status
+        m[FTag.Side] = order.side
 
         if isnan(order_qty):
             order_qty = order.qty
@@ -79,7 +107,6 @@ class FIXTester:
                 exec_type == FExecType.REPLACED
             ), "Only applicable to exec_type=5 (replace)"
             assert order_qty > 0
-        m[FTag.OrderQty] = order_qty
 
         if isnan(cum_qty):
             cum_qty = order.cum_qty
@@ -119,9 +146,16 @@ class FIXTester:
             assert (
                 exec_type == FExecType.REPLACED
             ), "Only applicable to exec_type=5 (replace)"
-            m[FTag.Price] = price
+        else:
+            price = order.price
 
-        # if exec_type == FIX_ET_PCXL and ord_status == FIX_OS_PCXL:
+        order.set_instrument(m)
+
+        order.set_price_qty(m, price, order_qty)
+        m[FTag.AvgPx] = price
+
+        order.set_account(m)
+
         if (
             exec_type == FExecType.PENDING_CANCEL
             and ord_status == FOrdStatus.PENDING_CANCEL
@@ -140,4 +174,6 @@ class FIXTester:
         ):
             assert leaves_qty == 0, "New order report is finished, but LeavesQty != 0"
 
+        if self.schema:
+            self.schema.validate(m)
         return m
