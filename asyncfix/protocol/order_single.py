@@ -105,6 +105,7 @@ class FIXNewOrderSingle:
         fix_msg_type: FMsg,
         msg_exec_type: FExecType,
         msg_status: FOrdStatus,
+        raise_on_err: bool = True,
     ) -> FOrdStatus | None:
         """
         FIX Order State transition algo
@@ -129,7 +130,10 @@ class FIXNewOrderSingle:
                 elif msg_status == FOrdStatus.REJECTED:
                     return FOrdStatus.REJECTED
                 else:
-                    raise FIXError("FIX Order state transition error")
+                    if raise_on_err:
+                        raise FIXError("FIX Order state transition error")
+                    else:
+                        return None
             elif status == FOrdStatus.PENDING_NEW:
                 # PendingNew -> (Rejected, New, Filled, Canceled)
                 if msg_status == FOrdStatus.REJECTED:
@@ -145,7 +149,10 @@ class FIXNewOrderSingle:
                 elif msg_status == FOrdStatus.SUSPENDED:
                     return FOrdStatus.SUSPENDED
                 else:
-                    raise FIXError("FIX Order state transition error")
+                    if raise_on_err:
+                        raise FIXError("FIX Order state transition error")
+                    else:
+                        return None
             elif status == FOrdStatus.NEW:
                 # New -> (Rejected, New, Suspended, PartiallyFilled, Filled,
                 #         Canceled, Expired, DFD)
@@ -154,7 +161,10 @@ class FIXNewOrderSingle:
                     or msg_status == FOrdStatus.CREATED
                     or msg_status == FOrdStatus.ACCEPTED_FOR_BIDDING
                 ):
-                    raise FIXError("FIX Order state transition error")
+                    if raise_on_err:
+                        raise FIXError("FIX Order state transition error")
+                    else:
+                        return None
                 elif msg_status == FOrdStatus.NEW:
                     # Reinstatement, allowed but not trigger state change
                     return None
@@ -179,7 +189,10 @@ class FIXNewOrderSingle:
                     # Possible duplidates or delayed fills
                     return None
                 else:
-                    raise FIXError("FIX Order state transition error")
+                    if raise_on_err:
+                        raise FIXError("FIX Order state transition error")
+                    else:
+                        return None
             elif status == FOrdStatus.PARTIALLY_FILLED:
                 if msg_status == FOrdStatus.FILLED:
                     return FOrdStatus.FILLED
@@ -197,14 +210,19 @@ class FIXNewOrderSingle:
                     return FOrdStatus.SUSPENDED
                 elif msg_status == FOrdStatus.STOPPED:
                     return FOrdStatus.STOPPED
-
                 else:
-                    raise FIXError("FIX Order state transition error")
+                    if raise_on_err:
+                        raise FIXError("FIX Order state transition error")
+                    else:
+                        return None
             elif status == FOrdStatus.PENDING_CANCEL:
                 if msg_status == FOrdStatus.CANCELED:
                     return FOrdStatus.CANCELED
                 elif msg_status == FOrdStatus.CREATED:
-                    raise FIXError("FIX Order state transition error")
+                    if raise_on_err:
+                        raise FIXError("FIX Order state transition error")
+                    else:
+                        return None
                 else:
                     return None
             elif status == FOrdStatus.PENDING_REPLACE:
@@ -218,27 +236,39 @@ class FIXNewOrderSingle:
                     ):
                         return msg_status
                     else:
-                        raise FIXError("FIX Order state transition error")
+                        if raise_on_err:
+                            raise FIXError("FIX Order state transition error")
+                        else:
+                            return None
                 else:
                     if (
                         msg_status == FOrdStatus.CREATED
                         or msg_status == FOrdStatus.ACCEPTED_FOR_BIDDING
                     ):
-                        raise FIXError("FIX Order state transition error")
+                        if raise_on_err:
+                            raise FIXError("FIX Order state transition error")
+                        else:
+                            return None
                     else:
                         # Technically does not count any status,
                         # until get replace reject or exec_type = FExecType.REPLACED
                         return None
 
             else:
-                raise FIXError("FIX Order state transition error")
+                if raise_on_err:
+                    raise FIXError("FIX Order state transition error")
+                else:
+                    return None
 
         elif fix_msg_type == "9":  # Order Cancel reject
             if (
                 msg_status == FOrdStatus.CREATED
                 or msg_status == FOrdStatus.ACCEPTED_FOR_BIDDING
             ):
-                raise FIXError("FIX Order state transition error")
+                if raise_on_err:
+                    raise FIXError("FIX Order state transition error")
+                else:
+                    return None
             return msg_status
         elif fix_msg_type == "F" or fix_msg_type == "G":
             # 'F' - Order cancel request (order requests self cancel)
@@ -257,9 +287,15 @@ class FIXNewOrderSingle:
                 # Order is active and good for cancel/replacement
                 return status
             else:
-                raise FIXError("FIX Order state transition error")
+                if raise_on_err:
+                    raise FIXError("FIX Order state transition error")
+                else:
+                    return None
         else:
-            raise FIXError("FIX Order state transition error")
+            if raise_on_err:
+                raise FIXError("FIX Order state transition error")
+            else:
+                return None
 
     def process_cancel_rej_report(self, m: FIXMessage) -> int:
         pass
@@ -269,7 +305,7 @@ class FIXNewOrderSingle:
             return -3  # DEF ERR_FIX_VALUE_ERROR        = -3
 
         clord_id = m[FTag.ClOrdID]
-        cum_qty = m[FTag.CumQty]
+        cum_qty = float(m[FTag.CumQty])
         order_status = m[FTag.OrdStatus]
 
         if clord_id != self.clord_id:
@@ -277,7 +313,7 @@ class FIXNewOrderSingle:
                 return -4  # ERR_FIX_NOT_ALLOWED        = -4
 
         exec_type = m[FTag.ExecType]
-        leaves_qty = m[FTag.LeavesQty]
+        leaves_qty = float(m[FTag.LeavesQty])
 
         new_status = FIXNewOrderSingle.change_status(
             self.status, m.msg_type, exec_type, order_status
@@ -296,7 +332,7 @@ class FIXNewOrderSingle:
             order_qty = m.get(FTag.OrderQty, None)
             if order_qty is not None:
                 # Qty may not be in execution report, it's not an error
-                self.qty = order_qty
+                self.qty = float(order_qty)
 
             # Clearing OrigOrdId to allow subsequent order changes
             self.orig_clord_id = None
@@ -310,13 +346,37 @@ class FIXNewOrderSingle:
             return -99999
 
     def is_finished(self) -> bool:
-        pass
+        """
+        Check if order is in terminal state (no subsequent changes expected)
+        """
+        return (
+            self.status == FOrdStatus.FILLED
+            or self.status == FOrdStatus.CANCELED
+            or self.status == FOrdStatus.REJECTED
+            or self.status == FOrdStatus.EXPIRED
+        )
 
     def can_cancel(self) -> bool:
-        pass
+        """
+        Check if order can be canceled from its current state
+        """
+        return (
+            FIXNewOrderSingle.change_status(
+                self.status, "F", 0, FOrdStatus.PENDING_CANCEL, raise_on_err=False
+            )
+            is not None
+        )
 
     def can_replace(self) -> bool:
-        pass
+        """
+        Check if order can be replaced from its current state
+        """
+        return (
+            FIXNewOrderSingle.change_status(
+                self.status, "G", 0, FOrdStatus.PENDING_REPLACE, raise_on_err=False
+            )
+            is not None
+        )
 
     def cancel_req(self) -> FIXMessage:
         pass

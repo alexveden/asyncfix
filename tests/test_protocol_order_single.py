@@ -425,6 +425,7 @@ def test_state_transition__pendingreplce__ord_reject():
     assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_REPLACE, '9', 0, FOrdStatus.PENDING_REPLACE) == FOrdStatus.PENDING_REPLACE
     # fmt: on
 
+
 def test_exec_sequence__vanilla_fill():
     """
     A.1.a – Filled order
@@ -438,8 +439,8 @@ def test_exec_sequence__vanilla_fill():
     ft = FIXTester()
     assert ft.order_register_single(o) == 1
     assert o.status == FOrdStatus.CREATED, f"o.status={chr(o.status)}"
-    assert o.can_cancel() < 0
-    assert o.can_replace() < 0
+    assert not o.can_cancel()
+    assert not o.can_replace()
     assert o.is_finished() == 0
 
     msg = ft.fix_exec_report_msg(
@@ -447,8 +448,8 @@ def test_exec_sequence__vanilla_fill():
     )
     assert o.process_execution_report(msg) == 1
     assert o.status == FOrdStatus.PENDING_NEW, f"o.status={chr(o.status)}"
-    assert o.can_cancel() < 0
-    assert o.can_replace() < 0
+    assert not o.can_cancel()
+    assert not o.can_replace()
     assert o.is_finished() == 0
 
     msg = ft.fix_exec_report_msg(
@@ -513,8 +514,8 @@ def test_exec_sequence__vanilla_fill():
     assert o.cum_qty == 10
     assert o.leaves_qty == 0
 
-    assert o.can_cancel() < 0
-    assert o.can_replace() < 0
+    assert not o.can_cancel() 
+    assert not o.can_replace()
     assert o.is_finished() == 1
 
 
@@ -528,7 +529,6 @@ def test_exec_sequence__vanilla_fill_reject__pendingnew():
     o = FIXNewOrderSingle(
         "clordTest", "US.F.TICKER", side=FOrdSide.BUY, price=200.0, qty=10
     )
-    assert o.status == 0, f"o.status={chr(o.status)}"
 
     ft = FIXTester()
     assert ft.order_register_single(o) == 1
@@ -549,8 +549,8 @@ def test_exec_sequence__vanilla_fill_reject__pendingnew():
     assert o.cum_qty == 0
     assert o.leaves_qty == 00
 
-    assert o.can_cancel() < 0
-    assert o.can_replace() < 0
+    assert not o.can_cancel()
+    assert not o.can_replace()
     assert o.is_finished() == 1
 
 
@@ -653,8 +653,8 @@ def test_exec_sequence__vanilla_suspended():
     assert o.cum_qty == 2
     assert o.leaves_qty == 0
 
-    assert o.can_cancel() > 0
-    assert o.can_replace() > 0
+    assert o.can_cancel()
+    assert o.can_replace()
     assert o.is_finished() == 0
 
     msg = ft.fix_exec_report_msg(

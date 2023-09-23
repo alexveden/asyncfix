@@ -70,7 +70,7 @@ class FIXTester:
         else:
             assert cum_qty <= order.qty
             assert cum_qty >= 0
-        m[FTag.CumQty] = 14
+        m[FTag.CumQty] = cum_qty
 
         if isnan(leaves_qty):
             leaves_qty = order.leaves_qty
