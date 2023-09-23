@@ -1,5 +1,5 @@
 from datetime import datetime
-from math import isnan
+from math import isfinite, nan
 
 from asyncfix import FIXMessage, FMsg, FTag
 from asyncfix.errors import FIXError
@@ -35,11 +35,17 @@ class FIXNewOrderSingle:
         self.target_price = target_price if target_price is not None else price
 
     def next_clord(self) -> str:
+        """
+        New ClOrdID for current order management
+        """
         self.clord_id_cnt += 1
         return f"{self.clord_id}-{self.clord_id_cnt}"
 
     @staticmethod
     def current_datetime():
+        """
+        TransactTime field
+        """
         return datetime.utcnow().strftime("%Y%m%d-%H:%M:%S.%f")[:-3]
 
     def new_req(self) -> FIXMessage:
@@ -62,6 +68,72 @@ class FIXNewOrderSingle:
         self.set_price_qty(o, self.price, self.qty)
 
         return o
+
+    def cancel_req(self) -> FIXMessage:
+        """
+        Creates order cancel request
+
+        Raises:
+            FIXError: if order can't be canceled
+
+        """
+        if not self.can_cancel():
+            raise FIXError(f"{self} Fix order is not allowed for cancel")
+
+        assert not self.orig_clord_id
+        self.orig_clord_id = self.clord_id
+        self.clord_id = self.next_clord()
+
+        cxl_req_msg = FIXMessage(FMsg.ORDERCANCELREQUEST)
+        cxl_req_msg[11] = self.clord_id
+        cxl_req_msg[38] = self.qty
+        cxl_req_msg[41] = self.clord_id
+        self.set_instrument(cxl_req_msg)
+        cxl_req_msg[FTag.Side] = self.side
+        cxl_req_msg[FTag.TransactTime] = self.current_datetime()
+
+        return cxl_req_msg
+
+    def replace_req(self, price: float = nan, qty: float = nan) -> FIXMessage:
+        """
+        Creates order replace request
+
+        Args:
+            price: alternative price
+            qty: alternative qty
+
+        Returns:
+            message
+
+        Raises:
+            FIXError: if order can't be replaced or price/qty unchanged
+
+        """
+        if not self.can_replace():
+            raise FIXError("Order cannot be replaced")
+
+        if not isfinite(price) or price == self.price:
+            price = self.price
+        if not isfinite(qty) or qty == self.qty or qty == 0:
+            qty = self.qty
+
+        if price == self.price and qty == self.qty:
+            raise FIXError("no price / qty change in replace_req")
+
+        assert not self.orig_clord_id
+        self.orig_clord_id = self.clord_id
+        self.clord_id = self.next_clord()
+
+        m = FIXMessage(FMsg.ORDERCANCELREPLACEREQUEST)
+        m[FTag.ClOrdID] = self.clord_id
+        m[FTag.OrigClOrdID] = self.orig_clord_id
+        m[FTag.OrdType] = self.ord_type
+        self.set_instrument(m)
+        self.set_price_qty(m, price, qty)
+        m[FTag.Side] = self.side
+        m[FTag.TransactTime] = self.current_datetime()
+
+        return m
 
     def set_instrument(self, ord_msg: FIXMessage):
         """
@@ -299,9 +371,11 @@ class FIXNewOrderSingle:
             else:
                 return None
 
-    def process_cancel_rej_report(self, m: FIXMessage) -> int:
-        if m.msg_type != FMsg.ORDERCANCELREJECT:
-            return -3  # DEF ERR_FIX_VALUE_ERROR        = -3
+    def process_cancel_rej_report(self, m: FIXMessage) -> bool:
+        """
+        Processes incoming cancel reject report message
+        """
+        assert m.msg_type == FMsg.ORDERCANCELREJECT, "incorrect message"
 
         order_status = m[FTag.OrdStatus]
 
@@ -314,11 +388,17 @@ class FIXNewOrderSingle:
 
         if new_status is not None:
             self.status = new_status
-            return 1
+            return True
         else:
-            return 0
+            return False
 
-    def process_execution_report(self, m: FIXMessage) -> int:
+    def process_execution_report(self, m: FIXMessage) -> bool:
+        """
+        Processes incoming execution report for an order
+
+        Raises:
+            FIXError: if ClOrdID mismatch
+        """
         assert m.msg_type == FMsg.EXECUTIONREPORT, "unexpected msg type"
 
         clord_id = m[FTag.ClOrdID]
@@ -355,9 +435,9 @@ class FIXNewOrderSingle:
 
         if new_status:
             self.status = new_status
-            return 1
+            return True
         else:
-            return 0
+            return False
 
     def is_finished(self) -> bool:
         """
@@ -391,48 +471,3 @@ class FIXNewOrderSingle:
             )
             is not None
         )
-
-    def cancel_req(self) -> FIXMessage:
-        if not self.can_cancel():
-            raise FIXError(f"{self} Fix order is not allowed for cancel")
-
-        assert not self.orig_clord_id
-        self.orig_clord_id = self.clord_id
-        self.clord_id = self.next_clord()
-
-        cxl_req_msg = FIXMessage(FMsg.ORDERCANCELREQUEST)
-        cxl_req_msg[11] = self.clord_id
-        cxl_req_msg[38] = self.qty
-        cxl_req_msg[41] = self.clord_id
-        self.set_instrument(cxl_req_msg)
-        cxl_req_msg[FTag.Side] = self.side
-        cxl_req_msg[FTag.TransactTime] = self.current_datetime()
-
-        return cxl_req_msg
-
-    def replace_req(self, price: float, qty: float) -> FIXMessage:
-        if not self.can_replace():
-            raise FIXError("Order cannot be replaced")
-
-        if isnan(price) or price == self.price:
-            price = self.price
-        if isnan(qty) or qty == self.qty or qty == 0:
-            qty = self.qty
-
-        if price == self.price and qty == self.qty:
-            raise FIXError("no price / qty change in replace_req")
-
-        assert not self.orig_clord_id
-        self.orig_clord_id = self.clord_id
-        self.clord_id = self.next_clord()
-
-        m = FIXMessage(FMsg.ORDERCANCELREPLACEREQUEST)
-        m[FTag.ClOrdID] = self.clord_id
-        m[FTag.OrigClOrdID] = self.orig_clord_id
-        m[FTag.OrdType] = self.ord_type
-        self.set_instrument(m)
-        self.set_price_qty(m, price, qty)
-        m[FTag.Side] = self.side
-        m[FTag.TransactTime] = self.current_datetime()
-
-        return m
