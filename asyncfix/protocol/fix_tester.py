@@ -14,11 +14,12 @@ class FIXTester:
         self.registered_orders[o.clord_id] = o
         return True
 
-    def order_register_cxlrep(self, o: FIXNewOrderSingle, rep: FIXMessage):
-        pass
-
     def fix_cxl_request(self, o: FIXNewOrderSingle) -> FIXMessage:
-        pass
+        m = o.cancel_req()
+        assert o.can_cancel()  # new assert 2023-09-23
+        o.status = FOrdStatus.PENDING_CANCEL
+        self.registered_orders[o.clord_id] = o
+        return m
 
     def fix_rep_request(
         self, o: FIXNewOrderSingle, price: float = nan, qty: float = nan
@@ -27,10 +28,25 @@ class FIXTester:
 
     def fix_cxlrep_reject_msg(
         self,
-        cancel_msg: FIXMessage,
+        cxl_req: FIXMessage,
         ord_status: FOrdStatus,
     ) -> FIXMessage:
-        pass
+        clord_id = cxl_req[FTag.ClOrdID]
+        orig_clord_id = cxl_req[FTag.OrigClOrdID]
+
+        m = FIXMessage(FMsg.ORDERCANCELREJECT)
+        m[37] = 0
+        m[11] = clord_id
+        m[41] = orig_clord_id
+        m[39] = ord_status
+        if cxl_req.msg_type == FMsg.ORDERCANCELREQUEST:
+            m[FTag.CxlRejResponseTo] = "1"
+        elif cxl_req.msg_type == FMsg.ORDERCANCELREPLACEREQUEST:
+            m[FTag.CxlRejResponseTo] = "2"
+        else:
+            assert False, f"Unexpected message type: {cxl_req}"
+
+        return m
 
     def fix_exec_report_msg(
         self,
@@ -110,9 +126,9 @@ class FIXTester:
             exec_type == FExecType.PENDING_CANCEL
             and ord_status == FOrdStatus.PENDING_CANCEL
         ):
-            assert order.orig_clord_id > 0
-            assert order.clord_id > 0
-            assert order.clord_id > order.orig_clord_id
+            assert order.orig_clord_id
+            assert order.clord_id
+            assert order.clord_id != order.orig_clord_id
             assert order.cum_qty == cum_qty
             assert order.leaves_qty == leaves_qty
 

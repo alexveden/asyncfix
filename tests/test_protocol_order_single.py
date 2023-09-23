@@ -18,8 +18,6 @@ fix44_schema = ET.parse(os.path.join(TEST_DIR, "FIX44.xml"))
 FIX_SCHEMA = FIXSchema(fix44_schema)
 
 
-
-
 def test_init_order_single_default_short():
     ord_dict = {}
     o = FIXNewOrderSingle(
@@ -44,7 +42,7 @@ def test_init_order_single_default_short():
     assert m[FTag.Account] == "000000"
 
     # Tag 11: ClOrdID
-    assert m[FTag.ClOrdID] == 'clordTest'
+    assert m[FTag.ClOrdID] == "clordTest"
 
     # Tag 38: Order Qty
     assert m[FTag.OrderQty] == "20"
@@ -108,7 +106,7 @@ def test_init_order_single_long():
     assert m[54] == "1"  # buy
 
     #  Tag 55: Symbol set to v2 symbol
-    assert m[55] == 'US.F.TICKER'
+    assert m[55] == "US.F.TICKER"
 
     # Overall message is valid!
     assert FIX_SCHEMA.validate(m)
@@ -514,7 +512,7 @@ def test_exec_sequence__vanilla_fill():
     assert o.cum_qty == 10
     assert o.leaves_qty == 0
 
-    assert not o.can_cancel() 
+    assert not o.can_cancel()
     assert not o.can_replace()
     assert o.is_finished() == 1
 
@@ -676,34 +674,24 @@ def test_cancel_req():
     o = FIXNewOrderSingle(
         "clordTest", "US.F.TICKER", side=FOrdSide.SELL, price=100.0, qty=20
     )
-    assert FIXMsg.is_valid(o.msg) == 1
     o.status = FOrdStatus.NEW
 
     m = o.cancel_req()
 
     # Tag 11: ClOrdID
-    assert m[11] == 0
+    assert m[11] == "0"
 
     # Tag 41: OrigClOrdID
     assert m[41] == o.clord_id
 
-    #  Tag 22: SecurityIDSource - quote cache ticker index
-    assert m[22] == 10
-
     # Tag 38: Order Qty
-    assert m[38] == 20
-
-    #  Tag 48: SecurityID - set to instrument_info (uint64_t instrument_id) -- it's going to be stable
-    assert m[48] == 123
+    assert m[38] == "20"
 
     # Tag 54: Side
     assert m[54] == "2"  # sell
 
     #  Tag 55: Symbol set to v2 symbol
-    # FIX: assert strcmp(FIXMsg.get_str(m, 55), q.v2_ticker) == 0
-
-    # Tag 60: Transact time
-    # FIX: assert timedelta_ns(datetime_nsnow(), FIXMsg.get_utc_timestamp(m, 60)[0], TIMEDELTA_MILLI) < 20
+    assert m[FTag.Symbol] == "US.F.TICKER"
 
     # Overall message is valid!
     assert FIX_SCHEMA.validate(m)
@@ -746,8 +734,8 @@ def test_cancel_req__zero_filled_order():
     assert o.cum_qty == 0
     assert o.leaves_qty == 0
 
-    assert o.can_replace() < 0
-    assert o.can_cancel() < 0
+    assert not o.can_replace() 
+    assert not o.can_cancel()
     assert o.is_finished() == 1
 
 
@@ -782,7 +770,7 @@ def test_cancel_req__zero_filled_order__cancel_reject():
     assert o.is_finished() == 0
 
     msg = ft.fix_cxlrep_reject_msg(cxl_req, FOrdStatus.NEW)
-    assert msg.header.msg_type == "9"
+    assert msg.msg_type == "9"
     rc = o.process_cancel_rej_report(msg)
     assert rc == 1, rc
     assert o.qty == 10
@@ -790,8 +778,8 @@ def test_cancel_req__zero_filled_order__cancel_reject():
     assert o.leaves_qty == 10
     assert o.status == FOrdStatus.NEW
 
-    assert o.can_replace() > 0
-    assert o.can_cancel() > 0
+    assert o.can_replace()
+    assert o.can_cancel()
     assert o.is_finished() == 0
 
 
@@ -842,7 +830,7 @@ def test_cancel_req__zero_filled_order__cancel_reject_after_pending():
     assert o.is_finished() == 0
 
     msg = ft.fix_cxlrep_reject_msg(cxl_req, FOrdStatus.NEW)
-    assert msg.header.msg_type == "9"
+    assert msg.msg_type == "9"
     rc = o.process_cancel_rej_report(msg)
     assert rc == 1, rc
     assert o.qty == 10
@@ -850,8 +838,8 @@ def test_cancel_req__zero_filled_order__cancel_reject_after_pending():
     assert o.leaves_qty == 10
     assert o.status == FOrdStatus.NEW
 
-    assert o.can_replace() > 0
-    assert o.can_cancel() > 0
+    assert o.can_replace()
+    assert o.can_cancel()
     assert o.is_finished() == 0
 
 
@@ -958,8 +946,8 @@ def test_cancel_req__part_filled_order__with_some_execution_between():
     )
     assert o.process_execution_report(msg) == 1
     assert o.status == FOrdStatus.CANCELED
-    assert o.can_replace() < 0
-    assert o.can_cancel() < 0
+    assert not o.can_replace()
+    assert not o.can_cancel()
     assert o.is_finished() == 1
     assert o.qty == 10
     assert o.cum_qty == 6
@@ -1006,7 +994,7 @@ def test_cancel_req__order_filled_before_cancel_accepted_different_clord():
     assert o.can_cancel() == 0
     assert o.is_finished() == 0
 
-    assert o.orig_clord_id > 0
+    assert o.orig_clord_id
     assert o.clord_id != o.orig_clord_id
     # IMPORTANT: USING OLD CLORD because pretending this report was generated
     # before request for cancel arrived to server
@@ -1067,8 +1055,8 @@ def test_cancel_req__order_filled_before_cancel_accepted_different_clord():
     assert o.cum_qty == 10
     assert o.leaves_qty == 0
     assert o.status == FOrdStatus.FILLED
-    assert o.can_replace() < 0
-    assert o.can_cancel() < 0
+    assert not o.can_replace()
+    assert not o.can_cancel()
     assert o.is_finished() == 1
 
 
@@ -1085,18 +1073,20 @@ def test_cancel_req__not_acknoledged_order_by_gate():
     assert ft.order_register_single(o) == 1
     assert o.status == FOrdStatus.CREATED, f"o.status={chr(o.status)}"
 
-    cxl_req = o.cancel_req()
-    assert o.can_replace() < 0
-    assert o.can_cancel() < 0
+    with pytest.raises(FIXError, match='order is not allowed for cancel'):
+        cxl_req = o.cancel_req()
+    assert not o.can_replace() 
+    assert not o.can_cancel()
 
     msg = ft.fix_exec_report_msg(
         o, o.clord_id, FExecType.PENDING_NEW, FOrdStatus.PENDING_NEW
     )
     assert o.process_execution_report(msg) == 1
 
-    cxl_req = o.cancel_req()
-    assert o.can_replace() < 0
-    assert o.can_cancel() < 0
+    with pytest.raises(FIXError, match='order is not allowed for cancel'):
+        cxl_req = o.cancel_req()
+    assert not o.can_replace() 
+    assert not o.can_cancel()
 
 
 def test_cancel_req__multiple_requests_are_blocked():
@@ -1171,9 +1161,9 @@ def test_cancel_req__order_filled_before_cancel_accepted():
     assert o.cum_qty == 2
     assert o.leaves_qty == 0
     assert o.status == FOrdStatus.REJECTED
-    assert o.can_replace() < 0
-    assert o.can_cancel() < 0
-    assert o.is_finished() == 1
+    assert not o.can_replace()
+    assert not o.can_cancel()
+    assert o.is_finished()
 
 
 def test_replace_req():

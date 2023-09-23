@@ -32,7 +32,7 @@ class FIXNewOrderSingle:
         self.status: FOrdStatus = FOrdStatus.CREATED
         self.target_price = target_price if target_price is not None else price
 
-    def next_clord(self):
+    def next_clord(self) -> str:
         self.clord_id_cnt += 1
         return f"{self.clord_id}-{self.clord_id_cnt}"
 
@@ -298,7 +298,23 @@ class FIXNewOrderSingle:
                 return None
 
     def process_cancel_rej_report(self, m: FIXMessage) -> int:
-        pass
+        if m.msg_type != FMsg.ORDERCANCELREJECT:
+            return -3  # DEF ERR_FIX_VALUE_ERROR        = -3
+
+        order_status = m[FTag.OrdStatus]
+
+        new_status = self.change_status(self.status, m.msg_type, 0, order_status)
+        #
+        if order_status == FOrdStatus.REJECTED:
+            # Very weird (emergency) case, because the ClOrdId does not exist
+            #   Let's set order inactive
+            self.leaves_qty = 0
+
+        if new_status is not None:
+            self.status = new_status
+            return 1
+        else:
+            return 0
 
     def process_execution_report(self, m: FIXMessage) -> int:
         if m.msg_type != FMsg.EXECUTIONREPORT:
@@ -379,7 +395,22 @@ class FIXNewOrderSingle:
         )
 
     def cancel_req(self) -> FIXMessage:
-        pass
+        if not self.can_cancel():
+            raise FIXError(f'{self} Fix order is not allowed for cancel')
+
+        assert not self.orig_clord_id
+        self.orig_clord_id = self.clord_id
+        self.clord_id = self.next_clord()
+
+        cxl_req_msg = FIXMessage(FMsg.ORDERCANCELREQUEST)
+        cxl_req_msg[11] = 0
+        cxl_req_msg[38] = self.qty
+        cxl_req_msg[41] = self.clord_id
+        self.set_instrument(cxl_req_msg)
+        cxl_req_msg[FTag.Side] = self.side
+        cxl_req_msg[FTag.TransactTime] = self.current_datetime()
+
+        return cxl_req_msg
 
     def replace_req(self, price: float, qty: float) -> FIXMessage:
         pass
