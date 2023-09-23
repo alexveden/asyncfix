@@ -7,6 +7,7 @@ from math import nan
 import pytest
 
 from asyncfix import FTag, FMsg
+from asyncfix.errors import FIXError
 from asyncfix.protocol.common import FExecType, FOrdSide, FOrdStatus, FOrdType
 from asyncfix.protocol.fix_tester import FIXTester
 from asyncfix.protocol.order_single import FIXNewOrderSingle
@@ -17,18 +18,13 @@ fix44_schema = ET.parse(os.path.join(TEST_DIR, "FIX44.xml"))
 FIX_SCHEMA = FIXSchema(fix44_schema)
 
 
+
+
 def test_init_order_single_default_short():
     ord_dict = {}
     o = FIXNewOrderSingle(
         "clordTest", "US.F.TICKER", side=FOrdSide.SELL, price=100.0, qty=20
     )
-    ord_dict[1] = o
-    #  cdef FIXNewOrderSingle o2
-    for k, v in ord_dict.items():
-        o2 = v
-        o2.is_finished()
-        # v.is_finished() # AttributeError: 'uberhf.orders.fix_orders.FIXNewOrderSingle' object has no attribute 'is_finished'
-
     assert isinstance(o, FIXNewOrderSingle)
     assert o.status == FOrdStatus.CREATED
     assert o.ord_type == FOrdType.LIMIT
@@ -150,48 +146,49 @@ def test_simple_execution_report_state_created__2__rejected():
 
 def test_state_transition__created__execution_report():
     # fmt: off
-    assert FIXNewOrderSingle.change_status(FOrdStatus.CREATED, '8', FExecType.TRADE, FOrdStatus.CREATED) == -23
-    assert FIXNewOrderSingle.change_status(FOrdStatus.CREATED, '8', FExecType.TRADE, FOrdStatus.NEW) == -23
-    assert FIXNewOrderSingle.change_status(FOrdStatus.CREATED, '8', FExecType.TRADE, FOrdStatus.PARTIALLY_FILLED) == -23
-    assert FIXNewOrderSingle.change_status(FOrdStatus.CREATED, '8', FExecType.TRADE, FOrdStatus.FILLED) == -23
-    assert FIXNewOrderSingle.change_status(FOrdStatus.CREATED, '8', FExecType.TRADE, FOrdStatus.DONE_FOR_DAY) == -23
-    assert FIXNewOrderSingle.change_status(FOrdStatus.CREATED, '8', FExecType.TRADE, FOrdStatus.CANCELED) == -23
-    assert FIXNewOrderSingle.change_status(FOrdStatus.CREATED, '8', FExecType.TRADE, FOrdStatus.PENDING_CANCEL) == -23
-    assert FIXNewOrderSingle.change_status(FOrdStatus.CREATED, '8', FExecType.TRADE, FOrdStatus.STOPPED) == -23
+    assert pytest.raises(FIXError, FIXNewOrderSingle.change_status, FOrdStatus.CREATED, '8', FExecType.TRADE, FOrdStatus.CREATED) 
+    assert pytest.raises(FIXError, FIXNewOrderSingle.change_status, FOrdStatus.CREATED, '8', FExecType.TRADE, FOrdStatus.NEW) 
+    assert pytest.raises(FIXError, FIXNewOrderSingle.change_status, FOrdStatus.CREATED, '8', FExecType.TRADE, FOrdStatus.PARTIALLY_FILLED) 
+    assert pytest.raises(FIXError, FIXNewOrderSingle.change_status, FOrdStatus.CREATED, '8', FExecType.TRADE, FOrdStatus.FILLED) 
+    assert pytest.raises(FIXError, FIXNewOrderSingle.change_status, FOrdStatus.CREATED, '8', FExecType.TRADE, FOrdStatus.DONE_FOR_DAY) 
+    assert pytest.raises(FIXError, FIXNewOrderSingle.change_status, FOrdStatus.CREATED, '8', FExecType.TRADE, FOrdStatus.CANCELED) 
+    assert pytest.raises(FIXError, FIXNewOrderSingle.change_status, FOrdStatus.CREATED, '8', FExecType.TRADE, FOrdStatus.PENDING_CANCEL) 
+    assert pytest.raises(FIXError, FIXNewOrderSingle.change_status, FOrdStatus.CREATED, '8', FExecType.TRADE, FOrdStatus.STOPPED) 
     assert FIXNewOrderSingle.change_status(FOrdStatus.CREATED, '8', FExecType.TRADE, FOrdStatus.REJECTED) == FOrdStatus.REJECTED
-    assert FIXNewOrderSingle.change_status(FOrdStatus.CREATED, '8', FExecType.TRADE, FOrdStatus.SUSPENDED) == -23
+    assert pytest.raises(FIXError, FIXNewOrderSingle.change_status, FOrdStatus.CREATED, '8', FExecType.TRADE, FOrdStatus.SUSPENDED) 
     assert FIXNewOrderSingle.change_status(FOrdStatus.CREATED, '8', FExecType.TRADE, FOrdStatus.PENDING_NEW) == FOrdStatus.PENDING_NEW
-    assert FIXNewOrderSingle.change_status(FOrdStatus.CREATED, '8', FExecType.TRADE, FOrdStatus.CALCULATED) == -23
-    assert FIXNewOrderSingle.change_status(FOrdStatus.CREATED, '8', FExecType.TRADE, FOrdStatus.EXPIRED) == -23
-    assert FIXNewOrderSingle.change_status(FOrdStatus.CREATED, '8', FExecType.TRADE, FOrdStatus.ACCEPTED_FOR_BIDDING) == -23
-    assert FIXNewOrderSingle.change_status(FOrdStatus.CREATED, '8', FExecType.TRADE, FOrdStatus.PENDING_REPLACE) == -23
+    assert pytest.raises(FIXError, FIXNewOrderSingle.change_status, FOrdStatus.CREATED, '8', FExecType.TRADE, FOrdStatus.CALCULATED) 
+    assert pytest.raises(FIXError, FIXNewOrderSingle.change_status, FOrdStatus.CREATED, '8', FExecType.TRADE, FOrdStatus.EXPIRED) 
+    assert pytest.raises(FIXError, FIXNewOrderSingle.change_status, FOrdStatus.CREATED, '8', FExecType.TRADE, FOrdStatus.ACCEPTED_FOR_BIDDING) 
+    assert pytest.raises(FIXError, FIXNewOrderSingle.change_status, FOrdStatus.CREATED, '8', FExecType.TRADE, FOrdStatus.PENDING_REPLACE) 
     # fmt: on
 
 
 def test_state_transition__pendingnew__execution_report():
     # fmt: off
-    assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_NEW, '8', FExecType.TRADE, FOrdStatus.CREATED) == -23
+    assert pytest.raises(FIXError, FIXNewOrderSingle.change_status, FOrdStatus.PENDING_NEW, '8', FExecType.TRADE, FOrdStatus.CREATED) 
     assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_NEW, '8', FExecType.TRADE, FOrdStatus.NEW) == FOrdStatus.NEW
     assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_NEW, '8', FExecType.TRADE, FOrdStatus.PARTIALLY_FILLED) == FOrdStatus.PARTIALLY_FILLED
     assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_NEW, '8', FExecType.TRADE, FOrdStatus.FILLED) == FOrdStatus.FILLED
-    assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_NEW, '8', FExecType.TRADE, FOrdStatus.DONE_FOR_DAY) == -23
+    assert pytest.raises(FIXError, FIXNewOrderSingle.change_status, FOrdStatus.PENDING_NEW, '8', FExecType.TRADE, FOrdStatus.DONE_FOR_DAY) 
     assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_NEW, '8', FExecType.TRADE, FOrdStatus.CANCELED) == FOrdStatus.CANCELED
-    assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_NEW, '8', FExecType.TRADE, FOrdStatus.PENDING_CANCEL) == -23
-    assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_NEW, '8', FExecType.TRADE, FOrdStatus.STOPPED) == -23
+    assert pytest.raises(FIXError, FIXNewOrderSingle.change_status, FOrdStatus.PENDING_NEW, '8', FExecType.TRADE, FOrdStatus.PENDING_CANCEL) 
+    assert pytest.raises(FIXError, FIXNewOrderSingle.change_status, FOrdStatus.PENDING_NEW, '8', FExecType.TRADE, FOrdStatus.STOPPED) 
     assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_NEW, '8', FExecType.TRADE, FOrdStatus.REJECTED) == FOrdStatus.REJECTED
     assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_NEW, '8', FExecType.TRADE, FOrdStatus.SUSPENDED) == FOrdStatus.SUSPENDED
-    assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_NEW, '8', FExecType.TRADE, FOrdStatus.PENDING_NEW) == -23
-    assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_NEW, '8', FExecType.TRADE, FOrdStatus.CALCULATED) == -23
-    assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_NEW, '8', FExecType.TRADE, FOrdStatus.EXPIRED) == -23
-    assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_NEW, '8', FExecType.TRADE, FOrdStatus.ACCEPTED_FOR_BIDDING) == -23
-    assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_NEW, '8', FExecType.TRADE, FOrdStatus.PENDING_REPLACE) == -23
+    assert pytest.raises(FIXError, FIXNewOrderSingle.change_status, FOrdStatus.PENDING_NEW, '8', FExecType.TRADE, FOrdStatus.PENDING_NEW) 
+    assert pytest.raises(FIXError, FIXNewOrderSingle.change_status, FOrdStatus.PENDING_NEW, '8', FExecType.TRADE, FOrdStatus.CALCULATED) 
+    assert pytest.raises(FIXError, FIXNewOrderSingle.change_status, FOrdStatus.PENDING_NEW, '8', FExecType.TRADE, FOrdStatus.EXPIRED) 
+    assert pytest.raises(FIXError, FIXNewOrderSingle.change_status, FOrdStatus.PENDING_NEW, '8', FExecType.TRADE, FOrdStatus.ACCEPTED_FOR_BIDDING) 
+    assert pytest.raises(FIXError, FIXNewOrderSingle.change_status, FOrdStatus.PENDING_NEW, '8', FExecType.TRADE, FOrdStatus.PENDING_REPLACE) 
     # fmt: on
 
 
 def test_state_transition__new__execution_report():
     # fmt: off
-    assert FIXNewOrderSingle.change_status(FOrdStatus.NEW, '8', FExecType.TRADE, FOrdStatus.CREATED) == -23
-    assert FIXNewOrderSingle.change_status(FOrdStatus.NEW, '8', FExecType.TRADE, FOrdStatus.NEW) == 0
+    assert pytest.raises(FIXError, FIXNewOrderSingle.change_status, FOrdStatus.NEW, '8', FExecType.TRADE, FOrdStatus.CREATED)
+    assert pytest.raises(FIXError, FIXNewOrderSingle.change_status, FOrdStatus.NEW, '8', FExecType.TRADE, FOrdStatus.CREATED) 
+    assert FIXNewOrderSingle.change_status(FOrdStatus.NEW, '8', FExecType.TRADE, FOrdStatus.NEW) is None
     assert FIXNewOrderSingle.change_status(FOrdStatus.NEW, '8', FExecType.TRADE, FOrdStatus.PARTIALLY_FILLED) == FOrdStatus.PARTIALLY_FILLED
     assert FIXNewOrderSingle.change_status(FOrdStatus.NEW, '8', FExecType.TRADE, FOrdStatus.FILLED) == FOrdStatus.FILLED
     assert FIXNewOrderSingle.change_status(FOrdStatus.NEW, '8', FExecType.TRADE, FOrdStatus.DONE_FOR_DAY) == FOrdStatus.DONE_FOR_DAY
@@ -200,150 +197,130 @@ def test_state_transition__new__execution_report():
     assert FIXNewOrderSingle.change_status(FOrdStatus.NEW, '8', FExecType.TRADE, FOrdStatus.STOPPED) == FOrdStatus.STOPPED
     assert FIXNewOrderSingle.change_status(FOrdStatus.NEW, '8', FExecType.TRADE, FOrdStatus.REJECTED) == FOrdStatus.REJECTED
     assert FIXNewOrderSingle.change_status(FOrdStatus.NEW, '8', FExecType.TRADE, FOrdStatus.SUSPENDED) == FOrdStatus.SUSPENDED
-    assert FIXNewOrderSingle.change_status(FOrdStatus.NEW, '8', FExecType.TRADE, FOrdStatus.PENDING_NEW) == -23
+    assert pytest.raises(FIXError, FIXNewOrderSingle.change_status, FOrdStatus.NEW, '8', FExecType.TRADE, FOrdStatus.PENDING_NEW) 
     assert FIXNewOrderSingle.change_status(FOrdStatus.NEW, '8', FExecType.TRADE, FOrdStatus.CALCULATED) == FOrdStatus.CALCULATED
     assert FIXNewOrderSingle.change_status(FOrdStatus.NEW, '8', FExecType.TRADE, FOrdStatus.EXPIRED) == FOrdStatus.EXPIRED
-    assert FIXNewOrderSingle.change_status(FOrdStatus.NEW, '8', FExecType.TRADE, FOrdStatus.ACCEPTED_FOR_BIDDING) == -23
+    assert pytest.raises(FIXError, FIXNewOrderSingle.change_status, FOrdStatus.NEW, '8', FExecType.TRADE, FOrdStatus.ACCEPTED_FOR_BIDDING) 
     assert FIXNewOrderSingle.change_status(FOrdStatus.NEW, '8', FExecType.TRADE, FOrdStatus.PENDING_REPLACE) == FOrdStatus.PENDING_REPLACE
     # fmt: on
 
 
 def test_state_transition__rejected__execution_report():
     # fmt: off
-    assert FIXNewOrderSingle.change_status(FOrdStatus.REJECTED, '8', FExecType.TRADE, FOrdStatus.CREATED) == 0
-    assert FIXNewOrderSingle.change_status(FOrdStatus.REJECTED, '8', FExecType.TRADE, FOrdStatus.NEW) == 0
-    assert FIXNewOrderSingle.change_status(FOrdStatus.REJECTED, '8', FExecType.TRADE, FOrdStatus.PARTIALLY_FILLED) == 0
-    assert FIXNewOrderSingle.change_status(FOrdStatus.REJECTED, '8', FExecType.TRADE, FOrdStatus.FILLED) == 0
-    assert FIXNewOrderSingle.change_status(FOrdStatus.REJECTED, '8', FExecType.TRADE, FOrdStatus.DONE_FOR_DAY) == 0
-    assert FIXNewOrderSingle.change_status(FOrdStatus.REJECTED, '8', FExecType.TRADE, FOrdStatus.CANCELED) == 0
-    assert FIXNewOrderSingle.change_status(FOrdStatus.REJECTED, '8', FExecType.TRADE, FOrdStatus.PENDING_CANCEL) == 0
-    assert FIXNewOrderSingle.change_status(FOrdStatus.REJECTED, '8', FExecType.TRADE, FOrdStatus.STOPPED) == 0
-    assert FIXNewOrderSingle.change_status(FOrdStatus.REJECTED, '8', FExecType.TRADE, FOrdStatus.REJECTED) == 0
-    assert FIXNewOrderSingle.change_status(FOrdStatus.REJECTED, '8', FExecType.TRADE, FOrdStatus.SUSPENDED) == 0
-    assert FIXNewOrderSingle.change_status(FOrdStatus.REJECTED, '8', FExecType.TRADE, FOrdStatus.PENDING_NEW) == 0
-    assert FIXNewOrderSingle.change_status(FOrdStatus.REJECTED, '8', FExecType.TRADE, FOrdStatus.CALCULATED) == 0
-    assert FIXNewOrderSingle.change_status(FOrdStatus.REJECTED, '8', FExecType.TRADE, FOrdStatus.EXPIRED) == 0
-    assert FIXNewOrderSingle.change_status(FOrdStatus.REJECTED, '8', FExecType.TRADE, FOrdStatus.ACCEPTED_FOR_BIDDING) == 0
-    assert FIXNewOrderSingle.change_status(FOrdStatus.REJECTED, '8', FExecType.TRADE, FOrdStatus.PENDING_REPLACE) == 0
-    # fmt: on
-
-
-def test_state_transition__rejected__execution_report():
-    # fmt: off
-    assert FIXNewOrderSingle.change_status(FOrdStatus.REJECTED, '8', FExecType.TRADE, FOrdStatus.CREATED) == 0
-    assert FIXNewOrderSingle.change_status(FOrdStatus.REJECTED, '8', FExecType.TRADE, FOrdStatus.NEW) == 0
-    assert FIXNewOrderSingle.change_status(FOrdStatus.REJECTED, '8', FExecType.TRADE, FOrdStatus.PARTIALLY_FILLED) == 0
-    assert FIXNewOrderSingle.change_status(FOrdStatus.REJECTED, '8', FExecType.TRADE, FOrdStatus.FILLED) == 0
-    assert FIXNewOrderSingle.change_status(FOrdStatus.REJECTED, '8', FExecType.TRADE, FOrdStatus.DONE_FOR_DAY) == 0
-    assert FIXNewOrderSingle.change_status(FOrdStatus.REJECTED, '8', FExecType.TRADE, FOrdStatus.CANCELED) == 0
-    assert FIXNewOrderSingle.change_status(FOrdStatus.REJECTED, '8', FExecType.TRADE, FOrdStatus.PENDING_CANCEL) == 0
-    assert FIXNewOrderSingle.change_status(FOrdStatus.REJECTED, '8', FExecType.TRADE, FOrdStatus.STOPPED) == 0
-    assert FIXNewOrderSingle.change_status(FOrdStatus.REJECTED, '8', FExecType.TRADE, FOrdStatus.REJECTED) == 0
-    assert FIXNewOrderSingle.change_status(FOrdStatus.REJECTED, '8', FExecType.TRADE, FOrdStatus.SUSPENDED) == 0
-    assert FIXNewOrderSingle.change_status(FOrdStatus.REJECTED, '8', FExecType.TRADE, FOrdStatus.PENDING_NEW) == 0
-    assert FIXNewOrderSingle.change_status(FOrdStatus.REJECTED, '8', FExecType.TRADE, FOrdStatus.CALCULATED) == 0
-    assert FIXNewOrderSingle.change_status(FOrdStatus.REJECTED, '8', FExecType.TRADE, FOrdStatus.EXPIRED) == 0
-    assert FIXNewOrderSingle.change_status(FOrdStatus.REJECTED, '8', FExecType.TRADE, FOrdStatus.ACCEPTED_FOR_BIDDING) == 0
-    assert FIXNewOrderSingle.change_status(FOrdStatus.REJECTED, '8', FExecType.TRADE, FOrdStatus.PENDING_REPLACE) == 0
+    assert FIXNewOrderSingle.change_status(FOrdStatus.REJECTED, '8', FExecType.TRADE, FOrdStatus.CREATED) is None
+    assert FIXNewOrderSingle.change_status(FOrdStatus.REJECTED, '8', FExecType.TRADE, FOrdStatus.NEW) is None
+    assert FIXNewOrderSingle.change_status(FOrdStatus.REJECTED, '8', FExecType.TRADE, FOrdStatus.PARTIALLY_FILLED) is None
+    assert FIXNewOrderSingle.change_status(FOrdStatus.REJECTED, '8', FExecType.TRADE, FOrdStatus.FILLED) is None
+    assert FIXNewOrderSingle.change_status(FOrdStatus.REJECTED, '8', FExecType.TRADE, FOrdStatus.DONE_FOR_DAY) is None
+    assert FIXNewOrderSingle.change_status(FOrdStatus.REJECTED, '8', FExecType.TRADE, FOrdStatus.CANCELED) is None
+    assert FIXNewOrderSingle.change_status(FOrdStatus.REJECTED, '8', FExecType.TRADE, FOrdStatus.PENDING_CANCEL) is None
+    assert FIXNewOrderSingle.change_status(FOrdStatus.REJECTED, '8', FExecType.TRADE, FOrdStatus.STOPPED) is None
+    assert FIXNewOrderSingle.change_status(FOrdStatus.REJECTED, '8', FExecType.TRADE, FOrdStatus.REJECTED) is None
+    assert FIXNewOrderSingle.change_status(FOrdStatus.REJECTED, '8', FExecType.TRADE, FOrdStatus.SUSPENDED) is None
+    assert FIXNewOrderSingle.change_status(FOrdStatus.REJECTED, '8', FExecType.TRADE, FOrdStatus.PENDING_NEW) is None
+    assert FIXNewOrderSingle.change_status(FOrdStatus.REJECTED, '8', FExecType.TRADE, FOrdStatus.CALCULATED) is None
+    assert FIXNewOrderSingle.change_status(FOrdStatus.REJECTED, '8', FExecType.TRADE, FOrdStatus.EXPIRED) is None
+    assert FIXNewOrderSingle.change_status(FOrdStatus.REJECTED, '8', FExecType.TRADE, FOrdStatus.ACCEPTED_FOR_BIDDING) is None
+    assert FIXNewOrderSingle.change_status(FOrdStatus.REJECTED, '8', FExecType.TRADE, FOrdStatus.PENDING_REPLACE) is None
     # fmt: on
 
 
 def test_state_transition__filled__execution_report():
     # fmt: off
-    assert FIXNewOrderSingle.change_status(FOrdStatus.FILLED, '8', FExecType.TRADE, FOrdStatus.CREATED) == 0
-    assert FIXNewOrderSingle.change_status(FOrdStatus.FILLED, '8', FExecType.TRADE, FOrdStatus.NEW) == 0
-    assert FIXNewOrderSingle.change_status(FOrdStatus.FILLED, '8', FExecType.TRADE, FOrdStatus.PARTIALLY_FILLED) == 0
-    assert FIXNewOrderSingle.change_status(FOrdStatus.FILLED, '8', FExecType.TRADE, FOrdStatus.FILLED) == 0
-    assert FIXNewOrderSingle.change_status(FOrdStatus.FILLED, '8', FExecType.TRADE, FOrdStatus.DONE_FOR_DAY) == 0
-    assert FIXNewOrderSingle.change_status(FOrdStatus.FILLED, '8', FExecType.TRADE, FOrdStatus.CANCELED) == 0
-    assert FIXNewOrderSingle.change_status(FOrdStatus.FILLED, '8', FExecType.TRADE, FOrdStatus.PENDING_CANCEL) == 0
-    assert FIXNewOrderSingle.change_status(FOrdStatus.FILLED, '8', FExecType.TRADE, FOrdStatus.STOPPED) == 0
-    assert FIXNewOrderSingle.change_status(FOrdStatus.FILLED, '8', FExecType.TRADE, FOrdStatus.REJECTED) == 0
-    assert FIXNewOrderSingle.change_status(FOrdStatus.FILLED, '8', FExecType.TRADE, FOrdStatus.SUSPENDED) == 0
-    assert FIXNewOrderSingle.change_status(FOrdStatus.FILLED, '8', FExecType.TRADE, FOrdStatus.PENDING_NEW) == 0
-    assert FIXNewOrderSingle.change_status(FOrdStatus.FILLED, '8', FExecType.TRADE, FOrdStatus.CALCULATED) == 0
-    assert FIXNewOrderSingle.change_status(FOrdStatus.FILLED, '8', FExecType.TRADE, FOrdStatus.EXPIRED) == 0
-    assert FIXNewOrderSingle.change_status(FOrdStatus.FILLED, '8', FExecType.TRADE, FOrdStatus.ACCEPTED_FOR_BIDDING) == 0
-    assert FIXNewOrderSingle.change_status(FOrdStatus.FILLED, '8', FExecType.TRADE, FOrdStatus.PENDING_REPLACE) == 0
+    assert FIXNewOrderSingle.change_status(FOrdStatus.FILLED, '8', FExecType.TRADE, FOrdStatus.CREATED) is None
+    assert FIXNewOrderSingle.change_status(FOrdStatus.FILLED, '8', FExecType.TRADE, FOrdStatus.NEW) is None
+    assert FIXNewOrderSingle.change_status(FOrdStatus.FILLED, '8', FExecType.TRADE, FOrdStatus.PARTIALLY_FILLED) is None
+    assert FIXNewOrderSingle.change_status(FOrdStatus.FILLED, '8', FExecType.TRADE, FOrdStatus.FILLED) is None
+    assert FIXNewOrderSingle.change_status(FOrdStatus.FILLED, '8', FExecType.TRADE, FOrdStatus.DONE_FOR_DAY) is None
+    assert FIXNewOrderSingle.change_status(FOrdStatus.FILLED, '8', FExecType.TRADE, FOrdStatus.CANCELED) is None
+    assert FIXNewOrderSingle.change_status(FOrdStatus.FILLED, '8', FExecType.TRADE, FOrdStatus.PENDING_CANCEL) is None
+    assert FIXNewOrderSingle.change_status(FOrdStatus.FILLED, '8', FExecType.TRADE, FOrdStatus.STOPPED) is None
+    assert FIXNewOrderSingle.change_status(FOrdStatus.FILLED, '8', FExecType.TRADE, FOrdStatus.REJECTED) is None
+    assert FIXNewOrderSingle.change_status(FOrdStatus.FILLED, '8', FExecType.TRADE, FOrdStatus.SUSPENDED) is None
+    assert FIXNewOrderSingle.change_status(FOrdStatus.FILLED, '8', FExecType.TRADE, FOrdStatus.PENDING_NEW) is None
+    assert FIXNewOrderSingle.change_status(FOrdStatus.FILLED, '8', FExecType.TRADE, FOrdStatus.CALCULATED) is None
+    assert FIXNewOrderSingle.change_status(FOrdStatus.FILLED, '8', FExecType.TRADE, FOrdStatus.EXPIRED) is None
+    assert FIXNewOrderSingle.change_status(FOrdStatus.FILLED, '8', FExecType.TRADE, FOrdStatus.ACCEPTED_FOR_BIDDING) is None
+    assert FIXNewOrderSingle.change_status(FOrdStatus.FILLED, '8', FExecType.TRADE, FOrdStatus.PENDING_REPLACE) is None
     # fmt: on
 
 
 def test_state_transition__expired__execution_report():
     # fmt: off
-    assert FIXNewOrderSingle.change_status(FOrdStatus.EXPIRED, '8', FExecType.TRADE, FOrdStatus.CREATED) == 0
-    assert FIXNewOrderSingle.change_status(FOrdStatus.EXPIRED, '8', FExecType.TRADE, FOrdStatus.NEW) == 0
-    assert FIXNewOrderSingle.change_status(FOrdStatus.EXPIRED, '8', FExecType.TRADE, FOrdStatus.PARTIALLY_FILLED) == 0
-    assert FIXNewOrderSingle.change_status(FOrdStatus.EXPIRED, '8', FExecType.TRADE, FOrdStatus.FILLED) == 0
-    assert FIXNewOrderSingle.change_status(FOrdStatus.EXPIRED, '8', FExecType.TRADE, FOrdStatus.DONE_FOR_DAY) == 0
-    assert FIXNewOrderSingle.change_status(FOrdStatus.EXPIRED, '8', FExecType.TRADE, FOrdStatus.CANCELED) == 0
-    assert FIXNewOrderSingle.change_status(FOrdStatus.EXPIRED, '8', FExecType.TRADE, FOrdStatus.PENDING_CANCEL) == 0
-    assert FIXNewOrderSingle.change_status(FOrdStatus.EXPIRED, '8', FExecType.TRADE, FOrdStatus.STOPPED) == 0
-    assert FIXNewOrderSingle.change_status(FOrdStatus.EXPIRED, '8', FExecType.TRADE, FOrdStatus.REJECTED) == 0
-    assert FIXNewOrderSingle.change_status(FOrdStatus.EXPIRED, '8', FExecType.TRADE, FOrdStatus.SUSPENDED) == 0
-    assert FIXNewOrderSingle.change_status(FOrdStatus.EXPIRED, '8', FExecType.TRADE, FOrdStatus.PENDING_NEW) == 0
-    assert FIXNewOrderSingle.change_status(FOrdStatus.EXPIRED, '8', FExecType.TRADE, FOrdStatus.CALCULATED) == 0
-    assert FIXNewOrderSingle.change_status(FOrdStatus.EXPIRED, '8', FExecType.TRADE, FOrdStatus.EXPIRED) == 0
-    assert FIXNewOrderSingle.change_status(FOrdStatus.EXPIRED, '8', FExecType.TRADE, FOrdStatus.ACCEPTED_FOR_BIDDING) == 0
-    assert FIXNewOrderSingle.change_status(FOrdStatus.EXPIRED, '8', FExecType.TRADE, FOrdStatus.PENDING_REPLACE) == 0
+    assert FIXNewOrderSingle.change_status(FOrdStatus.EXPIRED, '8', FExecType.TRADE, FOrdStatus.CREATED) is None
+    assert FIXNewOrderSingle.change_status(FOrdStatus.EXPIRED, '8', FExecType.TRADE, FOrdStatus.NEW) is None
+    assert FIXNewOrderSingle.change_status(FOrdStatus.EXPIRED, '8', FExecType.TRADE, FOrdStatus.PARTIALLY_FILLED) is None
+    assert FIXNewOrderSingle.change_status(FOrdStatus.EXPIRED, '8', FExecType.TRADE, FOrdStatus.FILLED) is None
+    assert FIXNewOrderSingle.change_status(FOrdStatus.EXPIRED, '8', FExecType.TRADE, FOrdStatus.DONE_FOR_DAY) is None
+    assert FIXNewOrderSingle.change_status(FOrdStatus.EXPIRED, '8', FExecType.TRADE, FOrdStatus.CANCELED) is None
+    assert FIXNewOrderSingle.change_status(FOrdStatus.EXPIRED, '8', FExecType.TRADE, FOrdStatus.PENDING_CANCEL) is None
+    assert FIXNewOrderSingle.change_status(FOrdStatus.EXPIRED, '8', FExecType.TRADE, FOrdStatus.STOPPED) is None
+    assert FIXNewOrderSingle.change_status(FOrdStatus.EXPIRED, '8', FExecType.TRADE, FOrdStatus.REJECTED) is None
+    assert FIXNewOrderSingle.change_status(FOrdStatus.EXPIRED, '8', FExecType.TRADE, FOrdStatus.SUSPENDED) is None
+    assert FIXNewOrderSingle.change_status(FOrdStatus.EXPIRED, '8', FExecType.TRADE, FOrdStatus.PENDING_NEW) is None
+    assert FIXNewOrderSingle.change_status(FOrdStatus.EXPIRED, '8', FExecType.TRADE, FOrdStatus.CALCULATED) is None
+    assert FIXNewOrderSingle.change_status(FOrdStatus.EXPIRED, '8', FExecType.TRADE, FOrdStatus.EXPIRED) is None
+    assert FIXNewOrderSingle.change_status(FOrdStatus.EXPIRED, '8', FExecType.TRADE, FOrdStatus.ACCEPTED_FOR_BIDDING) is None
+    assert FIXNewOrderSingle.change_status(FOrdStatus.EXPIRED, '8', FExecType.TRADE, FOrdStatus.PENDING_REPLACE) is None
     # fmt: on
 
 
 def test_state_transition__canceled__execution_report():
     # fmt: off
-    assert FIXNewOrderSingle.change_status(FOrdStatus.CANCELED, '8', FExecType.TRADE, FOrdStatus.CREATED) == 0
-    assert FIXNewOrderSingle.change_status(FOrdStatus.CANCELED, '8', FExecType.TRADE, FOrdStatus.NEW) == 0
-    assert FIXNewOrderSingle.change_status(FOrdStatus.CANCELED, '8', FExecType.TRADE, FOrdStatus.PARTIALLY_FILLED) == 0
-    assert FIXNewOrderSingle.change_status(FOrdStatus.CANCELED, '8', FExecType.TRADE, FOrdStatus.FILLED) == 0
-    assert FIXNewOrderSingle.change_status(FOrdStatus.CANCELED, '8', FExecType.TRADE, FOrdStatus.DONE_FOR_DAY) == 0
-    assert FIXNewOrderSingle.change_status(FOrdStatus.CANCELED, '8', FExecType.TRADE, FOrdStatus.CANCELED) == 0
-    assert FIXNewOrderSingle.change_status(FOrdStatus.CANCELED, '8', FExecType.TRADE, FOrdStatus.PENDING_CANCEL) == 0
-    assert FIXNewOrderSingle.change_status(FOrdStatus.CANCELED, '8', FExecType.TRADE, FOrdStatus.STOPPED) == 0
-    assert FIXNewOrderSingle.change_status(FOrdStatus.CANCELED, '8', FExecType.TRADE, FOrdStatus.REJECTED) == 0
-    assert FIXNewOrderSingle.change_status(FOrdStatus.CANCELED, '8', FExecType.TRADE, FOrdStatus.SUSPENDED) == 0
-    assert FIXNewOrderSingle.change_status(FOrdStatus.CANCELED, '8', FExecType.TRADE, FOrdStatus.PENDING_NEW) == 0
-    assert FIXNewOrderSingle.change_status(FOrdStatus.CANCELED, '8', FExecType.TRADE, FOrdStatus.CALCULATED) == 0
-    assert FIXNewOrderSingle.change_status(FOrdStatus.CANCELED, '8', FExecType.TRADE, FOrdStatus.EXPIRED) == 0
-    assert FIXNewOrderSingle.change_status(FOrdStatus.CANCELED, '8', FExecType.TRADE, FOrdStatus.ACCEPTED_FOR_BIDDING) == 0
-    assert FIXNewOrderSingle.change_status(FOrdStatus.CANCELED, '8', FExecType.TRADE, FOrdStatus.PENDING_REPLACE) == 0
+    assert FIXNewOrderSingle.change_status(FOrdStatus.CANCELED, '8', FExecType.TRADE, FOrdStatus.CREATED) is None
+    assert FIXNewOrderSingle.change_status(FOrdStatus.CANCELED, '8', FExecType.TRADE, FOrdStatus.NEW) is None
+    assert FIXNewOrderSingle.change_status(FOrdStatus.CANCELED, '8', FExecType.TRADE, FOrdStatus.PARTIALLY_FILLED) is None
+    assert FIXNewOrderSingle.change_status(FOrdStatus.CANCELED, '8', FExecType.TRADE, FOrdStatus.FILLED) is None
+    assert FIXNewOrderSingle.change_status(FOrdStatus.CANCELED, '8', FExecType.TRADE, FOrdStatus.DONE_FOR_DAY) is None
+    assert FIXNewOrderSingle.change_status(FOrdStatus.CANCELED, '8', FExecType.TRADE, FOrdStatus.CANCELED) is None
+    assert FIXNewOrderSingle.change_status(FOrdStatus.CANCELED, '8', FExecType.TRADE, FOrdStatus.PENDING_CANCEL) is None
+    assert FIXNewOrderSingle.change_status(FOrdStatus.CANCELED, '8', FExecType.TRADE, FOrdStatus.STOPPED) is None
+    assert FIXNewOrderSingle.change_status(FOrdStatus.CANCELED, '8', FExecType.TRADE, FOrdStatus.REJECTED) is None
+    assert FIXNewOrderSingle.change_status(FOrdStatus.CANCELED, '8', FExecType.TRADE, FOrdStatus.SUSPENDED) is None
+    assert FIXNewOrderSingle.change_status(FOrdStatus.CANCELED, '8', FExecType.TRADE, FOrdStatus.PENDING_NEW) is None
+    assert FIXNewOrderSingle.change_status(FOrdStatus.CANCELED, '8', FExecType.TRADE, FOrdStatus.CALCULATED) is None
+    assert FIXNewOrderSingle.change_status(FOrdStatus.CANCELED, '8', FExecType.TRADE, FOrdStatus.EXPIRED) is None
+    assert FIXNewOrderSingle.change_status(FOrdStatus.CANCELED, '8', FExecType.TRADE, FOrdStatus.ACCEPTED_FOR_BIDDING) is None
+    assert FIXNewOrderSingle.change_status(FOrdStatus.CANCELED, '8', FExecType.TRADE, FOrdStatus.PENDING_REPLACE) is None
     # fmt: on
 
 
 def test_state_transition__suspended__execution_report():
     # fmt: off
-    assert FIXNewOrderSingle.change_status(FOrdStatus.SUSPENDED, '8', FExecType.TRADE, FOrdStatus.CREATED) == -23
+    assert pytest.raises(FIXError, FIXNewOrderSingle.change_status, FOrdStatus.SUSPENDED, '8', FExecType.TRADE, FOrdStatus.CREATED) 
     assert FIXNewOrderSingle.change_status(FOrdStatus.SUSPENDED, '8', FExecType.TRADE, FOrdStatus.NEW) == FOrdStatus.NEW
     assert FIXNewOrderSingle.change_status(FOrdStatus.SUSPENDED, '8', FExecType.TRADE, FOrdStatus.PARTIALLY_FILLED) == FOrdStatus.PARTIALLY_FILLED
-    assert FIXNewOrderSingle.change_status(FOrdStatus.SUSPENDED, '8', FExecType.TRADE, FOrdStatus.FILLED) == -23
-    assert FIXNewOrderSingle.change_status(FOrdStatus.SUSPENDED, '8', FExecType.TRADE, FOrdStatus.DONE_FOR_DAY) == -23
+    assert pytest.raises(FIXError, FIXNewOrderSingle.change_status, FOrdStatus.SUSPENDED, '8', FExecType.TRADE, FOrdStatus.FILLED) 
+    assert pytest.raises(FIXError, FIXNewOrderSingle.change_status, FOrdStatus.SUSPENDED, '8', FExecType.TRADE, FOrdStatus.DONE_FOR_DAY) 
     assert FIXNewOrderSingle.change_status(FOrdStatus.SUSPENDED, '8', FExecType.TRADE, FOrdStatus.CANCELED) == FOrdStatus.CANCELED
-    assert FIXNewOrderSingle.change_status(FOrdStatus.SUSPENDED, '8', FExecType.TRADE, FOrdStatus.PENDING_CANCEL) == -23
-    assert FIXNewOrderSingle.change_status(FOrdStatus.SUSPENDED, '8', FExecType.TRADE, FOrdStatus.STOPPED) == -23
-    assert FIXNewOrderSingle.change_status(FOrdStatus.SUSPENDED, '8', FExecType.TRADE, FOrdStatus.REJECTED) == -23
-    assert FIXNewOrderSingle.change_status(FOrdStatus.SUSPENDED, '8', FExecType.TRADE, FOrdStatus.SUSPENDED) == 0
-    assert FIXNewOrderSingle.change_status(FOrdStatus.SUSPENDED, '8', FExecType.TRADE, FOrdStatus.PENDING_NEW) == -23
-    assert FIXNewOrderSingle.change_status(FOrdStatus.SUSPENDED, '8', FExecType.TRADE, FOrdStatus.CALCULATED) == -23
-    assert FIXNewOrderSingle.change_status(FOrdStatus.SUSPENDED, '8', FExecType.TRADE, FOrdStatus.EXPIRED) == -23
-    assert FIXNewOrderSingle.change_status(FOrdStatus.SUSPENDED, '8', FExecType.TRADE, FOrdStatus.ACCEPTED_FOR_BIDDING) == -23
-    assert FIXNewOrderSingle.change_status(FOrdStatus.SUSPENDED, '8', FExecType.TRADE, FOrdStatus.PENDING_REPLACE) == -23
+    assert pytest.raises(FIXError, FIXNewOrderSingle.change_status, FOrdStatus.SUSPENDED, '8', FExecType.TRADE, FOrdStatus.PENDING_CANCEL) 
+    assert pytest.raises(FIXError, FIXNewOrderSingle.change_status, FOrdStatus.SUSPENDED, '8', FExecType.TRADE, FOrdStatus.STOPPED) 
+    assert pytest.raises(FIXError, FIXNewOrderSingle.change_status, FOrdStatus.SUSPENDED, '8', FExecType.TRADE, FOrdStatus.REJECTED) 
+    assert FIXNewOrderSingle.change_status(FOrdStatus.SUSPENDED, '8', FExecType.TRADE, FOrdStatus.SUSPENDED) is None
+    assert pytest.raises(FIXError, FIXNewOrderSingle.change_status, FOrdStatus.SUSPENDED, '8', FExecType.TRADE, FOrdStatus.PENDING_NEW) 
+    assert pytest.raises(FIXError, FIXNewOrderSingle.change_status, FOrdStatus.SUSPENDED, '8', FExecType.TRADE, FOrdStatus.CALCULATED) 
+    assert pytest.raises(FIXError, FIXNewOrderSingle.change_status, FOrdStatus.SUSPENDED, '8', FExecType.TRADE, FOrdStatus.EXPIRED) 
+    assert pytest.raises(FIXError, FIXNewOrderSingle.change_status, FOrdStatus.SUSPENDED, '8', FExecType.TRADE, FOrdStatus.ACCEPTED_FOR_BIDDING) 
+    assert pytest.raises(FIXError, FIXNewOrderSingle.change_status, FOrdStatus.SUSPENDED, '8', FExecType.TRADE, FOrdStatus.PENDING_REPLACE) 
     # fmt: on
 
 
 def test_state_transition__partiallyfilled__execution_report():
     # fmt: off
-    assert FIXNewOrderSingle.change_status(FOrdStatus.PARTIALLY_FILLED, '8', FExecType.TRADE, FOrdStatus.CREATED) == -23
-    assert FIXNewOrderSingle.change_status(FOrdStatus.PARTIALLY_FILLED, '8', FExecType.TRADE, FOrdStatus.NEW) == -23
+    assert pytest.raises(FIXError, FIXNewOrderSingle.change_status, FOrdStatus.PARTIALLY_FILLED, '8', FExecType.TRADE, FOrdStatus.CREATED) 
+    assert pytest.raises(FIXError, FIXNewOrderSingle.change_status, FOrdStatus.PARTIALLY_FILLED, '8', FExecType.TRADE, FOrdStatus.NEW) 
     assert FIXNewOrderSingle.change_status(FOrdStatus.PARTIALLY_FILLED, '8', FExecType.TRADE, FOrdStatus.PARTIALLY_FILLED) == FOrdStatus.PARTIALLY_FILLED
     assert FIXNewOrderSingle.change_status(FOrdStatus.PARTIALLY_FILLED, '8', FExecType.TRADE, FOrdStatus.FILLED) == FOrdStatus.FILLED
-    assert FIXNewOrderSingle.change_status(FOrdStatus.PARTIALLY_FILLED, '8', FExecType.TRADE, FOrdStatus.DONE_FOR_DAY) == -23
+    assert pytest.raises(FIXError, FIXNewOrderSingle.change_status, FOrdStatus.PARTIALLY_FILLED, '8', FExecType.TRADE, FOrdStatus.DONE_FOR_DAY) 
     assert FIXNewOrderSingle.change_status(FOrdStatus.PARTIALLY_FILLED, '8', FExecType.TRADE, FOrdStatus.CANCELED) == FOrdStatus.CANCELED
     assert FIXNewOrderSingle.change_status(FOrdStatus.PARTIALLY_FILLED, '8', FExecType.TRADE, FOrdStatus.PENDING_CANCEL) == FOrdStatus.PENDING_CANCEL
     assert FIXNewOrderSingle.change_status(FOrdStatus.PARTIALLY_FILLED, '8', FExecType.TRADE, FOrdStatus.STOPPED) == FOrdStatus.STOPPED
-    assert FIXNewOrderSingle.change_status(FOrdStatus.PARTIALLY_FILLED, '8', FExecType.TRADE, FOrdStatus.REJECTED) == -23
+    assert pytest.raises(FIXError, FIXNewOrderSingle.change_status, FOrdStatus.PARTIALLY_FILLED, '8', FExecType.TRADE, FOrdStatus.REJECTED) 
     assert FIXNewOrderSingle.change_status(FOrdStatus.PARTIALLY_FILLED, '8', FExecType.TRADE, FOrdStatus.SUSPENDED) == FOrdStatus.SUSPENDED
-    assert FIXNewOrderSingle.change_status(FOrdStatus.PARTIALLY_FILLED, '8', FExecType.TRADE, FOrdStatus.PENDING_NEW) == -23
-    assert FIXNewOrderSingle.change_status(FOrdStatus.PARTIALLY_FILLED, '8', FExecType.TRADE, FOrdStatus.CALCULATED) == -23
+    assert pytest.raises(FIXError, FIXNewOrderSingle.change_status, FOrdStatus.PARTIALLY_FILLED, '8', FExecType.TRADE, FOrdStatus.PENDING_NEW) 
+    assert pytest.raises(FIXError, FIXNewOrderSingle.change_status, FOrdStatus.PARTIALLY_FILLED, '8', FExecType.TRADE, FOrdStatus.CALCULATED) 
     assert FIXNewOrderSingle.change_status(FOrdStatus.PARTIALLY_FILLED, '8', FExecType.TRADE, FOrdStatus.EXPIRED) == FOrdStatus.EXPIRED
-    assert FIXNewOrderSingle.change_status(FOrdStatus.PARTIALLY_FILLED, '8', FExecType.TRADE, FOrdStatus.ACCEPTED_FOR_BIDDING) == -23
+    assert pytest.raises(FIXError, FIXNewOrderSingle.change_status, FOrdStatus.PARTIALLY_FILLED, '8', FExecType.TRADE, FOrdStatus.ACCEPTED_FOR_BIDDING) 
     assert FIXNewOrderSingle.change_status(FOrdStatus.PARTIALLY_FILLED, '8', FExecType.TRADE, FOrdStatus.PENDING_REPLACE) == FOrdStatus.PENDING_REPLACE
     # fmt: on
 
@@ -351,24 +328,24 @@ def test_state_transition__partiallyfilled__execution_report():
 def test_state_transition__pendingcancel__execution_report():
     # fmt: off
     # Executin report doesn't not have any effect of pending cancelled state
-    assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_CANCEL, '8', FExecType.TRADE, FOrdStatus.CREATED) == -23
-    assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_CANCEL, '8', FExecType.TRADE, FOrdStatus.NEW) == 0
-    assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_CANCEL, '8', FExecType.TRADE, FOrdStatus.PARTIALLY_FILLED) == 0
-    assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_CANCEL, '8', FExecType.TRADE, FOrdStatus.FILLED) == 0
-    assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_CANCEL, '8', FExecType.TRADE, FOrdStatus.DONE_FOR_DAY) == 0
+    assert pytest.raises(FIXError, FIXNewOrderSingle.change_status, FOrdStatus.PENDING_CANCEL, '8', FExecType.TRADE, FOrdStatus.CREATED) 
+    assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_CANCEL, '8', FExecType.TRADE, FOrdStatus.NEW) is None
+    assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_CANCEL, '8', FExecType.TRADE, FOrdStatus.PARTIALLY_FILLED) is None
+    assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_CANCEL, '8', FExecType.TRADE, FOrdStatus.FILLED) is None
+    assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_CANCEL, '8', FExecType.TRADE, FOrdStatus.DONE_FOR_DAY) is None
     assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_CANCEL, '8', FExecType.TRADE, FOrdStatus.CANCELED) == FOrdStatus.CANCELED
-    assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_CANCEL, '8', FExecType.TRADE, FOrdStatus.PENDING_CANCEL) == 0
-    assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_CANCEL, '8', FExecType.TRADE, FOrdStatus.STOPPED) == 0
-    assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_CANCEL, '8', FExecType.TRADE, FOrdStatus.REJECTED) == 0
-    assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_CANCEL, '8', FExecType.TRADE, FOrdStatus.SUSPENDED) == 0
-    assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_CANCEL, '8', FExecType.TRADE, FOrdStatus.PENDING_NEW) == 0
-    assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_CANCEL, '8', FExecType.TRADE, FOrdStatus.CALCULATED) == 0
-    assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_CANCEL, '8', FExecType.TRADE, FOrdStatus.EXPIRED) == 0
-    assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_CANCEL, '8', FExecType.TRADE, FOrdStatus.ACCEPTED_FOR_BIDDING) == 0
-    assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_CANCEL, '8', FExecType.TRADE, FOrdStatus.PENDING_REPLACE) == 0
+    assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_CANCEL, '8', FExecType.TRADE, FOrdStatus.PENDING_CANCEL) is None
+    assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_CANCEL, '8', FExecType.TRADE, FOrdStatus.STOPPED) is None
+    assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_CANCEL, '8', FExecType.TRADE, FOrdStatus.REJECTED) is None
+    assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_CANCEL, '8', FExecType.TRADE, FOrdStatus.SUSPENDED) is None
+    assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_CANCEL, '8', FExecType.TRADE, FOrdStatus.PENDING_NEW) is None
+    assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_CANCEL, '8', FExecType.TRADE, FOrdStatus.CALCULATED) is None
+    assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_CANCEL, '8', FExecType.TRADE, FOrdStatus.EXPIRED) is None
+    assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_CANCEL, '8', FExecType.TRADE, FOrdStatus.ACCEPTED_FOR_BIDDING) is None
+    assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_CANCEL, '8', FExecType.TRADE, FOrdStatus.PENDING_REPLACE) is None
 
     # But cancel reject request does!
-    assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_CANCEL, '9', 0, FOrdStatus.CREATED) == -23
+    assert pytest.raises(FIXError, FIXNewOrderSingle.change_status, FOrdStatus.PENDING_CANCEL, '9', 0, FOrdStatus.CREATED) 
     assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_CANCEL, '9', 0, FOrdStatus.NEW) == FOrdStatus.NEW
     assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_CANCEL, '9', 0, FOrdStatus.PARTIALLY_FILLED) == FOrdStatus.PARTIALLY_FILLED
     assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_CANCEL, '9', 0, FOrdStatus.FILLED) == FOrdStatus.FILLED
@@ -381,7 +358,7 @@ def test_state_transition__pendingcancel__execution_report():
     assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_CANCEL, '9', 0, FOrdStatus.PENDING_NEW) == FOrdStatus.PENDING_NEW
     assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_CANCEL, '9', 0, FOrdStatus.CALCULATED) == FOrdStatus.CALCULATED
     assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_CANCEL, '9', 0, FOrdStatus.EXPIRED) == FOrdStatus.EXPIRED
-    assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_CANCEL, '9', 0, FOrdStatus.ACCEPTED_FOR_BIDDING) == -23
+    assert pytest.raises(FIXError, FIXNewOrderSingle.change_status, FOrdStatus.PENDING_CANCEL, '9', 0, FOrdStatus.ACCEPTED_FOR_BIDDING) 
     assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_CANCEL, '9', 0, FOrdStatus.PENDING_REPLACE) == FOrdStatus.PENDING_REPLACE
     # fmt: on
 
@@ -389,49 +366,49 @@ def test_state_transition__pendingcancel__execution_report():
 def test_state_transition__pendingreplce__execution_report():
     # fmt: off
     # Executin report doesn't not have any effect of pending cancelled state
-    assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_REPLACE, '8', FExecType.TRADE, FOrdStatus.CREATED) == -23
-    assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_REPLACE, '8', FExecType.TRADE, FOrdStatus.NEW) == 0
-    assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_REPLACE, '8', FExecType.TRADE, FOrdStatus.PARTIALLY_FILLED) == 0
-    assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_REPLACE, '8', FExecType.TRADE, FOrdStatus.FILLED) == 0
-    assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_REPLACE, '8', FExecType.TRADE, FOrdStatus.DONE_FOR_DAY) == 0
-    assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_REPLACE, '8', FExecType.TRADE, FOrdStatus.CANCELED) == 0
-    assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_REPLACE, '8', FExecType.TRADE, FOrdStatus.PENDING_CANCEL) == 0
-    assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_REPLACE, '8', FExecType.TRADE, FOrdStatus.STOPPED) == 0
-    assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_REPLACE, '8', FExecType.TRADE, FOrdStatus.REJECTED) == 0
-    assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_REPLACE, '8', FExecType.TRADE, FOrdStatus.SUSPENDED) == 0
-    assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_REPLACE, '8', FExecType.TRADE, FOrdStatus.PENDING_NEW) == 0
-    assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_REPLACE, '8', FExecType.TRADE, FOrdStatus.CALCULATED) == 0
-    assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_REPLACE, '8', FExecType.TRADE, FOrdStatus.EXPIRED) == 0
-    assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_REPLACE, '8', FExecType.TRADE, FOrdStatus.ACCEPTED_FOR_BIDDING) == -23
-    assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_REPLACE, '8', FExecType.TRADE, FOrdStatus.PENDING_REPLACE) == 0
+    assert pytest.raises(FIXError, FIXNewOrderSingle.change_status, FOrdStatus.PENDING_REPLACE, '8', FExecType.TRADE, FOrdStatus.CREATED) 
+    assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_REPLACE, '8', FExecType.TRADE, FOrdStatus.NEW) is None
+    assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_REPLACE, '8', FExecType.TRADE, FOrdStatus.PARTIALLY_FILLED) is None
+    assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_REPLACE, '8', FExecType.TRADE, FOrdStatus.FILLED) is None
+    assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_REPLACE, '8', FExecType.TRADE, FOrdStatus.DONE_FOR_DAY) is None
+    assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_REPLACE, '8', FExecType.TRADE, FOrdStatus.CANCELED) is None
+    assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_REPLACE, '8', FExecType.TRADE, FOrdStatus.PENDING_CANCEL) is None
+    assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_REPLACE, '8', FExecType.TRADE, FOrdStatus.STOPPED) is None
+    assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_REPLACE, '8', FExecType.TRADE, FOrdStatus.REJECTED) is None
+    assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_REPLACE, '8', FExecType.TRADE, FOrdStatus.SUSPENDED) is None
+    assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_REPLACE, '8', FExecType.TRADE, FOrdStatus.PENDING_NEW) is None
+    assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_REPLACE, '8', FExecType.TRADE, FOrdStatus.CALCULATED) is None
+    assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_REPLACE, '8', FExecType.TRADE, FOrdStatus.EXPIRED) is None
+    assert pytest.raises(FIXError, FIXNewOrderSingle.change_status, FOrdStatus.PENDING_REPLACE, '8', FExecType.TRADE, FOrdStatus.ACCEPTED_FOR_BIDDING) 
+    assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_REPLACE, '8', FExecType.TRADE, FOrdStatus.PENDING_REPLACE) is None
     # fmt: on
 
 
 def test_state_transition__pendingreplce__execution_report_exectype_replace():
     # fmt: off
     # Executin report doesn't not have any effect of pending cancelled state
-    assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_REPLACE, '8', FExecType.REPLACED, FOrdStatus.CREATED) == -23
+    assert pytest.raises(FIXError, FIXNewOrderSingle.change_status, FOrdStatus.PENDING_REPLACE, '8', FExecType.REPLACED, FOrdStatus.CREATED) 
     assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_REPLACE, '8', FExecType.REPLACED, FOrdStatus.NEW) == FOrdStatus.NEW
     assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_REPLACE, '8', FExecType.REPLACED, FOrdStatus.PARTIALLY_FILLED) == FOrdStatus.PARTIALLY_FILLED
     assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_REPLACE, '8', FExecType.REPLACED, FOrdStatus.FILLED) == FOrdStatus.FILLED
-    assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_REPLACE, '8', FExecType.REPLACED, FOrdStatus.DONE_FOR_DAY) == -23
+    assert pytest.raises(FIXError, FIXNewOrderSingle.change_status, FOrdStatus.PENDING_REPLACE, '8', FExecType.REPLACED, FOrdStatus.DONE_FOR_DAY) 
     assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_REPLACE, '8', FExecType.REPLACED, FOrdStatus.CANCELED) == FOrdStatus.CANCELED
-    assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_REPLACE, '8', FExecType.REPLACED, FOrdStatus.PENDING_CANCEL) == -23
-    assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_REPLACE, '8', FExecType.REPLACED, FOrdStatus.STOPPED) == -23
-    assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_REPLACE, '8', FExecType.REPLACED, FOrdStatus.REJECTED) == -23
-    assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_REPLACE, '8', FExecType.REPLACED, FOrdStatus.SUSPENDED) == -23
-    assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_REPLACE, '8', FExecType.REPLACED, FOrdStatus.PENDING_NEW) == -23
-    assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_REPLACE, '8', FExecType.REPLACED, FOrdStatus.CALCULATED) == -23
-    assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_REPLACE, '8', FExecType.REPLACED, FOrdStatus.EXPIRED) == -23
-    assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_REPLACE, '8', FExecType.REPLACED, FOrdStatus.ACCEPTED_FOR_BIDDING) == -23
-    assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_REPLACE, '8', FExecType.REPLACED, FOrdStatus.PENDING_REPLACE) == -23
+    assert pytest.raises(FIXError, FIXNewOrderSingle.change_status, FOrdStatus.PENDING_REPLACE, '8', FExecType.REPLACED, FOrdStatus.PENDING_CANCEL) 
+    assert pytest.raises(FIXError, FIXNewOrderSingle.change_status, FOrdStatus.PENDING_REPLACE, '8', FExecType.REPLACED, FOrdStatus.STOPPED) 
+    assert pytest.raises(FIXError, FIXNewOrderSingle.change_status, FOrdStatus.PENDING_REPLACE, '8', FExecType.REPLACED, FOrdStatus.REJECTED) 
+    assert pytest.raises(FIXError, FIXNewOrderSingle.change_status, FOrdStatus.PENDING_REPLACE, '8', FExecType.REPLACED, FOrdStatus.SUSPENDED) 
+    assert pytest.raises(FIXError, FIXNewOrderSingle.change_status, FOrdStatus.PENDING_REPLACE, '8', FExecType.REPLACED, FOrdStatus.PENDING_NEW) 
+    assert pytest.raises(FIXError, FIXNewOrderSingle.change_status, FOrdStatus.PENDING_REPLACE, '8', FExecType.REPLACED, FOrdStatus.CALCULATED) 
+    assert pytest.raises(FIXError, FIXNewOrderSingle.change_status, FOrdStatus.PENDING_REPLACE, '8', FExecType.REPLACED, FOrdStatus.EXPIRED) 
+    assert pytest.raises(FIXError, FIXNewOrderSingle.change_status, FOrdStatus.PENDING_REPLACE, '8', FExecType.REPLACED, FOrdStatus.ACCEPTED_FOR_BIDDING) 
+    assert pytest.raises(FIXError, FIXNewOrderSingle.change_status, FOrdStatus.PENDING_REPLACE, '8', FExecType.REPLACED, FOrdStatus.PENDING_REPLACE) 
     # fmt: on
 
 
 def test_state_transition__pendingreplce__ord_reject():
     # fmt: off
     # But cancel reject request does!
-    assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_REPLACE, '9', 0, FOrdStatus.CREATED) == -23
+    assert pytest.raises(FIXError, FIXNewOrderSingle.change_status, FOrdStatus.PENDING_REPLACE, '9', 0, FOrdStatus.CREATED) 
     assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_REPLACE, '9', 0, FOrdStatus.NEW) == FOrdStatus.NEW
     assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_REPLACE, '9', 0, FOrdStatus.PARTIALLY_FILLED) == FOrdStatus.PARTIALLY_FILLED
     assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_REPLACE, '9', 0, FOrdStatus.FILLED) == FOrdStatus.FILLED
@@ -444,10 +421,9 @@ def test_state_transition__pendingreplce__ord_reject():
     assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_REPLACE, '9', 0, FOrdStatus.PENDING_NEW) == FOrdStatus.PENDING_NEW
     assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_REPLACE, '9', 0, FOrdStatus.CALCULATED) == FOrdStatus.CALCULATED
     assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_REPLACE, '9', 0, FOrdStatus.EXPIRED) == FOrdStatus.EXPIRED
-    assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_REPLACE, '9', 0, FOrdStatus.ACCEPTED_FOR_BIDDING) == -23
+    assert pytest.raises(FIXError, FIXNewOrderSingle.change_status, FOrdStatus.PENDING_REPLACE, '9', 0, FOrdStatus.ACCEPTED_FOR_BIDDING) 
     assert FIXNewOrderSingle.change_status(FOrdStatus.PENDING_REPLACE, '9', 0, FOrdStatus.PENDING_REPLACE) == FOrdStatus.PENDING_REPLACE
     # fmt: on
-
 
 def test_exec_sequence__vanilla_fill():
     """
