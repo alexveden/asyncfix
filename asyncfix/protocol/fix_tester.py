@@ -90,7 +90,11 @@ class FIXTester:
         assert clord_id
         m[FTag.ClOrdID] = clord_id
 
-        order_id = order.order_id if order.order_id is None else self.next_order_id()
+        if order.order_id is None:
+            order_id = self.next_order_id()
+        else:
+            order_id = order.order_id
+
         m[FTag.OrderID] = order_id
         m[FTag.ExecID] = self.next_exec_id()
 
