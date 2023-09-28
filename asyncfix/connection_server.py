@@ -69,7 +69,7 @@ class FIXServerConnectionHandler(FIXConnectionHandler):
 
             if msg_type == protocol.msgtype.LOGOUT:
                 self.connection_state = ConnectionState.LOGGED_OUT
-                self.handle_close()
+                await self.handle_close()
             elif msg_type == protocol.msgtype.TESTREQUEST:
                 responses.append(protocol.heartbeat())
             elif msg_type == protocol.msgtype.RESENDREQUEST:

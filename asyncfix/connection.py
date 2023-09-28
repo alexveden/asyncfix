@@ -4,7 +4,7 @@ import sys
 from enum import Enum
 from typing import Callable
 
-from asyncfix import FTag
+from asyncfix import FTag,FMsg
 from asyncfix.codec import Codec
 from asyncfix.engine import FIXEngine
 from asyncfix.journaler import DuplicateSeqNoError
@@ -69,6 +69,12 @@ class FIXConnectionHandler(object):
         return self.addr
 
     async def disconnect(self):
+        if self.connection_state == ConnectionState.LOGGED_IN:
+            try:
+                await self.send_msg(self.codec.protocol.logout())
+            except Exception:
+                logging.exception('disconnect() logout msg error')
+
         await self.handle_close()
 
     async def _notify_message_observers(
@@ -79,6 +85,7 @@ class FIXConnectionHandler(object):
     ):
         if persist_message is True:
             self.engine.journaller.persist_msg(msg, self.session, direction)
+
         for handler in filter(
             lambda x: (x[1] is None or x[1] == direction)
             and (x[2] is None or x[2] == msg.msg_type),
@@ -168,7 +175,7 @@ class FIXConnectionHandler(object):
             gap_fill_msg[FTag.MsgSeqNum] = gap_fill_begin
             gap_fill_msg[FTag.NewSeqNo] = str(gap_fill_end)
             responses.append(gap_fill_msg)
-
+        print(f'_handle_resend_request(): \n\t{responses}')
         return responses
 
     async def handle_read(self):
@@ -186,6 +193,7 @@ class FIXConnectionHandler(object):
                         break
 
                     (decoded_msg, parsed_length) = self.codec.decode(self.msg_buffer)
+                    # logging.debug(decoded_msg)
 
                     if parsed_length > 0:
                         self.msg_buffer = self.msg_buffer[parsed_length:]
@@ -201,8 +209,8 @@ class FIXConnectionHandler(object):
                 await self.disconnect()
                 return
             except Exception:
-                logging.exception("handle_read failed")
-                raise
+                logging.exception("handle_read exception")
+                # raise
 
     async def handle_session_message(self, msg: FIXMessage):
         return -1
@@ -221,7 +229,7 @@ class FIXConnectionHandler(object):
             return
 
         msg_type = decoded_msg[FTag.MsgType]
-
+        # breakpoint()
         try:
             responses = []
             if msg_type in protocol.session_message_types:
@@ -243,16 +251,20 @@ class FIXConnectionHandler(object):
                 )
                 responses.append(protocol.resend_request(last_known_seq_no, 0))
                 # we still need to notify if we are processing Logon message
-                if msg_type == protocol.msgtype.LOGON:
+                if msg_type in {FMsg.LOGON, FMsg.LOGOUT}:
                     await self._notify_message_observers(
                         decoded_msg, MessageDirection.INBOUND, False
                     )
+                if msg_type == FMsg.LOGOUT:
+                    logging.error('Getting LOGOUT from server, during login')
+                    await self.disconnect()
+                    return
             else:
                 self.session.set_recv_seq_no(recv_seq_no)
                 await self._notify_message_observers(
                     decoded_msg, MessageDirection.INBOUND
                 )
-
+            print(responses)
             for m in responses:
                 await self.send_msg(m)
 
@@ -294,15 +306,18 @@ class FIXConnectionHandler(object):
         encoded_msg = self.codec.encode(msg, self.session).encode("utf-8")
         self.socket_writer.write(encoded_msg)
         await self.socket_writer.drain()
+
+        # debug --->
         decoded_msg, junk = self.codec.decode(encoded_msg)
-        logging.debug(f"send msg sending msg\n\t {decoded_msg}")
+        logging.debug(f"send msg ->\n\t {decoded_msg}")
+        # <-----
 
         try:
             await self._notify_message_observers(decoded_msg, MessageDirection.OUTBOUND)
         except DuplicateSeqNoError:
             logging.error(
                 "We have sent a message with a duplicate seq no, failed to persist it"
-                " (MsgSeqNum: %s)" % (decoded_msg[self.codec.FTag.MsgSeqNum])
+                " (MsgSeqNum: %s)" % (decoded_msg[FTag.MsgSeqNum])
             )
 
 

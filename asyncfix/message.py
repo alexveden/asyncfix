@@ -269,3 +269,6 @@ class FIXMessage(FIXContainer):
     @msg_type.setter
     def msg_type(self, msg_type: str | FMsg):
         self._msg_type = msg_type
+
+    def __repr__(self):
+        return f"msg_type={self.msg_type}|" + super().__str__()

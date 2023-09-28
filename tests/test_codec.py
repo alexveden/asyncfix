@@ -7,12 +7,15 @@ import pytest
 
 from asyncfix import FMsg, FTag
 from asyncfix.codec import Codec
-from asyncfix.message import (
-    FIXContainer,
-    FIXMessage,
+from asyncfix.errors import (
+    EncodingError,
     RepeatingTagError,
     TagNotFoundError,
     UnmappedRepeatedGrpError,
+)
+from asyncfix.message import (
+    FIXContainer,
+    FIXMessage,
 )
 from asyncfix.protocol import FIXProtocol44
 
@@ -374,3 +377,77 @@ def test_decode_minimum_message(fix_session):
     assert parsed_len == 0
     with pytest.raises(AssertionError, match="Minimum message"):
         msg, parsed_len = codec.decode(enc_msg, silent=False)
+
+
+def test_encode_decode_seqnum_reset_gap_fill(fix_session):
+    protocol = FIXProtocol44()
+    codec = Codec(protocol)
+
+    msg = FIXMessage(
+        FMsg.SEQUENCERESET,
+        {FTag.GapFillFlag: "Y", FTag.MsgSeqNum: "3", 36: 7},
+    )
+    enc_msg = codec.encode(msg, fix_session)
+    msg_dec, parsed_len = codec.decode(enc_msg.encode())
+
+    assert msg_dec[34] == "3"
+    assert msg_dec[FTag.GapFillFlag] == "Y"
+
+
+def test_encode_decode_seqnum_reset_gap_fill_no(fix_session):
+    protocol = FIXProtocol44()
+    codec = Codec(protocol)
+
+    msg = FIXMessage(
+        FMsg.SEQUENCERESET,
+        {FTag.MsgSeqNum: "3"},
+    )
+    enc_msg = codec.encode(msg, fix_session)
+    msg_dec, parsed_len = codec.decode(enc_msg.encode())
+
+    assert msg_dec[34] == "3"
+    assert FTag.GapFillFlag not in msg_dec
+    assert msg_dec[FTag.NewSeqNo] == "1"
+
+
+def test_encode_decode_seqnum_reset_gap_fill_no_msgseqnum(fix_session):
+    protocol = FIXProtocol44()
+    codec = Codec(protocol)
+
+    msg = FIXMessage(
+        FMsg.SEQUENCERESET,
+        {FTag.GapFillFlag: "Y", 36: 7},
+    )
+    with pytest.raises(
+        EncodingError,
+        match="SequenceReset must have the MsgSeqNum already populated",
+    ):
+        enc_msg = codec.encode(msg, fix_session)
+
+
+def test_encode_decode_pos_dup_flag(fix_session):
+    protocol = FIXProtocol44()
+    codec = Codec(protocol)
+
+    msg = FIXMessage(
+        FMsg.ADVERTISEMENT,
+        {FTag.PossDupFlag: "Y", 34: 7},
+    )
+
+    enc_msg = codec.encode(msg, fix_session)
+    msg_dec, parsed_len = codec.decode(enc_msg.encode())
+
+    assert msg_dec[34] == "7"
+    assert msg_dec[FTag.PossDupFlag] == "Y"
+
+    with pytest.raises(
+        EncodingError,
+        match="Failed to encode message with PossDupFlag=Y but no previous MsgSeqNum",
+    ):
+        msg = FIXMessage(
+            FMsg.ADVERTISEMENT,
+            {
+                FTag.PossDupFlag: "Y",
+            },
+        )
+        enc_msg = codec.encode(msg, fix_session)

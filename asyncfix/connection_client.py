@@ -7,6 +7,7 @@ from asyncfix.engine import FIXEngine
 from asyncfix.journaler import DuplicateSeqNoError
 from asyncfix.message import FIXMessage
 from asyncfix.protocol import FIXProtocolBase
+import time
 
 
 class FIXClientConnectionHandler(FIXConnectionHandler):
@@ -23,7 +24,6 @@ class FIXClientConnectionHandler(FIXConnectionHandler):
         target_sub_id=None,
         sender_sub_id=None,
         heartbeat_timeout=30,
-        heartbeat=1,
     ):
         super().__init__(
             engine=engine,
@@ -39,7 +39,8 @@ class FIXClientConnectionHandler(FIXConnectionHandler):
         self.target_sub_id = target_sub_id
         self.sender_sub_id = sender_sub_id
         self.heartbeat_period = float(heartbeat_timeout)
-        self.heartbeat = heartbeat
+        self.message_last_time = 0.0
+        assert heartbeat_timeout > 5, 'heartbeat_timeout is too low'
 
         # we need to send a login request.
         self.session = self.engine.get_or_create_session_from_comp_ids(
@@ -50,11 +51,24 @@ class FIXClientConnectionHandler(FIXConnectionHandler):
 
         self.protocol = protocol
 
-        asyncio.ensure_future(self.logon())
+    async def heartbeat_timer(self):
+        while True:
+            try:
+                if self.connection_state == ConnectionState.LOGGED_IN:
+                    if time.time() - self.message_last_time > self.heartbeat_period-1:
+                        await self.send_msg(self.protocol.heartbeat())
+                        self.message_last_time = time.time()
 
-    async def logon(self):
+            except asyncio.CancelledError:
+                raise
+            except Exception:
+                logging.exception('heartbeat_timer() error')
+            await asyncio.sleep(1.0)
+
+    async def logon(self, reset_seq_num: bool = False):
         logon_msg = self.protocol.logon()
-        logon_msg.set(FTag.HeartBtInt, self.heartbeat, replace=True)
+        logon_msg.set(FTag.HeartBtInt, int(self.heartbeat_period), replace=True)
+        logon_msg.set(FTag.ResetSeqNumFlag, "Y" if reset_seq_num else "N", replace=True)
         await self.send_msg(logon_msg)
 
     async def handle_session_message(self, msg: FIXMessage):
@@ -72,16 +86,10 @@ class FIXClientConnectionHandler(FIXConnectionHandler):
                     "Client session already logged in - ignoring login request"
                 )
             else:
-                try:
-                    self.connection_state = ConnectionState.LOGGED_IN
-                    self.heartbeat_period = float(msg[FTag.HeartBtInt])
-                except DuplicateSeqNoError:
-                    logging.error(
-                        "Failed to process login request with duplicate seq no"
-                    )
-                    await self.disconnect()
-                    return
+                self.connection_state = ConnectionState.LOGGED_IN
+                self.heartbeat_period = float(msg[FTag.HeartBtInt])
         elif self.connection_state == ConnectionState.LOGGED_IN:
+            self.message_last_time = time.time()
             # compids are reversed here
             if not self.session.validate_comp_ids(sender_comp_id, target_comp_d):
                 logging.error("Received message with unexpected comp ids")
@@ -90,9 +98,14 @@ class FIXClientConnectionHandler(FIXConnectionHandler):
 
             if msg_type == FMsg.LOGOUT:
                 self.connection_state = ConnectionState.LOGGED_OUT
-                self.handle_close()
+                await self.handle_close()
             elif msg_type == FMsg.TESTREQUEST:
-                responses.append(self.protocol.heartbeat())
+                # https://www.fixtrading.org/standards/fix-session-layer-online/#message-exchange-during-a-fix-connection # noqa
+                #    see "Test request processing" section
+                #  required to reply with TestReqID from query
+                hbt_msg = self.protocol.heartbeat()
+                hbt_msg[FTag.TestReqID] = msg[FTag.TestReqID]
+                responses.append(hbt_msg)
             elif msg_type == FMsg.RESENDREQUEST:
                 responses.extend(self._handle_resend_request(msg))
             elif msg_type == FMsg.SEQUENCERESET:
@@ -157,6 +170,8 @@ class FIXClient(FIXEndPoint):
             heartbeat_timeout=self.heartbeat_timeout,
         )
         asyncio.create_task(connection.handle_read())
+        asyncio.create_task(connection.logon())
+        asyncio.create_task(connection.heartbeat_timer())
 
         self.connections.append(connection)
 
@@ -165,8 +180,9 @@ class FIXClient(FIXEndPoint):
         ):
             await handler[0](connection)
 
-    def stop(self):
+    async def stop(self):
         logging.info("Stopping client connections")
         for connection in self.connections:
-            connection.disconnect()
+            await connection.disconnect()
+        self.connections.clear()
         self.socket_writer.close()

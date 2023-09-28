@@ -1,7 +1,7 @@
 import logging
 from datetime import datetime
 
-from asyncfix import FTag
+from asyncfix import FTag, FMsg
 from asyncfix.errors import EncodingError
 from asyncfix.message import FIXContainer, FIXMessage, RepeatingTagError
 from asyncfix.protocol import FIXProtocolBase
@@ -41,53 +41,44 @@ class Codec(object):
 
         msg_type = msg.msg_type
 
-        body.append(
-            "%s=%s" % (self.protocol.fixtags.SenderCompID, session.sender_comp_id)
-        )
-        body.append(
-            "%s=%s" % (self.protocol.fixtags.TargetCompID, session.target_comp_id)
-        )
+        body.append("%s=%s" % (FTag.SenderCompID, session.sender_comp_id))
+        body.append("%s=%s" % (FTag.TargetCompID, session.target_comp_id))
 
         seq_no = 0
-        if msg_type == self.protocol.msgtype.SEQUENCERESET:
-            if (
-                self.protocol.fixtags.GapFillFlag in msg
-                and msg[self.protocol.fixtags.GapFillFlag] == "Y"
-            ):
+        if msg_type == FMsg.SEQUENCERESET:
+            if FTag.MsgSeqNum not in msg:
+                raise EncodingError(
+                    "SequenceReset must have the MsgSeqNum already populated"
+                )
+            if msg.get(FTag.GapFillFlag, "N") == "N":
                 # in this case the sequence number should already be on the message
-                try:
-                    seq_no = msg[self.protocol.fixtags.MsgSeqNum]
-                except KeyError:
-                    raise EncodingError(
-                        "SequenceReset with GapFill='Y' must have the MsgSeqNum already"
-                        " populated"
-                    )
-            else:
-                msg[self.protocol.fixtags.NewSeqNo] = session.allocate_snd_seq_no()
-                seq_no = msg[self.protocol.fixtags.MsgSeqNum]
+                msg[FTag.NewSeqNo] = session.allocate_snd_seq_no()
+            seq_no = msg[FTag.MsgSeqNum]
         else:
             # if we have the PossDupFlag set, we need to send the message
             #   with the same seqNo
-            if (
-                self.protocol.fixtags.PossDupFlag in msg
-                and msg[self.protocol.fixtags.PossDupFlag] == "Y"
-            ):
-                try:
-                    seq_no = msg[self.protocol.fixtags.MsgSeqNum]
-                except KeyError:
+            if msg.get(FTag.PossDupFlag, "N") == "Y":
+                if FTag.MsgSeqNum not in msg:
                     raise EncodingError(
-                        "Failed to encode message with PossDupFlay=Y but no previous"
+                        "Failed to encode message with PossDupFlag=Y but no previous"
                         " MsgSeqNum"
                     )
+                else:
+                    seq_no = msg[FTag.MsgSeqNum]
             else:
                 seq_no = session.allocate_snd_seq_no()
 
-        body.append("%s=%s" % (self.protocol.fixtags.MsgSeqNum, seq_no))
-        body.append(
-            "%s=%s" % (self.protocol.fixtags.SendingTime, self.current_datetime())
-        )
+        body.append("%s=%s" % (FTag.MsgSeqNum, seq_no))
+        body.append("%s=%s" % (FTag.SendingTime, self.current_datetime()))
 
         for t in msg.tags:
+            if t in {
+                FTag.MsgSeqNum,
+                FTag.SendingTime,
+                FTag.SenderCompID,
+                FTag.TargetCompID,
+            }:
+                continue
             self._addTag(body, t, msg)
 
         # Enable easy change when debugging
@@ -97,19 +88,15 @@ class Codec(object):
 
         # Create header
         header = []
-        msg_type = "%s=%s" % (self.protocol.fixtags.MsgType, msg_type)
-        header.append(
-            "%s=%s" % (self.protocol.fixtags.BeginString, self.protocol.beginstring)
-        )
-        header.append(
-            "%s=%i" % (self.protocol.fixtags.BodyLength, len(body) + len(msg_type) + 1)
-        )
+        msg_type = "%s=%s" % (FTag.MsgType, msg_type)
+        header.append("%s=%s" % (FTag.BeginString, self.protocol.beginstring))
+        header.append("%s=%i" % (FTag.BodyLength, len(body) + len(msg_type) + 1))
         header.append(msg_type)
 
         fixmsg = self.SOH.join(header) + self.SOH + body
 
         cksum = sum([ord(i) for i in fixmsg]) % 256
-        fixmsg = fixmsg + "%s=%0.3i" % (self.protocol.fixtags.CheckSum, cksum)
+        fixmsg = fixmsg + "%s=%0.3i" % (FTag.CheckSum, cksum)
 
         # print len(fixmsg)
 
