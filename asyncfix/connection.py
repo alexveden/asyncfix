@@ -1,13 +1,10 @@
 import asyncio
-import logging
-import sys
+import time
 from enum import Enum
-from typing import Callable
-
-from asyncfix import FTag,FMsg
+import logging
+from asyncfix import FTag, FMsg
+from asyncfix.errors import FIXConnectionError
 from asyncfix.codec import Codec
-from asyncfix.engine import FIXEngine
-from asyncfix.journaler import DuplicateSeqNoError
 from asyncfix.message import FIXMessage, MessageDirection
 from asyncfix.protocol import FIXProtocolBase
 from asyncfix.session import FIXSession
@@ -21,171 +18,65 @@ class ConnectionState(Enum):
     LOGGED_OUT = 4
 
 
-class FIXException(Exception):
-    class FIXExceptionReason(Enum):
-        NOT_CONNECTED = 0
-        DECODE_ERROR = 1
-        ENCODE_ERROR = 2
-
-    def __init__(self, reason, description=None):
-        super(Exception, self).__init__(description)
-        self.reason = reason
-
-
-class SessionWarning(Exception):
-    pass
-
-
-class SessionError(Exception):
-    pass
-
-
-class FIXConnectionHandler(object):
+class AsyncFIXConnection:
     def __init__(
         self,
-        engine: FIXEngine,
         protocol: FIXProtocolBase,
-        socket_reader: asyncio.StreamReader,
-        socket_writer: asyncio.StreamWriter,
-        addr=None,
-        observer=None,
+        sender_comp_id: str,
+        target_comp_id: str,
+        host: str,
+        port: int,
+        heartbeat_period: int = 30,
+        logger: logging.Logger | None = None,
     ):
         self.codec = Codec(protocol)
-        self.engine = engine
-        self.connection_state = ConnectionState.CONNECTED
-        self.session: FIXSession | None = None
-        self.addr = addr
-        self.observer = observer
+        self.sender_comp_id = sender_comp_id
+        self.target_comp_id = target_comp_id
+        self.connection_state = ConnectionState.DISCONNECTED
+        self.session: FIXSession | None = FIXSession(0, target_comp_id, sender_comp_id)
         self.msg_buffer = b""
-        self.heartbeat_period = 30.0
-        self.msg_handlers = []
-        self.socket_reader = socket_reader
-        self.socket_writer = socket_writer
-        self.heartbeat_timer_registration = None
-        self.expected_heartbeat_egistration = None
-        # self.reader_task = asyncio.create_task(self.handle_read())
+        self.heartbeat_period = heartbeat_period
+        self.message_last_time = 0.0
+        self.socket_reader = None
+        self.socket_writer = None
+        self.host = host
+        self.port = port
+        if not logger:
+            self.log = logging.getLogger()
+        else:
+            self.log = logger
 
-    def address(self):
-        return self.addr
+        asyncio.create_task(self.socket_read_task())
+        asyncio.create_task(self.heartbeat_timer_task())
+
+    @property
+    def protocol(self) -> FIXProtocolBase:
+        return self.codec.protocol
+
+    async def connect(self):
+        raise NotImplementedError('connect() is not implemented in child')
 
     async def disconnect(self):
-        if self.connection_state == ConnectionState.LOGGED_IN:
-            try:
-                await self.send_msg(self.codec.protocol.logout())
-            except Exception:
-                logging.exception('disconnect() logout msg error')
+        if self.connection_state != ConnectionState.DISCONNECTED:
+            self.log.info("Client disconnected")
+            if self.socket_writer:
+                self.socket_writer.close()
+            self.socket_writer = None
+            self.socket_reader = None
+            self.connection_state = ConnectionState.DISCONNECTED
+            await self.on_disconnect()
 
-        await self.handle_close()
-
-    async def _notify_message_observers(
-        self,
-        msg: FIXMessage,
-        direction: MessageDirection,
-        persist_message=True,
-    ):
-        if persist_message is True:
-            self.engine.journaller.persist_msg(msg, self.session, direction)
-
-        for handler in filter(
-            lambda x: (x[1] is None or x[1] == direction)
-            and (x[2] is None or x[2] == msg.msg_type),
-            self.msg_handlers,
-        ):
-            await handler[0](self, msg)
-
-    def add_message_handler(
-        self,
-        handler: Callable,
-        direction: MessageDirection | None = None,
-        msg_type=None,
-    ):
-        self.msg_handlers.append((handler, direction, msg_type))
-
-    def remove_message_handler(
-        self,
-        handler: Callable,
-        direction: MessageDirection | None = None,
-        msg_type=None,
-    ):
-        remove = filter(
-            lambda x: x[0] == handler
-            and (x[1] == direction or direction is None)
-            and (x[2] == msg_type or msg_type is None),
-            self.msg_handlers,
-        )
-        for h in remove:
-            self.msg_handlers.remove(h)
-
-    def _send_heartbeat(self):
-        self.send_msg(self.codec.protocol.heartbeat())
-
-    def _expected_heartbeat(self, type, closure):
-        logging.warning(
-            "Expected heartbeat from peer %s" % (self.expected_heartbeat_egistration,)
-        )
-        self.send_msg(self.codec.protocol.test_request())
-
-    def _handle_resend_request(self, msg: FIXMessage):
-        protocol: FIXProtocolBase = self.codec.protocol
-        responses = []
-
-        begin_seq_no = msg[FTag.BeginSeqNo]
-        end_seq_no = msg[FTag.EndSeqNo]
-        if int(end_seq_no) == 0:
-            end_seq_no = sys.maxsize
-        logging.info("Received resent request from %s to %s", begin_seq_no, end_seq_no)
-        replay_msgs = self.engine.journaller.recover_msgs(
-            self.session, MessageDirection.OUTBOUND, begin_seq_no, end_seq_no
-        )
-        gap_fill_begin = int(begin_seq_no)
-        gap_fill_end = int(begin_seq_no)
-        for replay_msg in replay_msgs:
-            msg_seq_num = int(replay_msg[FTag.MsgSeqNum])
-            if replay_msg[FTag.MsgType] in protocol.session_message_types:
-                gap_fill_end = msg_seq_num + 1
-            else:
-                if self.engine.should_resend_message(self.session, replay_msg):
-                    if gap_fill_begin < gap_fill_end:
-                        # we need to send a gap fill message
-                        gap_fill_msg = FIXMessage(protocol.msgtype.SEQUENCERESET)
-                        gap_fill_msg[FTag.GapFillFlag] = "Y"
-                        gap_fill_msg[FTag.MsgSeqNum] = gap_fill_begin
-                        gap_fill_msg[FTag.NewSeqNo] = str(gap_fill_end)
-                        responses.append(gap_fill_msg)
-
-                    # and then resent the replayMsg
-                    del replay_msg[FTag.BeginString]
-                    del replay_msg[FTag.BodyLength]
-                    del replay_msg[FTag.SendingTime]
-                    del replay_msg[FTag.SenderCompID]
-                    del replay_msg[FTag.TargetCompID]
-                    del replay_msg[FTag.CheckSum]
-                    replay_msg[FTag.PossDupFlag] = "Y"
-                    responses.append(replay_msg)
-
-                    gap_fill_begin = msg_seq_num + 1
-                else:
-                    gap_fill_end = msg_seq_num + 1
-                    responses.append(replay_msg)
-
-        if gap_fill_begin < gap_fill_end:
-            # we need to send a gap fill message
-            gap_fill_msg = FIXMessage(protocol.msgtype.SEQUENCERESET)
-            gap_fill_msg[FTag.GapFillFlag] = "Y"
-            gap_fill_msg[FTag.MsgSeqNum] = gap_fill_begin
-            gap_fill_msg[FTag.NewSeqNo] = str(gap_fill_end)
-            responses.append(gap_fill_msg)
-        print(f'_handle_resend_request(): \n\t{responses}')
-        return responses
-
-    async def handle_read(self):
-        logging.debug("handle_read")
+    async def socket_read_task(self):
         while True:
             try:
+                if not self.socket_reader:
+                    # Socket was not connected, just wait
+                    await asyncio.sleep(1)
+                    continue
+
                 msg = await self.socket_reader.read(4096)
                 if not msg:
                     raise ConnectionError
-                # breakpoint()
 
                 self.msg_buffer = self.msg_buffer + msg
                 while True:
@@ -201,27 +92,50 @@ class FIXConnectionHandler(object):
                     if decoded_msg is None:
                         break
 
-                    await self.process_message(decoded_msg)
+                    await self._process_message(decoded_msg)
             except asyncio.CancelledError:
-                break
+                raise
             except ConnectionError as why:
                 logging.debug("Connection has been closed %s" % (why,))
                 await self.disconnect()
-                return
+                continue
             except Exception:
                 logging.exception("handle_read exception")
                 # raise
 
-    async def handle_session_message(self, msg: FIXMessage):
-        return -1
+    async def heartbeat_timer_task(self):
+        while True:
+            try:
+                if self.connection_state == ConnectionState.LOGGED_IN:
+                    if time.time() - self.message_last_time > self.heartbeat_period-1:
+                        await self.send_msg(self.protocol.heartbeat())
+                        self.message_last_time = time.time()
 
-    async def process_message(self, decoded_msg: FIXMessage):
+            except asyncio.CancelledError:
+                raise
+            except Exception:
+                logging.exception('heartbeat_timer() error')
+            await asyncio.sleep(1.0)
+
+    async def on_session_message(self, msg: FIXMessage):
+        raise NotImplementedError('on_session_message not implemented in child')
+
+    async def on_message(self, msg: FIXMessage):
+        raise NotImplementedError('on_message not implemented in child')
+
+    async def on_connect(self):
+        raise NotImplementedError('on_connected not implemented in child')
+
+    async def on_disconnect(self):
+        raise NotImplementedError('on_disconnected not implemented in child')
+
+    async def _process_message(self, decoded_msg: FIXMessage):
         protocol: FIXProtocolBase = self.codec.protocol
-        logging.debug(f"processMessage \n\t {decoded_msg}")
+        self.log.debug(f"process_message \n\t {decoded_msg}")
 
         begin_string = decoded_msg[FTag.BeginString]
         if begin_string != protocol.beginstring:
-            logging.warning(
+            self.log.warning(
                 "FIX BeginString is incorrect (expected: %s received: %s)",
                 (protocol.beginstring, begin_string),
             )
@@ -229,126 +143,24 @@ class FIXConnectionHandler(object):
             return
 
         msg_type = decoded_msg[FTag.MsgType]
-        # breakpoint()
-        try:
-            responses = []
-            if msg_type in protocol.session_message_types:
-                (recv_seq_no, responses) = await self.handle_session_message(
-                    decoded_msg
-                )
-            else:
-                recv_seq_no = decoded_msg[FTag.MsgSeqNum]
+        self.message_last_time = time.time()
 
-            # validate the seq number
-            (seq_no_state, last_known_seq_no) = self.session.validate_recv_seq_no(
-                recv_seq_no
-            )
-
-            if seq_no_state is False:
-                # We should send a resend request
-                logging.info(
-                    "Requesting resend of messages: %s to %s" % (last_known_seq_no, 0)
-                )
-                responses.append(protocol.resend_request(last_known_seq_no, 0))
-                # we still need to notify if we are processing Logon message
-                if msg_type in {FMsg.LOGON, FMsg.LOGOUT}:
-                    await self._notify_message_observers(
-                        decoded_msg, MessageDirection.INBOUND, False
-                    )
-                if msg_type == FMsg.LOGOUT:
-                    logging.error('Getting LOGOUT from server, during login')
-                    await self.disconnect()
-                    return
-            else:
-                self.session.set_recv_seq_no(recv_seq_no)
-                await self._notify_message_observers(
-                    decoded_msg, MessageDirection.INBOUND
-                )
-            print(responses)
-            for m in responses:
-                await self.send_msg(m)
-
-        except SessionWarning as sw:
-            logging.warning(sw)
-        except SessionError as se:
-            logging.error(se)
-            await self.disconnect()
-        except DuplicateSeqNoError:
-            try:
-                if decoded_msg[FTag.PossDupFlag] == "Y":
-                    logging.debug("Received duplicate message with PossDupFlag set")
-            except KeyError:
-                pass
-            finally:
-                logging.error(
-                    "Failed to process message with duplicate seq no (MsgSeqNum: %s)"
-                    " (and no PossDupFlag='Y') - disconnecting" % (recv_seq_no,)
-                )
-                await self.disconnect()
-
-    async def handle_close(self):
-        if self.connection_state != ConnectionState.DISCONNECTED:
-            logging.info("Client disconnected")
-            self.socket_writer.close()
-            self.connection_state = ConnectionState.DISCONNECTED
-            self.msg_handlers.clear()
-            if self.observer is not None:
-                await self.observer.notify_disconnect(self)
+        if msg_type in protocol.session_message_types:
+            await self.on_session_message(decoded_msg)
+        else:
+            await self.on_message(decoded_msg)
 
     async def send_msg(self, msg: FIXMessage):
         if (
             self.connection_state != ConnectionState.CONNECTED
             and self.connection_state != ConnectionState.LOGGED_IN
         ):
-            logging.debug("sendMsg not connected or logged in")
-            return
+            raise FIXConnectionError("FIXConnectionError is not connected or logged")
 
         encoded_msg = self.codec.encode(msg, self.session).encode("utf-8")
+
+        msg_raw = encoded_msg.replace(b'\x01', b'|')
+        self.log.debug(f"send_msg: \n\t{msg_raw.decode()}")
+
         self.socket_writer.write(encoded_msg)
         await self.socket_writer.drain()
-
-        # debug --->
-        decoded_msg, junk = self.codec.decode(encoded_msg)
-        logging.debug(f"send msg ->\n\t {decoded_msg}")
-        # <-----
-
-        try:
-            await self._notify_message_observers(decoded_msg, MessageDirection.OUTBOUND)
-        except DuplicateSeqNoError:
-            logging.error(
-                "We have sent a message with a duplicate seq no, failed to persist it"
-                " (MsgSeqNum: %s)" % (decoded_msg[FTag.MsgSeqNum])
-            )
-
-
-class FIXEndPoint(object):
-    def __init__(self, engine: FIXEngine, protocol: FIXProtocolBase):
-        self.engine: FIXEngine = engine
-        self.protocol: FIXProtocolBase = protocol
-
-        self.connections: list[FIXConnectionHandler] = []
-        self.message_handlers = []
-
-    def writable(self):
-        return True
-
-    def start(self, host, port, loop):
-        pass
-
-    def stop(self):
-        pass
-
-    def add_connection_listener(self, handler: Callable, filter):
-        self.message_handlers.append((handler, filter))
-
-    def remove_connection_listener(self, handler: Callable, filter):
-        for s in self.message_handlers:
-            if s == (handler, filter):
-                self.message_handlers.remove(s)
-
-    async def notify_disconnect(self, connection: FIXConnectionHandler):
-        self.connections.remove(connection)
-        for handler in filter(
-            lambda x: x[1] == ConnectionState.DISCONNECTED, self.message_handlers
-        ):
-            await handler[0](connection)

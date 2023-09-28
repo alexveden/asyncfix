@@ -6,6 +6,10 @@ class FIXMessageError(FIXError):
     pass
 
 
+class FIXConnectionError(FIXError):
+    pass
+
+
 class EncodingError(FIXError):
     pass
 
