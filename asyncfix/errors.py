@@ -10,6 +10,10 @@ class FIXConnectionError(FIXError):
     pass
 
 
+class DuplicateSeqNoError(FIXError):
+    pass
+
+
 class EncodingError(FIXError):
     pass
 

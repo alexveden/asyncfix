@@ -1,12 +1,8 @@
-import pickle
 import sqlite3
 
-from asyncfix.message import FIXMessage, MessageDirection
+from asyncfix.message import MessageDirection
 from asyncfix.session import FIXSession
-
-
-class DuplicateSeqNoError(Exception):
-    pass
+from asyncfix.errors import FIXMessageError, DuplicateSeqNoError
 
 
 class Journaler(object):
@@ -20,7 +16,7 @@ class Journaler(object):
         self.cursor.execute(
             "CREATE TABLE IF NOT EXISTS message("
             "seqNo INTEGER NOT NULL,"
-            "session TEXT NOT NULL,"
+            "session INTEGER NOT NULL,"
             "direction INTEGER NOT NULL,"
             "msg TEXT,"
             "PRIMARY KEY (seqNo, session, direction))"
@@ -36,8 +32,8 @@ class Journaler(object):
             "UNIQUE (targetCompId, senderCompId))"
         )
 
-    def sessions(self):
-        sessions = []
+    def sessions(self) -> dict[tuple[str, str], FIXSession]:
+        sessions = {}
         self.cursor.execute(
             "SELECT sessionId, targetCompId, senderCompId, outboundSeqNo, inboundSeqNo"
             " FROM session"
@@ -46,57 +42,70 @@ class Journaler(object):
             session = FIXSession(sessionInfo[0], sessionInfo[1], sessionInfo[2])
             session.snd_seq_num = sessionInfo[3]
             session.next_expected_msg_seq_num = sessionInfo[4] + 1
-            sessions.append(session)
+            sessions[(session.target_comp_id, session.sender_comp_id)] = session
 
         return sessions
 
-    def create_session(self, target_comp_id, sender_comp_id) -> FIXSession:
-        session = None
+    def create_or_load(self, target_comp_id, sender_comp_id) -> FIXSession:
         try:
             self.cursor.execute(
                 "INSERT INTO session(targetCompId, senderCompId) VALUES(?, ?)",
                 (target_comp_id, sender_comp_id),
             )
-            sessionId = self.cursor.lastrowid
+            session_id = self.cursor.lastrowid
             self.conn.commit()
-            session = FIXSession(sessionId, target_comp_id, sender_comp_id)
+            session = FIXSession(session_id, target_comp_id, sender_comp_id)
         except sqlite3.IntegrityError:
-            raise RuntimeError(
-                "Session already exists for TargetCompId: %s SenderCompId: %s"
-                % (target_comp_id, sender_comp_id)
+            self.cursor.execute(
+                "SELECT sessionId, targetCompId, senderCompId, outboundSeqNo, inboundSeqNo"  # noqa
+                " FROM session WHERE targetCompId = ? AND senderCompId = ?",
+                (target_comp_id, sender_comp_id),
             )
-
+            session_info = next(self.cursor)
+            session = FIXSession(session_info[0], session_info[1], session_info[2])
+            session.snd_seq_num = session_info[3]
+            session.next_expected_msg_seq_num = session_info[4] + 1
+            print(f"Journaler: Loaded session: {session}")
         return session
 
-    def persist_msg(
-        self, msg: FIXMessage, session: FIXSession, direction: MessageDirection
-    ):
-        msgStr = pickle.dumps(msg)
-        seqNo = msg["34"]
+    @staticmethod
+    def find_seq_no(msg: bytes) -> int:
+        try:
+            i_start = msg.index(b"\x0134=")
+            i_end = msg.index(b"\x01", i_start + 1)
+            return int(msg[i_start + 4 : i_end])
+        except Exception:
+            raise FIXMessageError(f"tag 34 is not found or invalid, in message: {msg}")
+
+    def persist_msg(self, msg: bytes, session: FIXSession, direction: MessageDirection):
+        assert isinstance(msg, bytes), "expected encoded message"
+        seq_no = self.find_seq_no(msg)
         try:
             self.cursor.execute(
                 "INSERT INTO message VALUES(?, ?, ?, ?)",
-                (seqNo, session.key, direction.value, msgStr),
+                (seq_no, session.key, direction.value, msg),
             )
             if direction == MessageDirection.OUTBOUND:
-                self.cursor.execute("UPDATE session SET outboundSeqNo=?", (seqNo,))
+                self.cursor.execute("UPDATE session SET outboundSeqNo=?", (seq_no,))
             elif direction == MessageDirection.INBOUND:
-                self.cursor.execute("UPDATE session SET inboundSeqNo=?", (seqNo,))
+                self.cursor.execute("UPDATE session SET inboundSeqNo=?", (seq_no,))
 
             self.conn.commit()
         except sqlite3.IntegrityError as e:
-            raise DuplicateSeqNoError("%s is a duplicate, error %s" % (seqNo, repr(e)))
+            raise DuplicateSeqNoError("%s is a duplicate, error %s" % (seq_no, repr(e)))
 
-    def recover_msg(self, session: FIXSession, direction: MessageDirection, seq_no):
-        try:
-            msgs = self.recover_msgs(session, direction, seq_no, seq_no)
+    def recover_msg(
+        self, session: FIXSession, direction: MessageDirection, seq_no: int
+    ) -> bytes:
+        msgs = self.recover_msgs(session, direction, seq_no, seq_no)
+        if msgs:
             return msgs[0]
-        except IndexError:
+        else:
             return None
 
     def recover_msgs(
         self, session: FIXSession, direction: MessageDirection, start_seq_no, end_seq_no
-    ):
+    ) -> list[bytes]:
         self.cursor.execute(
             "SELECT msg FROM message WHERE session = ? AND direction = ? AND seqNo >= ?"
             " AND seqNo <= ? ORDER BY seqNo",
@@ -104,7 +113,8 @@ class Journaler(object):
         )
         msgs = []
         for msg in self.cursor:
-            msgs.append(pickle.loads(msg[0]))
+            assert isinstance(msg[0], bytes)
+            msgs.append(msg[0])
         return msgs
 
     def get_all_msgs(
@@ -116,8 +126,14 @@ class Journaler(object):
         clauses = []
         args = []
         if sessions is not None and len(sessions) != 0:
+            skeys = []
+            for s in sessions:
+                key = s.key if isinstance(s, FIXSession) else s
+                skeys.append(key)
+
             clauses.append("session in (" + ",".join("?" * len(sessions)) + ")")
-            args.extend(sessions)
+            args.extend(skeys)
+
         if direction is not None:
             clauses.append("direction = ?")
             args.append(direction.value)
@@ -130,6 +146,6 @@ class Journaler(object):
         self.cursor.execute(sql, tuple(args))
         msgs = []
         for msg in self.cursor:
-            msgs.append((msg[0], pickle.loads(msg[1]), msg[2], msg[3]))
+            msgs.append((msg[0], msg[1], msg[2], msg[3]))
 
         return msgs
