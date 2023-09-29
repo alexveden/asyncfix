@@ -77,6 +77,12 @@ class Journaler(object):
         except Exception:
             raise FIXMessageError(f"tag 34 is not found or invalid, in message: {msg}")
 
+    def set_seq_nums(self, session: FIXSession):
+        self.cursor.execute(
+            "UPDATE session SET outboundSeqNo=?, inboundSeqNo=?",
+            (session.snd_seq_num, session.next_expected_msg_seq_num - 1),
+        )
+
     def persist_msg(self, msg: bytes, session: FIXSession, direction: MessageDirection):
         assert isinstance(msg, bytes), "expected encoded message"
         seq_no = self.find_seq_no(msg)

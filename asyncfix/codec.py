@@ -108,7 +108,7 @@ class Codec(object):
         valid_idx = rawmsg.find(b"8=FIX.")
         if valid_idx == -1:
             assert silent, "no fix header"
-            return None, len(rawmsg)
+            return None, len(rawmsg), None
 
         parsed_length = valid_idx
 
@@ -121,6 +121,8 @@ class Codec(object):
         else:
             next_msg = len(msg)
 
+        encoded_msg = rawmsg[valid_idx:next_msg+valid_idx]
+
         msg = msg[:next_msg].split(self.SOH)
         if not msg[-1]:
             msg = msg[:-1]
@@ -128,7 +130,7 @@ class Codec(object):
         # at a minimum we require BeginString, BodyLength & Checksum
         if len(msg) < 3:
             assert silent, "Minimum message"
-            return (None, parsed_length)
+            return (None, parsed_length, None)
 
         tag, value = msg[0].split("=", 1)
         if value != self.protocol.beginstring:
@@ -137,26 +139,26 @@ class Codec(object):
                 % (value, self.protocol.beginstring)
             )
             assert silent, "protocol beginstring mismatch"
-            return (None, len(rawmsg))
+            return (None, len(rawmsg), None)
 
         toks = msg[1].split("=", 1)
         if len(toks) != 2:
             assert silent, f"BodyLength split error {msg}"
-            return (None, len(rawmsg))
+            return (None, len(rawmsg), None)
         tag, value = toks
 
         msg_length = len(msg[0]) + len(msg[1]) + len("10=000") + 3
         if tag != FTag.BodyLength:
             logging.error(f"*** BodyLength missing or not 2nd field *** [{tag}]: {msg}")
             assert silent, "2nd tag must be BodyLength"
-            return (None, len(rawmsg))
+            return (None, len(rawmsg), None)
         else:
             msg_length += int(value)
 
         # message looks incomplete
         if msg_length > len(rawmsg):
             assert silent, "incomplete message"
-            return (None, parsed_length)
+            return (None, parsed_length, None)
 
         checksum_passed = False
         parsed_length += msg_length
@@ -170,7 +172,7 @@ class Codec(object):
             toks = m.split("=", 1)
             if len(toks) != 2:
                 assert silent, f"incomplete tag {m}"
-                return (None, len(rawmsg))
+                return (None, len(rawmsg), None)
             tag, value = toks
 
             if tag == FTag.CheckSum:
@@ -249,7 +251,7 @@ class Codec(object):
                     decoded_msg.set(tag, value)
 
         if checksum_passed:
-            return (decoded_msg, parsed_length)
+            return (decoded_msg, parsed_length, encoded_msg)
         else:
             assert silent, f"Checksum probably missing: {msg}"
-            return (None, parsed_length)
+            return (None, parsed_length, None)

@@ -1,15 +1,12 @@
 import asyncio
 import sys
 import time
-from enum import Enum
 import logging
 from asyncfix import FTag, FMsg
-from asyncfix.errors import FIXConnectionError
-from asyncfix.codec import Codec
 from asyncfix.message import FIXMessage, MessageDirection
 from asyncfix.protocol import FIXProtocolBase
-from asyncfix.session import FIXSession
 from asyncfix.connection import ConnectionState, AsyncFIXConnection
+from asyncfix.journaler import Journaler
 
 
 class AsyncFIXClient(AsyncFIXConnection):
@@ -18,6 +15,7 @@ class AsyncFIXClient(AsyncFIXConnection):
         protocol: FIXProtocolBase,
         sender_comp_id: str,
         target_comp_id: str,
+        journaler: Journaler,
         host: str,
         port: int,
         heartbeat_period: int = 30,
@@ -27,6 +25,7 @@ class AsyncFIXClient(AsyncFIXConnection):
             protocol=protocol,
             sender_comp_id=sender_comp_id,
             target_comp_id=target_comp_id,
+            journaler=journaler,
             host=host,
             port=port,
             heartbeat_period=heartbeat_period,
@@ -90,8 +89,6 @@ class AsyncFIXClient(AsyncFIXConnection):
             await self.send_msg(gap_fill_msg)
 
     async def on_session_message(self, msg: FIXMessage):
-        responses = []
-
         recv_seq_no = msg[FTag.MsgSeqNum]
 
         msg_type = msg[FTag.MsgType]
@@ -112,7 +109,7 @@ class AsyncFIXClient(AsyncFIXConnection):
             if not self.session.validate_comp_ids(sender_comp_id, target_comp_d):
                 self.log.error("Received message with unexpected comp ids")
                 await self.disconnect()
-                return
+                return False
 
             if msg_type == FMsg.LOGOUT:
                 self.connection_state = ConnectionState.LOGGED_OUT
@@ -141,4 +138,4 @@ class AsyncFIXClient(AsyncFIXConnection):
         else:
             self.log.warning("Can't process message, counterparty is not logged in")
 
-        return (recv_seq_no, responses)
+        return True
