@@ -16,6 +16,27 @@ class FIXSession:
 
         self.reset_msgs()
 
+    def __hash__(self):
+        return hash((self.target_comp_id, self.sender_comp_id))
+
+    def __eq__(self, o):
+        if isinstance(o, FIXSession):
+            return (
+                self.target_comp_id == o.target_comp_id
+                and self.sender_comp_id == o.sender_comp_id
+            )
+        elif isinstance(o, tuple):
+            if len(o) != 2:
+                return False
+            return (self.target_comp_id == o[0] and self.sender_comp_id == o[1])
+        return False
+
+    def __repr__(self):
+        return (
+            f"FIXSession(key={self.key},"
+            f" target={self.target_comp_id} sender={self.sender_comp_id} InSN={self.next_expected_msg_seq_num} OutSN={self.snd_seq_num})" # noqa
+        )
+
     def reset_msgs(self):
         self.snd_seq_num = 0
         self.next_expected_msg_seq_num = 1
