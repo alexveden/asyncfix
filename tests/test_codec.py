@@ -43,7 +43,7 @@ def test_decode():
         b" Wait\x01803=10\x01523="
         b" \x01803=26\x01523=\x01803=3\x01523=TestWaCRF2\x01803=28\x01448=hagap\x01447=D\x01452=11\x01802=2\x01523=GB\x01803=25\x01523=BarCapFutures.FETService\x01803=24\x0110=033\x01"
     )
-    msg, remaining = codec.decode(inMsg)
+    msg, remaining, enc_msg = codec.decode(inMsg)
 
     exp_str = "8=FIX.4.4|9=817|35=J|34=953|49=FIX_ALAUDIT|56=BFUT_ALAUDIT|43=N|52=20150615-09:21:42.459|70=00000002664ASLO1001|626=2|10626=#err#|71=0|60=20150615-10:21:42|857=1|73=1=>[11=00000006321ORLO1|38=100.0|800=100.0]|124=1=>[32=100.0|17=00000009758TRLO1|31=484.50]|54=2|53=100.0|55=FTI|207=XEUE|454=1=>[455=EOM5|456=A]|200=201506|541=20150619|461=FXXXXX|6=484.50|74=2|75=20150615|78=1=>[79=TEST123]|30009=#err#|467=#err#|9520=#err#|80=#err#|366=#err#|81=#err#|153=#err#|79=TEST124|453=3=>[448=TEST1|447=D|452=3|802=2=>[523=12345|803=3, 523=TEST1|803=19], 448=TEST1WA|447=D|452=38|802=4=>[523=Test1 Wait|803=10, 523= |803=26, 523=|803=3, 523=TestWaCRF2|803=28], 448=hagap|447=D|452=11|802=2=>[523=GB|803=25, 523=BarCapFutures.FETService|803=24]]|10=033"  # noqa
     assert exp_str == str(msg)
@@ -100,13 +100,13 @@ def test_decode_invalid_checksum(fix_session):
     # assert False, enc_msg
 
     enc_msg = b"8=FIX.4.4\x019=82\x0135=D\x0149=sender\x0156=target\x0134=1\x0152=20230919-07:13:26.808\x0144=123.45\x0138=9876\x0155=VOD.L\x0110=110\x01"  # noqa
-    msg, parsed_len = codec.decode(enc_msg)
+    msg, parsed_len, raw_msg = codec.decode(enc_msg)
 
     assert msg is None
     assert parsed_len == len(enc_msg)
 
     with pytest.raises(AssertionError, match="invalid checksum tag"):
-        msg, parsed_len = codec.decode(enc_msg, silent=False)
+        msg, parsed_len, raw_msg = codec.decode(enc_msg, silent=False)
 
 
 def test_decode_valid(fix_session):
@@ -124,7 +124,7 @@ def test_decode_valid(fix_session):
     # assert False, enc_msg
 
     enc_msg = b"8=FIX.4.4\x019=82\x0135=D\x0149=sender\x0156=target\x0134=1\x0152=20230919-07:13:26.808\x0144=123.45\x0138=9876\x0155=VOD.L\x0110=100\x01"  # noqa
-    msg, parsed_len = codec.decode(enc_msg, silent=False)
+    msg, parsed_len, raw_msg = codec.decode(enc_msg, silent=False)
 
     assert isinstance(msg, FIXMessage)
     assert msg[8] == "FIX.4.4"
@@ -133,6 +133,7 @@ def test_decode_valid(fix_session):
     assert msg[FTag.OrderQty] == "9876"
     assert msg[FTag.Symbol] == "VOD.L"
     assert parsed_len == len(enc_msg)
+    assert raw_msg == enc_msg
 
 
 def test_decode_invalid_no_fix(fix_session):
@@ -140,12 +141,12 @@ def test_decode_invalid_no_fix(fix_session):
     codec = Codec(protocol)
 
     enc_msg = b"my_some string without any "  # noqa
-    msg, parsed_len = codec.decode(enc_msg)
+    msg, parsed_len, raw_msg = codec.decode(enc_msg)
     assert msg is None
     assert parsed_len == len(enc_msg)
 
     with pytest.raises(AssertionError, match="no fix header"):
-        msg, parsed_len = codec.decode(enc_msg, silent=False)
+        msg, parsed_len, raw_msg = codec.decode(enc_msg, silent=False)
 
 
 def test_decode_invalid_with_added_fix(fix_session):
@@ -153,11 +154,12 @@ def test_decode_invalid_with_added_fix(fix_session):
     codec = Codec(protocol)
 
     enc_msg = b"somejunk\n8=FIX.4.4\x019=82\x0135=D\x0149=sender\x0156=target\x0134=1\x0152=20230919-07:13:26.808\x0144=123.45\x0138=9876\x0155=VOD.L\x0110=100\x01"  # noqa
-    msg, parsed_len = codec.decode(enc_msg)
+    msg, parsed_len, raw_msg = codec.decode(enc_msg)
     assert isinstance(msg, FIXMessage)
     assert parsed_len == len(enc_msg)
+    assert raw_msg == enc_msg[len(b"somejunk\n"):]
 
-    msg, parsed_len = codec.decode(enc_msg, silent=False)
+    msg, parsed_len, raw_msg = codec.decode(enc_msg, silent=False)
 
 
 def test_decode_invalid_junk_with_incomplete_fix(fix_session):
@@ -165,14 +167,14 @@ def test_decode_invalid_junk_with_incomplete_fix(fix_session):
     codec = Codec(protocol)
 
     enc_msg = b"somejunk\n8=FIX.4.4\x019=82\x0135=D"  # noqa
-    msg, parsed_len = codec.decode(enc_msg)
+    msg, parsed_len, raw_msg = codec.decode(enc_msg)
     # assert isinstance(msg, FIXMessage)
     assert msg is None
     assert parsed_len == len("somejunk\n")
     assert enc_msg[parsed_len:].startswith(b"8=FIX")
 
     with pytest.raises(AssertionError, match="incomplete message"):
-        msg, parsed_len = codec.decode(enc_msg, silent=False)
+        msg, parsed_len, raw_msg = codec.decode(enc_msg, silent=False)
 
 
 def test_decode_invalid_2nd_fix_msg(fix_session):
@@ -180,8 +182,8 @@ def test_decode_invalid_2nd_fix_msg(fix_session):
     codec = Codec(protocol)
 
     enc_msg = b"somejunk\n8=FIX.4.4\x019=82\x0135=D\x0149=sender\x0156=target\x0134=1\x0152=20230919-07:13:26.808\x0144=123.45\x0138=9876\x0155=VOD.L\x0110=100\x018=FIX.4.4\x019=82\x0135=D"  # noqa
-    # msg, parsed_len = codec.decode(enc_msg)
-    msg, parsed_len = codec.decode(enc_msg, silent=False)
+    # msg, parsed_len, raw_msg = codec.decode(enc_msg)
+    msg, parsed_len, raw_msg = codec.decode(enc_msg, silent=False)
     assert isinstance(msg, FIXMessage)
     assert parsed_len == len(
         b"somejunk\n8=FIX.4.4\x019=82\x0135=D\x0149=sender\x0156=target\x0134=1\x0152=20230919-07:13:26.808\x0144=123.45\x0138=9876\x0155=VOD.L\x0110=100\x01"
@@ -194,11 +196,11 @@ def test_decode_invalid_start_fix_msg(fix_session):
     codec = Codec(protocol)
 
     enc_msg = b"35=D\x0149=sender\x0156=target\x0134=1\x018=FIX.4.4\x019=82\x0135=D\x0149=sender\x0156=target\x0134=1\x0152=20230919-07:13:26.808\x0144=123.45\x0138=9876\x0155=VOD.L\x0110=100\x01"  # noqa
-    msg, parsed_len = codec.decode(enc_msg)
+    msg, parsed_len, raw_msg = codec.decode(enc_msg)
     assert isinstance(msg, FIXMessage)
     assert parsed_len == len(enc_msg)
 
-    msg, parsed_len = codec.decode(enc_msg, silent=False)
+    msg, parsed_len, raw_msg = codec.decode(enc_msg, silent=False)
 
 
 def test_decode_groups(fix_session):
@@ -236,7 +238,7 @@ def test_decode_groups(fix_session):
     # print(repr(enc_msg))
     # assert False, enc_msg
 
-    msg_out, parsed_len = codec.decode(enc_msg)
+    msg_out, parsed_len, raw_msg = codec.decode(enc_msg)
 
     assert isinstance(msg_out, FIXMessage)
     assert msg_out[8] == "FIX.4.4"
@@ -275,12 +277,12 @@ def test_decode_protocol_mismatch(fix_session):
     codec = Codec(protocol)
 
     enc_msg = b"8=FIX.4.2\x019=82\x0135=D\x0149=sender\x0156=target\x0134=1\x0152=20230919-07:13:26.808\x0144=123.45\x0138=9876\x0155=VOD.L\x0110=100\x01"  # noqa
-    msg, parsed_len = codec.decode(enc_msg)
+    msg, parsed_len, raw_msg = codec.decode(enc_msg)
     assert msg is None
     assert parsed_len == len(enc_msg)
 
     with pytest.raises(AssertionError, match="protocol beginstring mismatch"):
-        msg, parsed_len = codec.decode(enc_msg, silent=False)
+        msg, parsed_len, raw_msg = codec.decode(enc_msg, silent=False)
 
 
 def test_decode_body_len_split_err(fix_session):
@@ -290,12 +292,12 @@ def test_decode_body_len_split_err(fix_session):
     # this is an error, but possibly caused by socket buffer not loaded
     #   expected to be appended by good data later
     enc_msg = b"8=FIX.4.4\x0199\x0199=2\x01"
-    msg, parsed_len = codec.decode(enc_msg)
+    msg, parsed_len, raw_msg = codec.decode(enc_msg)
     assert msg is None
     assert parsed_len == len(enc_msg)
 
     with pytest.raises(AssertionError, match="BodyLength split error "):
-        msg, parsed_len = codec.decode(enc_msg, silent=False)
+        msg, parsed_len, raw_msg = codec.decode(enc_msg, silent=False)
 
 
 def test_decode_bad_second_tag(fix_session):
@@ -305,12 +307,12 @@ def test_decode_bad_second_tag(fix_session):
     # this is an error, but possibly caused by socket buffer not loaded
     #   expected to be appended by good data later
     enc_msg = b"8=FIX.4.4\x0135=\x0199=2\x01"
-    msg, parsed_len = codec.decode(enc_msg)
+    msg, parsed_len, raw_msg = codec.decode(enc_msg)
     assert msg is None
     assert parsed_len == 19
 
     with pytest.raises(AssertionError, match="2nd tag must be BodyLength"):
-        msg, parsed_len = codec.decode(enc_msg, silent=False)
+        msg, parsed_len, raw_msg = codec.decode(enc_msg, silent=False)
 
 
 def test_decode_bad_second_tag_expected_body_length(fix_session):
@@ -318,12 +320,12 @@ def test_decode_bad_second_tag_expected_body_length(fix_session):
     codec = Codec(protocol)
     # 2nd tag always must be a bodylength
     enc_msg = b"8=FIX.4.4\x0135=8\x0199=2\x01"
-    msg, parsed_len = codec.decode(enc_msg)
+    msg, parsed_len, raw_msg = codec.decode(enc_msg)
     assert msg is None
     assert parsed_len == len(enc_msg)
 
     with pytest.raises(AssertionError, match="2nd tag must be BodyLength"):
-        msg, parsed_len = codec.decode(enc_msg, silent=False)
+        msg, parsed_len, raw_msg = codec.decode(enc_msg, silent=False)
 
 
 def test_decode_with_unicode_valid(fix_session):
@@ -340,12 +342,12 @@ def test_decode_with_unicode_valid(fix_session):
     # print(repr(enc_msg))
     # assert False, enc_msg
 
-    msg, parsed_len = codec.decode(enc_msg)
+    msg, parsed_len, raw_msg = codec.decode(enc_msg)
     assert msg is None
     assert parsed_len == len(enc_msg)
 
     with pytest.raises(AssertionError, match="invalid checksum tag"):
-        msg, parsed_len = codec.decode(enc_msg, silent=False)
+        msg, parsed_len, raw_msg = codec.decode(enc_msg, silent=False)
 
 
 def test_decode_empty_tag(fix_session):
@@ -353,18 +355,18 @@ def test_decode_empty_tag(fix_session):
     codec = Codec(protocol)
 
     enc_msg = b"8=FIX.4.4\x019=75\x0135=D\x0149=sender\x0156=target\x0134=1\x0152=20230919-07:13:26.808\x0144=123.45\x0138\x0155=VOD.L\x0110=100\x01"  # noqa
-    msg, parsed_len = codec.decode(enc_msg)
+    msg, parsed_len, raw_msg = codec.decode(enc_msg)
     assert msg is None
     assert parsed_len == len(enc_msg)
     with pytest.raises(AssertionError, match="incomplete tag 38"):
-        msg, parsed_len = codec.decode(enc_msg, silent=False)
+        msg, parsed_len, raw_msg = codec.decode(enc_msg, silent=False)
 
     enc_msg = b"8=FIX.4.4\x019=75\x0135=D\x0149=sender\x0156=target\x0134=1\x0152=20230919-07:13:26.808\x0144=123.45\x01\x0155=VOD.L\x0110=100\x01"  # noqa
-    msg, parsed_len = codec.decode(enc_msg)
+    msg, parsed_len, raw_msg = codec.decode(enc_msg)
     assert msg is None
     assert parsed_len == len(enc_msg)
     with pytest.raises(AssertionError, match="incomplete tag"):
-        msg, parsed_len = codec.decode(enc_msg, silent=False)
+        msg, parsed_len, raw_msg = codec.decode(enc_msg, silent=False)
 
 
 def test_decode_minimum_message(fix_session):
@@ -372,11 +374,11 @@ def test_decode_minimum_message(fix_session):
     codec = Codec(protocol)
 
     enc_msg = b"8=FIX.4.4\x019=75\x01"
-    msg, parsed_len = codec.decode(enc_msg)
+    msg, parsed_len, raw_msg = codec.decode(enc_msg)
     assert msg is None
     assert parsed_len == 0
     with pytest.raises(AssertionError, match="Minimum message"):
-        msg, parsed_len = codec.decode(enc_msg, silent=False)
+        msg, parsed_len, raw_msg = codec.decode(enc_msg, silent=False)
 
 
 def test_encode_decode_seqnum_reset_gap_fill(fix_session):
@@ -388,7 +390,7 @@ def test_encode_decode_seqnum_reset_gap_fill(fix_session):
         {FTag.GapFillFlag: "Y", FTag.MsgSeqNum: "3", 36: 7},
     )
     enc_msg = codec.encode(msg, fix_session)
-    msg_dec, parsed_len = codec.decode(enc_msg.encode())
+    msg_dec, parsed_len, raw_msg = codec.decode(enc_msg.encode())
 
     assert msg_dec[34] == "3"
     assert msg_dec[FTag.GapFillFlag] == "Y"
@@ -403,7 +405,7 @@ def test_encode_decode_seqnum_reset_gap_fill_no(fix_session):
         {FTag.MsgSeqNum: "3"},
     )
     enc_msg = codec.encode(msg, fix_session)
-    msg_dec, parsed_len = codec.decode(enc_msg.encode())
+    msg_dec, parsed_len, raw_msg = codec.decode(enc_msg.encode())
 
     assert msg_dec[34] == "3"
     assert FTag.GapFillFlag not in msg_dec
@@ -435,7 +437,7 @@ def test_encode_decode_pos_dup_flag(fix_session):
     )
 
     enc_msg = codec.encode(msg, fix_session)
-    msg_dec, parsed_len = codec.decode(enc_msg.encode())
+    msg_dec, parsed_len, raw_msg = codec.decode(enc_msg.encode())
 
     assert msg_dec[34] == "7"
     assert msg_dec[FTag.PossDupFlag] == "Y"

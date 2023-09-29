@@ -144,3 +144,30 @@ def test_get_all_msg():
     all = j.get_all_msgs(sessions=[s1], direction=MessageDirection.OUTBOUND)
     assert len(all) == 1
     assert all[0] == (78, enc_msg_out, MessageDirection.OUTBOUND.value, 1)
+
+
+def test_set_seqnum():
+    enc_msg = b"8=FIX.4.4\x019=75\x0135=D\x0149=sender\x0156=target\x0134=073\x0152=20230919-07:13:26.808\x0144=123.45\x0138\x0155=VOD.L\x0110=100\x01"  # noqa
+    assert Journaler.find_seq_no(enc_msg) == 73
+
+    j = Journaler()
+    s1 = j.create_or_load('test_target', 'test_sender')
+    assert s1.snd_seq_num == 0
+    assert s1.next_expected_msg_seq_num == 1
+
+    # persist and reload rewrites session seq num
+    j.persist_msg(enc_msg, s1, MessageDirection.INBOUND)
+    s2 = j.create_or_load('test_target', 'test_sender')
+
+    assert s2.next_expected_msg_seq_num == 74
+    assert s2.snd_seq_num == 0
+
+    j.persist_msg(enc_msg, s1, MessageDirection.OUTBOUND)
+    s1.reset_seq_num()
+    j.set_seq_nums(s1)
+
+    s2 = j.create_or_load('test_target', 'test_sender')
+
+    assert s2.next_expected_msg_seq_num == 1
+    assert s2.snd_seq_num == 0
+
