@@ -2,13 +2,6 @@
 <header>
     <field name="BeginString" required="Y"/>
     <field name="BodyLength" required="Y"/>
-    <field name="MsgType" required="Y"/>
-    <field name="SenderCompID" required="Y"/>
-    <field name="TargetCompID" required="Y"/>
-    <group name="NoHops" required="N">
-        <field name="HopCompID" required="N"/>
-        <field name="HopRefID" required="N"/>
-    </group>
 </header>
 <messages>
     <message name="Heartbeat" msgtype="0" msgcat="admin">
@@ -42,6 +35,8 @@
     <field number="1" name="Account" type="STRING"/>
     <field number="2" name="AdvId" type="STRING"/>
     <field number="3" name="AdvRefID" type="STRING"/>
+    <field number='8' name='BeginString' type='STRING' />
+  <field number='9' name='BodyLength' type='LENGTH' />
     <field number="4" name="AdvSide" type="CHAR">
         <value enum="B" description="BUY"/>
         <value enum="S" description="SELL"/>

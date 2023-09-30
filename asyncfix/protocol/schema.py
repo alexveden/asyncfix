@@ -324,6 +324,11 @@ class SchemaComponent(SchemaSet):
         super().__init__(name)
 
 
+class SchemaHeader(SchemaSet):
+    def __init__(self):
+        super().__init__(name="Header")
+
+
 class SchemaMessage(SchemaSet):
     def __init__(self, name: str, msg_type: str, msg_cat: str):
         super().__init__(name)
@@ -341,6 +346,7 @@ class FIXSchema:
         assert isinstance(xml, ET.ElementTree)
         self.tag2field: dict[str, SchemaField] = {}
         self.field2tag: dict[str, SchemaField] = {}
+        self.header: SchemaHeader = None
         self.components: dict[str, SchemaComponent] = {}
         self.messages: dict[str, SchemaMessage] = {}
         self.messages_types: dict[str, SchemaMessage] = {}
@@ -429,6 +435,12 @@ class FIXSchema:
         self.messages_types[message.msg_type] = message
         return message
 
+    def _parse_header(self, element: ET.Element):
+        assert self.field2tag, "parse fields first!"
+        assert element.tag == "header"
+
+        self.header = self._parse_msg_set(SchemaHeader(), element)
+
     def _parse_field(self, element: ET.Element):
         assert element.tag == "field"
 
@@ -451,6 +463,8 @@ class FIXSchema:
 
         for element in root.find("fields"):
             self._parse_field(element)
+
+        self._parse_header(root.find("header"))
 
         all_components = [e for e in root.find("components")]
         full_count = len(all_components)
@@ -482,6 +496,20 @@ class FIXSchema:
 
         assert n_msg == len(self.messages), "Message count mismatch"
 
+    def _validate_header(self, msg: FIXMessage):
+        schema_fields = set()
+        schema_msg = self.header
+        for fname, req in schema_msg.required.items():
+            f = schema_msg[fname]
+            schema_fields.add(fname)
+
+            if req:
+                if isinstance(f, SchemaField):
+                    if f.tag not in msg:
+                        raise FIXMessageError(f"Missing required field={repr(f)}")
+                    f_val = msg[f.tag]
+                    f.validate_value(f_val)
+
     def validate(self, msg: FIXMessage) -> bool:
         if msg.msg_type not in self.messages_types:
             raise FIXMessageError(f"msg_type=`{msg.msg_type}` not in schema")
@@ -498,10 +526,20 @@ class FIXSchema:
                     if f.tag not in msg:
                         raise FIXMessageError(f"Missing required field={repr(f)}")
 
+        if "8" in msg:
+            self._validate_header(msg)
+
         for tag, val in msg.tags.items():
+            if tag == '10':
+                # TODO: check the checksum
+                continue
             if tag not in self.tag2field:
                 raise FIXMessageError(f"msg tag={tag} not in schema")
             field = self.tag2field[tag]
+
+            if field in self.header:
+                continue
+
             if field not in schema_msg:
                 raise FIXMessageError(
                     f"msg field={field} is not allowed in {schema_msg}"

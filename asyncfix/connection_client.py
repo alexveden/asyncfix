@@ -122,8 +122,15 @@ class AsyncFIXClient(AsyncFIXConnection):
                 hbt_msg[FTag.TestReqID] = msg[FTag.TestReqID]
                 await self.send_msg(hbt_msg)
             elif msg_type == FMsg.RESENDREQUEST:
-                await self._handle_resend_request(msg)
+                self.log.info("on_session_message: Resend request")
+                reset_msg = self.protocol.sequence_reset(
+                    msg[FTag.BeginSeqNo],
+                    self.session.snd_seq_num,
+                    is_gap_fill=False,
+                )
+                await self.send_msg(reset_msg)
             elif msg_type == FMsg.SEQUENCERESET:
+                self.log.info("on_session_message: SequenceReset request")
                 # we can treat GapFill and SequenceReset in the same way
                 # in both cases we will just reset the seq number to the
                 # NewSeqNo received in the message
