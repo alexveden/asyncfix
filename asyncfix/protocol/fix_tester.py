@@ -49,26 +49,12 @@ class FIXTester:
     def msent_reset(self):
         self.msent.clear()
 
-    def msent_get(
+    def msent_query(
         self,
         tags: tuple[FTag | str | int] | None = None,
         index: int = -1,
     ) -> dict[FTag | str, str]:
-        result = {}
-        m = self.msent[index]
-
-        if tags is None:
-            tags = m.tags
-
-        for t in tags:
-            try:
-                t = FTag(str(t))
-            except Exception:
-                t = str(t)
-
-            result[t] = m.get(t, None)
-
-        return result
+        return self.msent[index].query(*tags)
 
     def _connection_socket_write(self, data):
         msg, _, _ = self.connection.codec.decode(data, silent=False)
@@ -83,7 +69,7 @@ class FIXTester:
 
         raw_msg = self.connection.codec.encode(
             msg,
-            self.connection.session,
+            self.connection_session,
             raw_seq_num=FTag.MsgSeqNum in msg,
         ).encode()
 

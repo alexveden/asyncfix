@@ -40,12 +40,16 @@ async def test_connection_init(fix_connection):
 
     assert ft.msent_count() == 1
 
-    assert ft.msent_get((FTag.SenderCompID, FTag.TargetCompID)) == {
+    assert ft.msent_query((FTag.SenderCompID, FTag.TargetCompID)) == {
         FTag.SenderCompID: "SENDERTEST",
-        FTag.TargetCompID: "TARGETTEST"
+        FTag.TargetCompID: "TARGETTEST",
     }
 
-    assert ft.msent_get((35, 34)) == {FTag.MsgType: FMsg.LOGON, '34': "1"}
+    assert ft.msent_query((35, 34)) == {FTag.MsgType: FMsg.LOGON, "34": "1"}
 
     rmsg = await ft.reply(conn.protocol.logon())
-    assert False
+    # FIX Tester.reply() - simulated server response (SenderCompID/TargetCompID swapped)
+    assert rmsg.query(FTag.SenderCompID, FTag.TargetCompID) == {
+        FTag.TargetCompID: "SENDERTEST",
+        FTag.SenderCompID: "TARGETTEST",
+    }

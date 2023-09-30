@@ -167,6 +167,20 @@ class FIXContainer(object):
 
         return g[index]
 
+    def query(self, *tags: tuple[FTag | str | int]) -> dict[FTag | str, str]:
+        result = {}
+        if tags is None:
+            tags = self.tags
+
+        for t in tags:
+            try:
+                t = FTag(str(t))
+            except Exception:
+                t = str(t)
+
+            result[t] = self.get(t, None)
+        return result
+
     def items(self):
         return self.tags.items()
 

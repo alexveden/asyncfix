@@ -20,7 +20,7 @@ class FIXProtocolBase(object):
     def test_request(self) -> FIXMessage:
         raise NotImplementedError("Implement this method in child class")
 
-    def sequence_reset(self, new_seq_no: int, is_gap_fill: bool = False) -> FIXMessage:
+    def sequence_reset(self, next_seq_no: int, is_gap_fill: bool = False) -> FIXMessage:
         raise NotImplementedError("Implement this method in child class")
 
     def resend_request(self, begin_seq_no, end_seq_no="0") -> FIXMessage:

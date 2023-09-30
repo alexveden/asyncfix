@@ -257,11 +257,10 @@ class FIXProtocol44(FIXProtocolBase):
         msg = FIXMessage(FMsg.TESTREQUEST)
         return msg
 
-    def sequence_reset(self, old_seq_no: int, new_seq_no: int, is_gap_fill: bool = False) -> FIXMessage:
+    def sequence_reset(self, next_seq_no: int, is_gap_fill: bool = False) -> FIXMessage:
         msg = FIXMessage(FMsg.SEQUENCERESET)
         msg.set(FTag.GapFillFlag, "Y" if is_gap_fill else "N")
-        msg.set(FTag.MsgSeqNum, old_seq_no)
-        msg.set(FTag.NewSeqNo, new_seq_no)
+        msg.set(FTag.NewSeqNo, next_seq_no)
         return msg
 
     def resend_request(self, begin_seq_no, end_seq_no="0") -> FIXMessage:
