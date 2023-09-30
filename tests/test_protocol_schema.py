@@ -4,7 +4,11 @@ from unittest.mock import patch
 
 import pytest
 
+
+from asyncfix.codec import Codec
+from asyncfix.protocol.protocol_fix44 import FIXProtocol44
 from asyncfix import FIXMessage, FMsg, FTag
+from asyncfix.session import FIXSession
 from asyncfix.errors import FIXMessageError
 from asyncfix.protocol.schema import (
     FIXSchema,
@@ -200,6 +204,20 @@ def test_xml_init(fix_simple_xml):
     g = m["NoPartyIDs"]
     assert isinstance(g, SchemaGroup)
     assert ["PartyID", "PartyRole"] == list(g.members)
+
+    # Check header
+    assert len(schema.header.keys()) == 7
+    assert schema.header.keys() == [
+        "BeginString",
+        "BodyLength",
+        "MsgType",
+        "SenderCompID",
+        "TargetCompID",
+        "MsgSeqNum",
+        "SendingTime",
+    ]
+    field = schema.tag2field["8"]
+    assert field in schema.header
 
 
 def test_xml_circular_init(fix_circular_invalid_xml):
@@ -982,3 +1000,17 @@ def test_schema_validation_group_nested(fix_simple_xml):
             },
         )
         g.validate_group(msg_g.get_group_list(FTag.NoContraBrokers))
+
+
+def test_schema_validation_header(fix_simple_xml):
+    schema = FIXSchema(fix_simple_xml)
+
+    m = FIXMessage(FMsg.EXECUTIONREPORT, {FTag.OrderID: "1234"})
+
+    codec = Codec(FIXProtocol44())
+    session = FIXSession("1", "TARG", "SEND")
+    enc_m = codec.encode(m, session)
+
+    dec_m, _, _ = codec.decode(enc_m.encode(), silent=False)
+
+    schema.validate(dec_m)

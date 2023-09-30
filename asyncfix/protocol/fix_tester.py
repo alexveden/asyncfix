@@ -5,14 +5,93 @@ from asyncfix import FIXMessage, FMsg, FTag
 from .common import FExecType, FOrdStatus
 from .order_single import FIXNewOrderSingle
 from .schema import FIXSchema
+from asyncfix.session import FIXSession
+from asyncfix.connection import AsyncFIXConnection
+from unittest.mock import MagicMock, AsyncMock
 
 
 class FIXTester:
-    def __init__(self, schema: FIXSchema | None = None):
+    def __init__(
+        self,
+        schema: FIXSchema | None = None,
+        connection: AsyncFIXConnection | None = None,
+    ):
         self.registered_orders = {}
         self.schema = schema
         self.order_id = 0
         self.exec_id = 10000
+        self.connection = connection
+        self.connection_session = None
+        self.msent: list[FIXMessage] = []
+        """list of fix messages sent by self.connection.send_msg()"""
+
+        if connection:
+            assert isinstance(connection, AsyncFIXConnection)
+            # target and session swapped! Because we mimic the server
+            self.connection_session = FIXSession(
+                "fix_tester",
+                target_comp_id=self.connection.session.sender_comp_id,
+                sender_comp_id=self.connection.session.target_comp_id,
+            )
+            self.connection_session.snd_seq_num = (
+                connection.session.next_expected_msg_seq_num - 1
+            )
+            self.connection_session.next_expected_msg_seq_num = (
+                connection.session.snd_seq_num + 1
+            )
+            connection.socket_writer = MagicMock()
+            connection.socket_writer.write.side_effect = self._connection_socket_write
+            connection.socket_writer.drain = AsyncMock()
+
+    def msent_count(self):
+        return len(self.msent)
+
+    def msent_reset(self):
+        self.msent.clear()
+
+    def msent_get(
+        self,
+        tags: tuple[FTag | str | int] | None = None,
+        index: int = -1,
+    ) -> dict[FTag | str, str]:
+        result = {}
+        m = self.msent[index]
+
+        if tags is None:
+            tags = m.tags
+
+        for t in tags:
+            try:
+                t = FTag(str(t))
+            except Exception:
+                t = str(t)
+
+            result[t] = m.get(t, None)
+
+        return result
+
+    def _connection_socket_write(self, data):
+        msg, _, _ = self.connection.codec.decode(data, silent=False)
+        if self.schema:
+            self.schema.validate(msg)
+        self.connection_next_sn = int(msg[FTag.MsgSeqNum]) + 1
+        self.msent.append(msg)
+
+    async def reply(self, msg: FIXMessage):
+        if self.schema:
+            self.schema.validate(msg)
+
+        raw_msg = self.connection.codec.encode(
+            msg,
+            self.connection.session,
+            raw_seq_num=FTag.MsgSeqNum in msg,
+        ).encode()
+
+        decoded_msg, _, _ = self.connection.codec.decode(raw_msg, silent=False)
+
+        await self.connection._process_message(decoded_msg, raw_msg)
+
+        return decoded_msg
 
     def next_order_id(self) -> int:
         self.order_id += 1

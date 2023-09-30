@@ -53,7 +53,7 @@ class FIXSession:
         return str(self.snd_seq_num)
 
     def validate_recv_seq_no(self, seq_no):
-        if self.next_expected_msg_seq_num < int(seq_no):
+        if self.next_expected_msg_seq_num != int(seq_no):
             logging.warning(
                 "SeqNum from client unexpected (Rcvd: %s Expected: %s)"
                 % (seq_no, self.next_expected_msg_seq_num)

@@ -35,7 +35,7 @@ class Codec(object):
         else:
             body.append("%s=%s" % (t, msg[t]))
 
-    def encode(self, msg: FIXMessage, session: FIXSession) -> str:
+    def encode(self, msg: FIXMessage, session: FIXSession, raw_seq_num: bool = False) -> str:
         # Create body
         body = []
 
@@ -45,28 +45,28 @@ class Codec(object):
         body.append("%s=%s" % (FTag.TargetCompID, session.target_comp_id))
 
         seq_no = 0
-        if msg_type == FMsg.SEQUENCERESET:
-            if FTag.MsgSeqNum not in msg:
-                raise EncodingError(
-                    "SequenceReset must have the MsgSeqNum already populated"
-                )
-            if msg.get(FTag.GapFillFlag, "N") == "N":
-                # in this case the sequence number should already be on the message
-                msg[FTag.NewSeqNo] = session.allocate_snd_seq_no()
+        if raw_seq_num:
             seq_no = msg[FTag.MsgSeqNum]
         else:
-            # if we have the PossDupFlag set, we need to send the message
-            #   with the same seqNo
-            if msg.get(FTag.PossDupFlag, "N") == "Y":
-                if FTag.MsgSeqNum not in msg:
-                    raise EncodingError(
-                        "Failed to encode message with PossDupFlag=Y but no previous"
-                        " MsgSeqNum"
-                    )
-                else:
-                    seq_no = msg[FTag.MsgSeqNum]
-            else:
+            if msg_type == FMsg.SEQUENCERESET:
+                # if FTag.MsgSeqNum not in msg:
+                #     raise EncodingError(
+                #         "SequenceReset must have the MsgSeqNum already populated"
+                #     )
+                # seq_no = msg[FTag.MsgSeqNum]
                 seq_no = session.allocate_snd_seq_no()
+            else:
+                # if we have the PossDupFlag set, we need to send the message
+                #   with the same seqNo
+                if msg.get(FTag.PossDupFlag, "N") == "Y":
+                    if FTag.MsgSeqNum not in msg:
+                        raise EncodingError(
+                            "Failed to encode message with PossDupFlag=Y but no previous"
+                            " MsgSeqNum"
+                        )
+                    seq_no = msg[FTag.MsgSeqNum]
+                else:
+                    seq_no = session.allocate_snd_seq_no()
 
         body.append("%s=%s" % (FTag.MsgSeqNum, seq_no))
         body.append("%s=%s" % (FTag.SendingTime, self.current_datetime()))
@@ -104,7 +104,7 @@ class Codec(object):
 
     def decode(
         self, rawmsg: bytes, silent: bool = True
-    ) -> tuple[FIXMessage | None, int]:
+    ) -> tuple[FIXMessage | None, int, bytes | None]:
         valid_idx = rawmsg.find(b"8=FIX.")
         if valid_idx == -1:
             assert silent, "no fix header"
