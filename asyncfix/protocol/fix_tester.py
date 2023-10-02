@@ -26,11 +26,12 @@ class FIXTester:
         self.exec_id = 10000
         self.conn_init = connection
         self.conn_accept = None
-        self.msg_out: list[FIXMessage] = []
+        self.initiator_sent: list[FIXMessage] = []
         """list of fix messages sent by self.connection.send_msg()"""
-        self.msg_out_que: list[tuple(FIXMessage, bytes)] = []
 
-        self.msg_in: list[FIXMessage] = []
+        self.acceptor_rcv_que: list[tuple(FIXMessage, bytes)] = []
+
+        self.acceptor_sent: list[FIXMessage] = []
         """list of fix messages sent by FIXTester.reply()"""
 
         if connection:
@@ -52,17 +53,17 @@ class FIXTester:
             self.conn_accept.session.next_num_in = connection.session.next_num_out
 
             connection.socket_writer = MagicMock()
-            connection.socket_writer.write.side_effect = self._conn_socket_write_out
+            connection.socket_writer.write.side_effect = self._conn_socket_write_initiator
             connection.socket_writer.drain = AsyncMock()
             connection.socket_writer.wait_closed = AsyncMock()
 
             self.conn_accept.socket_writer = MagicMock()
             self.conn_accept.socket_writer.write.side_effect = (
-                self._conn_socket_write_in
+                self._conn_socket_write_acceptor
             )
             self.conn_accept.socket_writer.drain = AsyncMock()
             self.conn_accept.socket_writer.drain.side_effect = (
-                self._conn_socket_drain_in
+                self._conn_socket_drain_acceptor
             )
             self._socket_drain_in_coro = None
             self.conn_accept.socket_writer.wait_closed = AsyncMock()
@@ -77,18 +78,12 @@ class FIXTester:
             assert num_out > 0
             self.conn_accept.session.next_num_out = num_out
 
-    def msg_out_count(self):
-        return len(self.msg_out)
+    def reset_messages(self):
+        self.initiator_sent.clear()
+        self.acceptor_rcv_que.clear()
+        self.acceptor_sent.clear()
 
-    def msg_in_count(self):
-        return len(self.msg_out)
-
-    def msg_reset(self):
-        self.msg_out.clear()
-        self.msg_out_que.clear()
-        self.msg_in.clear()
-
-    def msg_in_query(
+    def acceptor_sent_query(
         self,
         tags: tuple[FTag | str | int] | None = None,
         index: int = -1,
@@ -103,9 +98,9 @@ class FIXTester:
 
 
         """
-        return self.msg_in[index].query(*tags)
+        return self.acceptor_sent[index].query(*tags)
 
-    def msg_out_query(
+    def initiator_sent_query(
         self,
         tags: tuple[FTag | str | int] | None = None,
         index: int = -1,
@@ -121,35 +116,37 @@ class FIXTester:
 
 
         """
-        return self.msg_out[index].query(*tags)
+        return self.initiator_sent[index].query(*tags)
 
-    def _conn_socket_write_out(self, data):
+    def _conn_socket_write_initiator(self, data):
         msg, _, _ = self.conn_init.codec.decode(data, silent=False)
         if self.schema:
             self.schema.validate(msg)
-        self.msg_out.append(msg)
-        self.msg_out_que.append((msg, data))
+        self.initiator_sent.append(msg)
+        self.acceptor_rcv_que.append((msg, data))
 
-    def _conn_socket_write_in(self, data):
+    def _conn_socket_write_acceptor(self, data):
         msg, _, _ = self.conn_accept.codec.decode(data, silent=False)
         if self.schema:
             self.schema.validate(msg)
-        self.msg_in.append(msg)
+        self.acceptor_sent.append(msg)
 
         self._socket_drain_in_coro = self.conn_init._process_message(msg, data)
 
-    async def _conn_socket_drain_in(self):
+    async def _conn_socket_drain_acceptor(self):
         try:
             if self._socket_drain_in_coro:
                 await self._socket_drain_in_coro
         finally:
             self._socket_drain_in_coro = None
 
-    async def process_msg_acceptor(self, index=-1):
-        assert len(self.msg_out), "no incoming messages registered"
-        await self.conn_accept._process_message(
-            self.msg_out_que[index][0], self.msg_out_que[index][1]
-        )
+    async def process_msg_acceptor(self, index=None):
+        assert self.acceptor_rcv_que, 'No messages in self.acceptor_rcv_que'
+
+        while self.acceptor_rcv_que:
+            (msg, raw) = self.acceptor_rcv_que.pop(0)
+
+            await self.conn_accept._process_message(msg, raw)
 
     async def reply(self, msg: FIXMessage):
         if self.schema:
@@ -342,3 +339,56 @@ class FIXTester:
         if self.schema:
             self.schema.validate(m)
         return m
+
+    def msg_logon(self, tags: dict | None = None):
+        msg = FIXMessage(FMsg.LOGON, tags)
+        if FTag.EncryptMethod not in msg:
+            msg.set(FTag.EncryptMethod, 0)
+        if FTag.HeartBtInt not in msg:
+            msg.set(FTag.HeartBtInt, 30)
+
+        if self.schema:
+            self.schema.validate(msg)
+
+        return msg
+
+    def msg_logout(self) -> FIXMessage:
+        msg = FIXMessage(FMsg.LOGOUT)
+
+        if self.schema:
+            self.schema.validate(msg)
+
+        return msg
+
+    def msg_heartbeat(self) -> FIXMessage:
+        msg = FIXMessage(FMsg.HEARTBEAT)
+
+        if self.schema:
+            self.schema.validate(msg)
+
+        return msg
+
+    def msg_test_request(self) -> FIXMessage:
+        msg = FIXMessage(FMsg.TESTREQUEST)
+        if self.schema:
+            self.schema.validate(msg)
+        return msg
+
+    def msg_sequence_reset(
+        self, msg_seq_num: int, new_seq_no: int, is_gap_fill: bool = False
+    ) -> FIXMessage:
+        msg = FIXMessage(FMsg.SEQUENCERESET)
+        msg.set(FTag.MsgSeqNum, msg_seq_num)
+        msg.set(FTag.GapFillFlag, "Y" if is_gap_fill else "N")
+        msg.set(FTag.NewSeqNo, new_seq_no)
+        if self.schema:
+            self.schema.validate(msg)
+        return msg
+
+    def msg_resend_request(self, begin_seq_no, end_seq_no="0") -> FIXMessage:
+        msg = FIXMessage(FMsg.RESENDREQUEST)
+        msg.set(FTag.BeginSeqNo, str(begin_seq_no))
+        msg.set(FTag.EndSeqNo, str(end_seq_no))
+        if self.schema:
+            self.schema.validate(msg)
+        return msg

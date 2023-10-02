@@ -239,32 +239,4 @@ class FIXProtocol44(FIXProtocolBase):
         ],
     }
 
-    def logon(self) -> FIXMessage:
-        msg = FIXMessage(FMsg.LOGON)
-        msg.set(FTag.EncryptMethod, 0)
-        msg.set(FTag.HeartBtInt, 30)
-        return msg
 
-    def logout(self) -> FIXMessage:
-        msg = FIXMessage(FMsg.LOGOUT)
-        return msg
-
-    def heartbeat(self) -> FIXMessage:
-        msg = FIXMessage(FMsg.HEARTBEAT)
-        return msg
-
-    def test_request(self) -> FIXMessage:
-        msg = FIXMessage(FMsg.TESTREQUEST)
-        return msg
-
-    def sequence_reset(self, next_seq_no: int, is_gap_fill: bool = False) -> FIXMessage:
-        msg = FIXMessage(FMsg.SEQUENCERESET)
-        msg.set(FTag.GapFillFlag, "Y" if is_gap_fill else "N")
-        msg.set(FTag.NewSeqNo, next_seq_no)
-        return msg
-
-    def resend_request(self, begin_seq_no, end_seq_no="0") -> FIXMessage:
-        msg = FIXMessage(FMsg.RESENDREQUEST)
-        msg.set(FTag.BeginSeqNo, str(begin_seq_no))
-        msg.set(FTag.EndSeqNo, str(end_seq_no))
-        return msg
