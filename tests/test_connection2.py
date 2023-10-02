@@ -1,10 +1,12 @@
 import pytest
+from unittest.mock import patch
 from asyncfix.connection import AsyncFIXConnection, ConnectionState, ConnectionRole
 from asyncfix.errors import FIXConnectionError
 from asyncfix.protocol import FIXSchema, FIXProtocol44
 from asyncfix.protocol.fix_tester import FIXTester
 from asyncfix.journaler import Journaler
 from asyncfix import FTag, FIXMessage, FMsg
+from asyncfix.protocol.order_single import FIXNewOrderSingle
 import xml.etree.ElementTree as ET
 import pytest_asyncio
 import os
@@ -36,7 +38,7 @@ async def fix_connection():
 async def test_connection_send_not_connected_error(fix_connection):
     conn: AsyncFIXConnection = fix_connection
     ft = FIXTester(schema=FIX_SCHEMA, connection=conn)
-    msg = conn.protocol.logon()
+    msg = ft.msg_logon()
 
     for state in [
         ConnectionState.DISCONNECTED_NOCONN_TODAY,
@@ -59,7 +61,7 @@ async def test_connection_send_first_logon_sets_state(fix_connection):
     ft = FIXTester(schema=FIX_SCHEMA, connection=conn)
 
     conn.connection_state = ConnectionState.NETWORK_CONN_ESTABLISHED
-    msg = conn.protocol.logon()
+    msg = ft.msg_logon()
     await conn.send_msg(msg)
     assert conn.connection_state == ConnectionState.LOGON_INITIAL_SENT
 
@@ -71,7 +73,7 @@ async def test_connection_send_first_logon_sets_state(fix_connection):
             r" additional messages before"
         ),
     ):
-        await conn.send_msg(conn.protocol.heartbeat())
+        await conn.send_msg(ft.msg_heartbeat())
 
 
 @pytest.mark.asyncio
@@ -80,7 +82,7 @@ async def test_connection_send_first_must_be_logon(fix_connection):
     ft = FIXTester(schema=FIX_SCHEMA, connection=conn)
 
     conn.connection_state = ConnectionState.NETWORK_CONN_ESTABLISHED
-    msg = conn.protocol.sequence_reset(0)
+    msg = ft.msg_sequence_reset(1, 12)
     with pytest.raises(
         FIXConnectionError,
         match=(
@@ -99,7 +101,7 @@ async def test_connection_logon_acceptor_logon(fix_connection):
     ft = FIXTester(schema=FIX_SCHEMA, connection=conn)
 
     assert conn.connection_state == ConnectionState.NETWORK_CONN_ESTABLISHED
-    rmsg = await ft.reply(conn.protocol.logon())
+    rmsg = await ft.reply(ft.msg_logon())
     assert conn.connection_role == ConnectionRole.ACCEPTOR
     assert conn.connection_state == ConnectionState.ACTIVE
 
@@ -110,7 +112,8 @@ async def test_connection_logon_acceptor_logon_first_message_expected(fix_connec
     ft = FIXTester(schema=FIX_SCHEMA, connection=conn)
 
     assert conn.connection_state == ConnectionState.NETWORK_CONN_ESTABLISHED
-    rmsg = await ft.reply(conn.protocol.sequence_reset(39))
+    msg_reset = ft.msg_sequence_reset(1, 2)
+    rmsg = await ft.reply(msg_reset)
     assert conn.connection_state == ConnectionState.DISCONNECTED_BROKEN_CONN
 
 
@@ -119,21 +122,21 @@ async def test_connection_logon_valid(fix_connection):
     conn: AsyncFIXConnection = fix_connection
     ft = FIXTester(schema=FIX_SCHEMA, connection=conn)
 
-    msg = conn.protocol.logon()
+    msg = ft.msg_logon()
     await conn.send_msg(msg)
     assert conn.connection_role == ConnectionRole.INITIATOR
     assert conn.connection_state == ConnectionState.LOGON_INITIAL_SENT
 
-    assert ft.msg_out_count() == 1
+    assert len(ft.initiator_sent) == 1
 
-    assert ft.msg_out_query((FTag.SenderCompID, FTag.TargetCompID)) == {
+    assert ft.initiator_sent_query((FTag.SenderCompID, FTag.TargetCompID)) == {
         FTag.SenderCompID: "INITIATOR",
         FTag.TargetCompID: "ACCEPTOR",
     }
 
-    assert ft.msg_out_query((35, 34)) == {FTag.MsgType: FMsg.LOGON, "34": "1"}
+    assert ft.initiator_sent_query((35, 34)) == {FTag.MsgType: FMsg.LOGON, "34": "1"}
 
-    rmsg = await ft.reply(conn.protocol.logon())
+    rmsg = await ft.reply(ft.msg_logon())
     assert conn.connection_state == ConnectionState.ACTIVE
     # FIX Tester.reply() - simulated server response (SenderCompID/TargetCompID swapped)
     assert rmsg.query(FTag.SenderCompID, FTag.TargetCompID) == {
@@ -150,26 +153,26 @@ async def test_connection_logon_low_seq_num_by_initator(fix_connection):
     conn.session.next_num_out = 20
     ft.set_next_num(num_in=21)
 
-    msg = conn.protocol.logon()
+    msg = ft.msg_logon()
     await conn.send_msg(msg)
     assert conn.connection_role == ConnectionRole.INITIATOR
     assert conn.connection_state == ConnectionState.LOGON_INITIAL_SENT
 
-    assert ft.msg_out_count() == 1
+    assert len(ft.initiator_sent) == 1
 
-    assert ft.msg_out_query((FTag.SenderCompID, FTag.TargetCompID)) == {
+    assert ft.initiator_sent_query((FTag.SenderCompID, FTag.TargetCompID)) == {
         FTag.SenderCompID: "INITIATOR",
         FTag.TargetCompID: "ACCEPTOR",
     }
 
-    assert ft.msg_out_query((35, 34)) == {FTag.MsgType: FMsg.LOGON, "34": "20"}
+    assert ft.initiator_sent_query((35, 34)) == {FTag.MsgType: FMsg.LOGON, "34": "20"}
 
     await ft.process_msg_acceptor()
 
     assert ft.conn_accept.connection_state == ConnectionState.DISCONNECTED_BROKEN_CONN
     assert conn.connection_state == ConnectionState.DISCONNECTED_BROKEN_CONN
 
-    assert ft.msg_in_query((35, 58)) == {
+    assert ft.acceptor_sent_query((35, 58)) == {
         FTag.MsgType: FMsg.LOGOUT,
         "58": "MsgSeqNum is too low, expected 21, got 20",
     }
@@ -180,32 +183,33 @@ async def test_connection_logon_low_seq_num_by_acceptor(fix_connection):
     conn: AsyncFIXConnection = fix_connection
     ft = FIXTester(schema=FIX_SCHEMA, connection=conn)
 
-    msg = conn.protocol.logon()
+    msg = ft.msg_logon()
     await conn.send_msg(msg)
     assert conn.connection_role == ConnectionRole.INITIATOR
     assert conn.connection_state == ConnectionState.LOGON_INITIAL_SENT
 
-    assert ft.msg_out_count() == 1
+    assert len(ft.initiator_sent) == 1
 
-    assert ft.msg_out_query((FTag.SenderCompID, FTag.TargetCompID)) == {
+    assert ft.initiator_sent_query((FTag.SenderCompID, FTag.TargetCompID)) == {
         FTag.SenderCompID: "INITIATOR",
         FTag.TargetCompID: "ACCEPTOR",
     }
 
-    assert ft.msg_out_query((35, 34)) == {FTag.MsgType: FMsg.LOGON, "34": "1"}
+    assert ft.initiator_sent_query((35, 34)) == {FTag.MsgType: FMsg.LOGON, "34": "1"}
 
     conn.session.next_num_in = 10
     ft.set_next_num(num_out=4)
-    rmsg = await ft.reply(conn.protocol.logon())
-    assert conn.connection_state == ConnectionState.DISCONNECTED_BROKEN_CONN
-
-    assert ft.msg_out_query((35, 58)) == {
+    await ft.process_msg_acceptor()
+    assert len(ft.initiator_sent) == 2
+    assert len(ft.acceptor_sent) == 1
+    assert ft.acceptor_sent_query((35, 34)) == {FTag.MsgType: FMsg.LOGON, "34": "4"}
+    assert ft.initiator_sent_query((35, 58)) == {
         FTag.MsgType: FMsg.LOGOUT,
         "58": "MsgSeqNum is too low, expected 10, got 4",
     }
 
-    await ft.process_msg_acceptor()
-    assert ft.conn_accept.connection_state == ConnectionState.DISCONNECTED_BROKEN_CONN
+    assert ft.conn_accept.connection_state == ConnectionState.DISCONNECTED_WCONN_TODAY
+    assert conn.connection_state == ConnectionState.DISCONNECTED_BROKEN_CONN
 
 
 @pytest.mark.asyncio
@@ -213,9 +217,9 @@ async def test_connection_validation_missing_seqnum(fix_connection):
     conn: AsyncFIXConnection = fix_connection
     ft = FIXTester(schema=FIX_SCHEMA, connection=conn)
 
-    msg = conn.protocol.logon()
+    msg = ft.msg_logon()
     await conn.send_msg(msg)
-    msg_out = ft.msg_out[-1]
+    msg_out = ft.initiator_sent[-1]
 
     del msg_out[34]
     assert ft.conn_accept._validate_intergity(msg_out) == "MsgSeqNum(34) tag is missing"
@@ -228,9 +232,9 @@ async def test_connection_validation_seqnum_toolow(fix_connection):
 
     conn.session.next_num_out = 20
 
-    msg = conn.protocol.logon()
+    msg = ft.msg_logon()
     await conn.send_msg(msg)
-    msg_out = ft.msg_out[-1]
+    msg_out = ft.initiator_sent[-1]
     ft.set_next_num(num_in=21)
 
     assert (
@@ -244,9 +248,9 @@ async def test_connection_validation_beginstring(fix_connection):
     conn: AsyncFIXConnection = fix_connection
     ft = FIXTester(schema=FIX_SCHEMA, connection=conn)
 
-    msg = conn.protocol.logon()
+    msg = ft.msg_logon()
     await conn.send_msg(msg)
-    msg_out = ft.msg_out[-1]
+    msg_out = ft.initiator_sent[-1]
     msg_out.set(FTag.BeginString, "FIX4.8", replace=True)
 
     assert (
@@ -260,9 +264,9 @@ async def test_connection_validation_no_target(fix_connection):
     conn: AsyncFIXConnection = fix_connection
     ft = FIXTester(schema=FIX_SCHEMA, connection=conn)
 
-    msg = conn.protocol.logon()
+    msg = ft.msg_logon()
     await conn.send_msg(msg)
-    msg_out = ft.msg_out[-1]
+    msg_out = ft.initiator_sent[-1]
     del msg_out[FTag.TargetCompID]
 
     assert conn._validate_intergity(msg_out) is True
@@ -273,9 +277,9 @@ async def test_connection_validation_no_sender(fix_connection):
     conn: AsyncFIXConnection = fix_connection
     ft = FIXTester(schema=FIX_SCHEMA, connection=conn)
 
-    msg = conn.protocol.logon()
+    msg = ft.msg_logon()
     await conn.send_msg(msg)
-    msg_out = ft.msg_out[-1]
+    msg_out = ft.initiator_sent[-1]
     del msg_out[FTag.SenderCompID]
 
     assert conn._validate_intergity(msg_out) is True
@@ -286,9 +290,9 @@ async def test_connection_validation_sender_mismatch(fix_connection):
     conn: AsyncFIXConnection = fix_connection
     ft = FIXTester(schema=FIX_SCHEMA, connection=conn)
 
-    msg = conn.protocol.logon()
+    msg = ft.msg_logon()
     await conn.send_msg(msg)
-    msg_out = ft.msg_out[-1]
+    msg_out = ft.initiator_sent[-1]
     msg_out.set(FTag.SenderCompID, "as", replace=True)
 
     assert conn._validate_intergity(msg_out) == "TargetCompID / SenderCompID mismatch"
@@ -299,9 +303,9 @@ async def test_connection_validation_target_mismatch(fix_connection):
     conn: AsyncFIXConnection = fix_connection
     ft = FIXTester(schema=FIX_SCHEMA, connection=conn)
 
-    msg = conn.protocol.logon()
+    msg = ft.msg_logon()
     await conn.send_msg(msg)
-    msg_out = ft.msg_out[-1]
+    msg_out = ft.initiator_sent[-1]
     msg_out.set(FTag.TargetCompID, "as", replace=True)
 
     assert conn._validate_intergity(msg_out) == "TargetCompID / SenderCompID mismatch"
@@ -315,16 +319,74 @@ async def test_connection_logon_high_seq_num_by_initator(fix_connection):
     conn.session.next_num_out = 20
     ft.set_next_num(num_in=15)
 
-    msg = conn.protocol.logon()
-    await conn.send_msg(msg)
+    with patch.object(conn, '_process_resend') as mock__process_resend:
+        msg = ft.msg_logon()
+        await conn.send_msg(msg)
 
-    await ft.process_msg_acceptor()
-    assert ft.conn_accept.connection_state == ConnectionState.RESEND_REQ_PROCESSING
-    await ft.reply(ft.msg_in[-1])
+        await ft.process_msg_acceptor()
+        assert ft.conn_accept.connection_state == ConnectionState.RESEND_REQ_PROCESSING
 
-    out_msg = ft.msg_in[-1]
+        out_msg = ft.acceptor_sent[-1]
+        assert out_msg.query(35, FTag.BeginSeqNo, FTag.EndSeqNo) == {
+            FTag.MsgType: FMsg.RESENDREQUEST,
+            FTag.BeginSeqNo: "15",
+            FTag.EndSeqNo: "0",
+        }
 
-    assert out_msg.query((FTag.BeginSeqNo, FTag.EndSeqNo)) == {
-        FTag.BeginSeqNo: "15",
-        FTag.EndSeqNo: "0",
-    }
+        assert mock__process_resend.awaited
+        assert mock__process_resend.call_args[0] == (out_msg, )
+        assert mock__process_resend.call_args[1] == {}
+
+        assert ft.conn_init.connection_state == ConnectionState.RESEND_REQ_PROCESSING
+
+
+@pytest.mark.asyncio
+async def test_connection__process_resend_req(fix_connection):
+    conn: AsyncFIXConnection = fix_connection
+    ft = FIXTester(schema=FIX_SCHEMA, connection=conn)
+
+    conn.session.next_num_out = 10
+
+    with patch.object(conn, 'journaler') as mock__journaler:
+
+        msgs = [
+            FIXMessage(FMsg.LOGON),
+            FIXMessage(FMsg.HEARTBEAT),
+            FIXNewOrderSingle('test', "ticker", "1", 10, 10).new_req(),
+            FIXMessage(FMsg.HEARTBEAT),
+            FIXMessage(FMsg.TESTREQUEST),
+            FIXMessage(FMsg.RESENDREQUEST),
+            FIXMessage(FMsg.SEQUENCERESET, {34: 8}),
+        ]
+        enc_msg = [conn.codec.encode(m, conn.session).encode() for m in msgs]
+        mock__journaler.recover_messages.return_value = enc_msg
+        print(enc_msg)
+
+        resend_req = FIXMessage(
+            FMsg.RESENDREQUEST,
+            {FTag.BeginSeqNo: 1, FTag.EndSeqNo: "223"},
+        )
+        conn.connection_state = ConnectionState.RESEND_REQ_PROCESSING
+        await conn._process_resend(resend_req)
+
+        print(ft.initiator_sent)
+        assert len(ft.initiator_sent) == 3
+        assert ft.initiator_sent[0].query(35, 34, 36, 123) == {
+            FTag.MsgType: str(FMsg.SEQUENCERESET),
+            FTag.MsgSeqNum: "1",
+            FTag.NewSeqNo: "12",
+            FTag.GapFillFlag: "Y"
+        }
+
+        assert ft.initiator_sent[1].query(35, 34, FTag.PossDupFlag) == {
+            FTag.MsgType: str(FMsg.NEWORDERSINGLE),
+            FTag.MsgSeqNum: "12",
+            FTag.PossDupFlag: 'Y',
+        }
+
+        assert ft.initiator_sent[2].query(35, 34, 36, 123) == {
+            FTag.MsgType: str(FMsg.SEQUENCERESET),
+            FTag.MsgSeqNum: "13",
+            FTag.NewSeqNo: "17",
+            FTag.GapFillFlag: "Y"
+        }
