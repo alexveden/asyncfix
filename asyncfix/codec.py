@@ -49,12 +49,11 @@ class Codec(object):
             seq_no = msg[FTag.MsgSeqNum]
         else:
             if msg_type == FMsg.SEQUENCERESET:
-                # if FTag.MsgSeqNum not in msg:
-                #     raise EncodingError(
-                #         "SequenceReset must have the MsgSeqNum already populated"
-                #     )
-                # seq_no = msg[FTag.MsgSeqNum]
-                seq_no = session.allocate_snd_seq_no()
+                if FTag.MsgSeqNum not in msg:
+                    raise EncodingError(
+                        "SequenceReset must have the MsgSeqNum already populated"
+                    )
+                seq_no = msg[FTag.MsgSeqNum]
             else:
                 # if we have the PossDupFlag set, we need to send the message
                 #   with the same seqNo
