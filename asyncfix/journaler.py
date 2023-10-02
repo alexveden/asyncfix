@@ -40,8 +40,8 @@ class Journaler(object):
         )
         for sessionInfo in self.cursor:
             session = FIXSession(sessionInfo[0], sessionInfo[1], sessionInfo[2])
-            session.snd_seq_num = sessionInfo[3]
-            session.next_expected_msg_seq_num = sessionInfo[4] + 1
+            session.next_num_out = sessionInfo[3]
+            session.next_num_in = sessionInfo[4] + 1
             sessions[(session.target_comp_id, session.sender_comp_id)] = session
 
         return sessions
@@ -63,8 +63,8 @@ class Journaler(object):
             )
             session_info = next(self.cursor)
             session = FIXSession(session_info[0], session_info[1], session_info[2])
-            session.snd_seq_num = session_info[3]
-            session.next_expected_msg_seq_num = session_info[4] + 1
+            session.next_num_out = session_info[3]
+            session.next_num_in = session_info[4] + 1
             print(f"Journaler: Loaded session: {session}")
         return session
 
@@ -80,7 +80,7 @@ class Journaler(object):
     def set_seq_nums(self, session: FIXSession):
         self.cursor.execute(
             "UPDATE session SET outboundSeqNo=?, inboundSeqNo=?",
-            (session.snd_seq_num, session.next_expected_msg_seq_num - 1),
+            (session.next_num_out, session.next_num_in - 1),
         )
 
     def persist_msg(self, msg: bytes, session: FIXSession, direction: MessageDirection):

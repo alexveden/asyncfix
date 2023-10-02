@@ -1,7 +1,7 @@
 import asyncio
 import sys
 import time
-from enum import Enum
+from enum import IntEnum, Enum
 import logging
 from asyncfix import FTag, FMsg
 from asyncfix.errors import FIXConnectionError
@@ -12,12 +12,102 @@ from asyncfix.protocol import FIXProtocolBase
 from asyncfix.session import FIXSession
 
 
-class ConnectionState(Enum):
+# fmt: off
+class ConnectionState(IntEnum):
     UNKNOWN = 0
-    DISCONNECTED = 1
-    CONNECTED = 2
-    LOGGED_IN = 3
-    LOGGED_OUT = 4
+
+    DISCONNECTED_NOCONN_TODAY = 1    # both
+    """
+    Currently disconnected, have not attempted to establish a connection today
+    """
+
+    DISCONNECTED_WCONN_TODAY = 2     # both
+    """
+    Currently disconnected, have attempted to establish a connection today
+    """
+
+    DISCONNECTED_BROKEN_CONN = 3    # both
+    """
+    While connected, detect a broken network connection (e.g. TCP socket closed)
+    """
+
+    AWAITING_CONNECTION = 4          # acceptor
+    """
+    Session acceptor Logon awaiting network connection from counterparty.
+    """
+
+    INITIATE_CONNECTION = 5          # initiator
+    """
+    Session initiator Logon establishing network connection with counterparty.
+    """
+
+    NETWORK_CONN_ESTABLISHED = 6     # both
+    """
+    Network connection established between both parties.
+    """
+
+    LOGON_INITIAL_SENT = 7           # initiator
+    """
+    Session initiator Logon send Logon(35=A) message.
+    """
+
+    LOGON_INITIAL_RECV = 8           # acceptor
+    """
+    Session acceptor Logon receive counterparty’s Logon(35=A) message.
+    """
+
+    LOGON_RESPONSE = 9               # acceptor
+    """
+    Session acceptor Logon respond to peer with Logon message to handshake.
+    """
+
+    HANDLE_RESENDREQ = 10            # both
+    """Receive and respond to counterparty’s ResendRequest(35=2) sending requested
+       messages and/or SequenceReset(35=4) gap fill messages for the range of
+       MsgSeqNum(34) requested."""
+
+    RECV_SEQNUM_TOO_HIGH = 11        # both
+    """Receive too high of MsgSeqNum(34) from counterparty, queue message,
+       and send ResendRequest(35=2)."""
+
+    RESEND_REQ_PROCESSING = 12       # both
+    """Process requested MsgSeqNum(34) with PossDupFlag(43)=Y resent messages and/or
+       SequenceReset(35=4) gap fill messages from counterparty. """
+
+    NO_MSG_IN_INTERVAL = 13          # both
+    """
+    No inbound messages (non-garbled) received in (HeartBtInt+ reasonable time
+    """
+
+    AWAIT_PROC_TEST_REQ = 14         # both
+    """Process inbound messages. Reset heartbeat interval-related timer when ANY
+       inbound message (non-garbled) is received."""
+
+    RECEIVED_LOGOUT = 15             # both
+    """
+    Receive Logout(35=5) message from counterparty initiating logout/disconnect.
+    """
+
+    INITIATE_LOGOUT = 16             # both
+    """	Identify condition or reason to gracefully disconnect (e.g. end of “day”,
+    no response after multiple TestRequest(35=1) messages, too low MsgSeqNum(34))"""
+
+    ACTIVE = 17                      # both
+    """
+    Network connection established, Logon(35=A) message exchange completed.
+    """
+
+    WAITING_FOR_LOGON = 18           # initiator
+    """
+    Session initiator waiting for session acceptor to send back a Logon(35=A)
+    """
+# fmt: on
+
+
+class ConnectionRole(Enum):
+    UNKNOWN = 0
+    INITIATOR = 1
+    ACCEPTOR = 2
 
 
 class AsyncFIXConnection:
@@ -36,7 +126,8 @@ class AsyncFIXConnection:
         self.codec = Codec(protocol)
         self.sender_comp_id = sender_comp_id
         self.target_comp_id = target_comp_id
-        self.connection_state = ConnectionState.DISCONNECTED
+        self.connection_state = ConnectionState.DISCONNECTED_NOCONN_TODAY
+        self.connection_role = ConnectionRole.UNKNOWN
         self.journaler = journaler
         self.session: FIXSession = journaler.create_or_load(
             target_comp_id, sender_comp_id
@@ -64,14 +155,24 @@ class AsyncFIXConnection:
     async def connect(self):
         raise NotImplementedError("connect() is not implemented in child")
 
-    async def disconnect(self):
-        if self.connection_state != ConnectionState.DISCONNECTED:
-            self.log.info("Client disconnected")
+    async def disconnect(
+        self, disconn_state: ConnectionState, logout_message: str = None
+    ):
+        if self.connection_state > ConnectionState.DISCONNECTED_BROKEN_CONN:
+            assert disconn_state <= ConnectionState.DISCONNECTED_BROKEN_CONN
+
+            if logout_message is not None:
+                msg = self.protocol.logout()
+                msg[FTag.Text] = logout_message
+                await self.send_msg(msg)
+
+            self.log.info(f"Client disconnected, with state: {repr(disconn_state)}")
             if self.socket_writer:
                 self.socket_writer.close()
+                await self.socket_writer.wait_closed()
             self.socket_writer = None
             self.socket_reader = None
-            self.connection_state = ConnectionState.DISCONNECTED
+            self.connection_state = disconn_state
             await self.on_disconnect()
 
     async def reset_seq_num(self):
@@ -151,177 +252,120 @@ class AsyncFIXConnection:
     async def on_logout(self, msg: FIXMessage):
         pass
 
-    async def _handle_resend_request(self, msg: FIXMessage):
-        begin_seq_no = msg[FTag.BeginSeqNo]
-        end_seq_no = msg[FTag.EndSeqNo]
-        if int(end_seq_no) == 0:
-            end_seq_no = sys.maxsize
-        logging.info("Received resent request from %s to %s", begin_seq_no, end_seq_no)
-        replay_msgs = self.engine.journaller.recover_msgs(
-            self.session, MessageDirection.OUTBOUND, begin_seq_no, end_seq_no
-        )
-        gap_fill_begin = int(begin_seq_no)
-        gap_fill_end = int(begin_seq_no)
-        for replay_msg in replay_msgs:
-            msg_seq_num = int(replay_msg[FTag.MsgSeqNum])
-            if replay_msg[FTag.MsgType] in self.codec.protocol.session_message_types:
-                gap_fill_end = msg_seq_num + 1
-            else:
-                if self.engine.should_resend_message(self.session, replay_msg):
-                    if gap_fill_begin < gap_fill_end:
-                        # we need to send a gap fill message
-                        gap_fill_msg = FIXMessage(FMsg.SEQUENCERESET)
-                        gap_fill_msg[FTag.GapFillFlag] = "Y"
-                        gap_fill_msg[FTag.MsgSeqNum] = gap_fill_begin
-                        gap_fill_msg[FTag.NewSeqNo] = str(gap_fill_end)
-                        await self.send_msg(gap_fill_msg)
+    def _validate_intergity(self, msg: FIXMessage) -> bool:
+        # TODO: validate tag=BeginString(8) == protocol.beginstring
 
-                    # and then resent the replayMsg
-                    del replay_msg[FTag.BeginString]
-                    del replay_msg[FTag.BodyLength]
-                    del replay_msg[FTag.SendingTime]
-                    del replay_msg[FTag.SenderCompID]
-                    del replay_msg[FTag.TargetCompID]
-                    del replay_msg[FTag.CheckSum]
-                    replay_msg[FTag.PossDupFlag] = "Y"
-                    await self.send_msg(replay_msg)
+        # TODO: validate SenderCompID/TargetCompID match
 
-                    gap_fill_begin = msg_seq_num + 1
-                else:
-                    gap_fill_end = msg_seq_num + 1
-                    await self.send_msg(replay_msg)
-
-        if gap_fill_begin < gap_fill_end:
-            # we need to send a gap fill message
-            gap_fill_msg = FIXMessage(FMsg.SEQUENCERESET)
-            gap_fill_msg[FTag.GapFillFlag] = "Y"
-            gap_fill_msg[FTag.MsgSeqNum] = gap_fill_begin
-            gap_fill_msg[FTag.NewSeqNo] = str(gap_fill_end)
-            await self.send_msg(gap_fill_msg)
-
-    async def on_session_message(self, msg: FIXMessage):
-        recv_seq_no = msg[FTag.MsgSeqNum]
-
-        msg_type = msg[FTag.MsgType]
-        target_comp_d = msg[FTag.TargetCompID]
-        sender_comp_id = msg[FTag.SenderCompID]
-
-        if msg_type == FMsg.LOGON:
-            if self.connection_state == ConnectionState.LOGGED_IN:
-                self.log.warning(
-                    "Client session already logged in - ignoring login request"
-                )
-            else:
-                self.connection_state = ConnectionState.LOGGED_IN
-                self.heartbeat_period = float(msg[FTag.HeartBtInt])
-
-            if not await self._validate_seqnums(msg):
-                self.log.warning('unexpected seq nums')
-
-        elif self.connection_state == ConnectionState.LOGGED_IN:
-            self.message_last_time = time.time()
-            # compids are reversed here
-            if not self.session.validate_comp_ids(sender_comp_id, target_comp_d):
-                self.log.error("Received message with unexpected comp ids")
-                await self.disconnect()
-                return False
-
-            if msg_type == FMsg.LOGOUT:
-                self.connection_state = ConnectionState.LOGGED_OUT
-                await self.disconnect()
-            elif msg_type == FMsg.TESTREQUEST:
-                # https://www.fixtrading.org/standards/fix-session-layer-online/#message-exchange-during-a-fix-connection # noqa
-                #    see "Test request processing" section
-                #  required to reply with TestReqID from query
-                hbt_msg = self.protocol.heartbeat()
-                hbt_msg[FTag.TestReqID] = msg[FTag.TestReqID]
-                await self.send_msg(hbt_msg)
-            elif msg_type == FMsg.RESENDREQUEST:
-                self.log.info("on_session_message: Resend request")
-                reset_msg = self.protocol.sequence_reset(
-                    self.session.snd_seq_num + 2,
-                    is_gap_fill=False,
-                )
-                # reset_msg[FTag.MsgSeqNum] = self.session.snd_seq_num
-                await self.send_msg(reset_msg)
-            elif msg_type == FMsg.SEQUENCERESET:
-                self.log.info("on_session_message: SequenceReset request")
-
-                new_seq_no = msg[FTag.NewSeqNo]
-                if msg.get(FTag.GapFillFlag, "N") == "Y":
-                    new_seq_no = int(msg[FTag.MsgSeqNum])
-
-                    self.log.info(
-                        "Received SequenceReset(GapFill) filling gap from %s to %s"
-                        % (recv_seq_no, new_seq_no)
-                    )
-                self.session.set_recv_seq_no(int(new_seq_no) - 1)
-                return False
-        else:
-            self.log.warning("Can't process message, counterparty is not logged in")
-
+        # TODO: validate SendingTime ~~ within 2x heartbeat_period
         return True
+        pass
 
-    async def _validate_seqnums(self, decoded_msg: FIXMessage) -> bool:
-        recv_seq_no = int(decoded_msg[FTag.MsgSeqNum])
-        last_seq_no = self.session.next_expected_msg_seq_num
-        if recv_seq_no > last_seq_no:
-            logging.info(
-                "Requesting resend of messages: %s to %s" % (last_seq_no, sys.maxsize)
-            )
-            request = self.protocol.resend_request(last_seq_no, sys.maxsize)
-            await self.send_msg(request)
-            return False
-        elif recv_seq_no < last_seq_no:
-            self.log.warning(f'Received {recv_seq_no=} < {last_seq_no=}, critical')
-            await self.disconnect()
-            return False
+    async def _process_logon(self, msg: FIXMessage):
+        assert msg.msg_type == FMsg.LOGON
+        assert (
+            self.connection_role == ConnectionRole.ACCEPTOR
+            or self.connection_role == ConnectionRole.INITIATOR
+        )
+
+        msg_seq_num = int(msg[FTag.MsgSeqNum])
+
+        if self.connection_role == ConnectionRole.INITIATOR:
+            pass
+        elif self.connection_role == ConnectionRole.ACCEPTOR:
+            assert self.connection_state == ConnectionState.LOGON_INITIAL_RECV
+            if msg_seq_num >= self.session.next_num_in:
+                await self.send_msg(self.protocol.logon())
+
+        # TODO: figure out MsgSeqNum and request backfill?
+        if msg_seq_num == self.session.next_num_in:
+            # https://www.fixtrading.org/standards/fix-session-layer-online/#establishing-a-fix-connection
+            # The initiator and acceptor should wait a short period of time following
+            # receipt of the Logon(35=A) message from the counterparty before
+            # transmitting queued or new application messages to permit both sides
+            # to synchronize the FIX session.
+            # await asyncio.sleep(1.0)
+            self.connection_state = ConnectionState.ACTIVE
+            # TODO: decide send extra test request?
+            await self.on_logon(msg)
+        elif msg_seq_num > self.session.next_num_in:
+            # TODO: request gap fill
+            assert False, f"TODO: gap fill, {msg_seq_num=} {self.session.next_num_in=}"
         else:
-            return True
+            # Seq num less than
+            await self.disconnect(
+                ConnectionState.DISCONNECTED_BROKEN_CONN,
+                logout_message=(
+                    "MsgSeqNum is too low, expected"
+                    f" {self.session.next_num_in}, got {msg_seq_num}"
+                ),
+            )
 
     async def _process_message(self, decoded_msg: FIXMessage, raw_msg: bytes):
-        protocol: FIXProtocolBase = self.codec.protocol
         self.log.debug(f"process_message (INCOMING)\n\t {decoded_msg}")
-
-        msg_type = decoded_msg[FTag.MsgType]
-        self.message_last_time = time.time()
-        add_journal_msg = True
+        if not self._validate_intergity(decoded_msg):
+            # Some mandatory tags are missing or corrupt message
+            await self.disconnect(ConnectionState.DISCONNECTED_BROKEN_CONN)
+            return
 
         try:
-            if msg_type in protocol.session_message_types:
-                add_journal_msg = await self.on_session_message(decoded_msg)
+            assert self.connection_state >= ConnectionState.NETWORK_CONN_ESTABLISHED
 
-                if decoded_msg.msg_type == FMsg.LOGON:
-                    await self.on_logon(decoded_msg)
-                elif decoded_msg.msg_type == FMsg.LOGOUT:
-                    await self.on_logout(decoded_msg)
-                else:
-                    # Check if seqnums are valid
-                    if add_journal_msg and not await self._validate_seqnums(decoded_msg):
-                        add_journal_msg = False
+            self.message_last_time = time.time()
+
+            if self.connection_state == ConnectionState.NETWORK_CONN_ESTABLISHED:
+                # Applicable only for acceptor
+                if decoded_msg.msg_type != FMsg.LOGON:
+                    # According to FIX session spec, first message must be Logon()
+                    #  we must drop connection without Logout() if first message was
+                    #  not logon
+                    await self.disconnect(ConnectionState.DISCONNECTED_BROKEN_CONN)
+                    return
+                self.connection_state = ConnectionState.LOGON_INITIAL_RECV
+                self.connection_role = ConnectionRole.ACCEPTOR
+
+            if decoded_msg.msg_type == FMsg.LOGON:
+                await self._process_logon(decoded_msg)
             else:
-                if not await self._validate_seqnums(decoded_msg):
-                    add_journal_msg = False
-                else:
-                    await self.on_message(decoded_msg)
+                assert False, "Implement!"
+                # if self.connection_state == ConnectionState.LOGGED_IN:
+                #     await self.on_message(decoded_msg)
+                # else:
+                #     assert False, "Unexpected"
         except asyncio.CancelledError:
             raise
         except Exception:
             self.log.exception("_process_message error: ")
             raise
         finally:
-            if add_journal_msg:
-                self.session.set_recv_seq_no(decoded_msg[FTag.MsgSeqNum])
-                self.journaler.persist_msg(
-                    raw_msg, self.session, MessageDirection.INBOUND
-                )
+            self.session.set_recv_seq_no(decoded_msg[FTag.MsgSeqNum])
+            self.journaler.persist_msg(raw_msg, self.session, MessageDirection.INBOUND)
 
     async def send_msg(self, msg: FIXMessage):
-        if (
-            self.connection_state != ConnectionState.CONNECTED
-            and self.connection_state != ConnectionState.LOGGED_IN
-        ):
-            raise FIXConnectionError("FIXConnectionError is not connected or logged")
+        if self.connection_state < ConnectionState.NETWORK_CONN_ESTABLISHED:
+            raise FIXConnectionError(
+                "Connection must be established before sending any "
+                f"FIX message, got state: {repr(self.connection_state)}"
+            )
+        elif self.connection_state == ConnectionState.NETWORK_CONN_ESTABLISHED:
+            # INITIATOR mode, connection was just established
+            if msg.msg_type != FMsg.LOGON:
+                raise FIXConnectionError(
+                    "You must send first Logon(35=A) message immediately after"
+                    f" connection, got {repr(msg)}"
+                )
+            self.connection_state = ConnectionState.LOGON_INITIAL_SENT
+            self.connection_role = ConnectionRole.INITIATOR
+        else:
+            if self.connection_role == ConnectionRole.INITIATOR:
+                if (
+                    self.connection_state == ConnectionState.LOGON_INITIAL_SENT
+                    and msg.msg_type != FMsg.LOGOUT
+                ):
+                    raise FIXConnectionError(
+                        "Initiator is waiting for Logon() response, you must not send"
+                        " any additional messages before acceptor responce."
+                    )
 
         encoded_msg = self.codec.encode(msg, self.session).encode("utf-8")
 
