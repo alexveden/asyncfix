@@ -90,10 +90,19 @@ class SchemaField:
             else:
                 warnings.warn(f"Unsupported datatype: {t} for field={self}")
 
+            err = self._validate_special_cases(value, err)
+
             if err:
                 raise FIXMessageError(f"{self} validation error (value={value}): {err}")
 
             return True
+
+    def _validate_special_cases(self, value, prev_err):
+        if self.tag == '16':
+            # EndSeqNo
+            if value == "0":
+                prev_err = None
+        return prev_err
 
     @staticmethod
     def _validate_value_datetime(value, format):

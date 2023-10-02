@@ -205,7 +205,10 @@ class AsyncFIXConnection:
 
                 self.msg_buffer = self.msg_buffer + msg
                 while True:
-                    if self.connection_state == ConnectionState.DISCONNECTED:
+                    if (
+                        self.connection_state
+                        <= ConnectionState.DISCONNECTED_BROKEN_CONN
+                    ):
                         break
 
                     (decoded_msg, parsed_length, raw_msg) = self.codec.decode(
@@ -224,7 +227,7 @@ class AsyncFIXConnection:
                 raise
             except ConnectionError as why:
                 logging.debug("Connection has been closed %s" % (why,))
-                await self.disconnect()
+                await self.disconnect(ConnectionState.DISCONNECTED_BROKEN_CONN)
                 continue
             except Exception:
                 logging.exception("handle_read exception")
@@ -245,6 +248,10 @@ class AsyncFIXConnection:
                     if time.time() - self.message_last_time > self.heartbeat_period - 1:
                         await self.send_msg(self.protocol.heartbeat())
                         self.message_last_time = time.time()
+
+                if time.time() - self.message_last_time > self.heartbeat_period * 2:
+                    # Dead socket probably
+                    await self.disconnect(ConnectionState.DISCONNECTED_BROKEN_CONN)
 
             except asyncio.CancelledError:
                 raise
@@ -285,7 +292,7 @@ class AsyncFIXConnection:
 
     def _validate_intergity(self, msg: FIXMessage) -> bool:
         """
-        validates incoming message critical integrity
+        Validates incoming message critical integrity
 
         Args:
             msg: incoming message
@@ -352,14 +359,26 @@ class AsyncFIXConnection:
             msg, is_healthy=self.connection_state == ConnectionState.ACTIVE
         )
 
-    async def _check_seqnum_gaps(self, msg_seq_num: int):
+    async def _check_seqnum_gaps(self, msg_seq_num: int) -> bool:
         """
         Validate incoming message seq num and determine if there any gaps
 
         Args:
             msg_seq_num: last msg seq num
         """
-        pass
+        if (
+            msg_seq_num > self.session.next_num_in
+            and self.connection_state != ConnectionState.RESEND_REQ_PROCESSING
+        ):
+            resend_req = FIXMessage(
+                FMsg.RESENDREQUEST,
+                {FTag.BeginSeqNo: self.session.next_num_in, FTag.EndSeqNo: "0"},
+            )
+            await self.send_msg(resend_req)
+            self._state_set(ConnectionState.RESEND_REQ_PROCESSING)
+            return False
+
+        return True
 
     async def _process_message(self, msg: FIXMessage, raw_msg: bytes):
         """
@@ -401,6 +420,20 @@ class AsyncFIXConnection:
 
             msg_seq_num = int(msg[FTag.MsgSeqNum])
             await self._check_seqnum_gaps(msg_seq_num)
+
+            if msg.msg_type == FMsg.RESENDREQUEST:
+                assert False, 'Resend req'
+            elif msg.msg_type == FMsg.LOGON:
+                pass  # already processed
+            elif msg.msg_type == FMsg.LOGOUT:
+                if self.connection_was_active:
+                    dstate = ConnectionState.DISCONNECTED_WCONN_TODAY
+                else:
+                    dstate = ConnectionState.DISCONNECTED_BROKEN_CONN
+
+                await self.disconnect(dstate)
+            else:
+                raise NotImplementedError(f'{repr(msg)}')
 
         except asyncio.CancelledError:
             raise

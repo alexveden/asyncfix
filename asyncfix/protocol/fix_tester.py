@@ -1,4 +1,5 @@
 from math import isnan, nan
+import asyncio
 
 from asyncfix.journaler import Journaler
 from asyncfix import FIXMessage, FMsg, FTag
@@ -60,6 +61,10 @@ class FIXTester:
                 self._conn_socket_write_in
             )
             self.conn_accept.socket_writer.drain = AsyncMock()
+            self.conn_accept.socket_writer.drain.side_effect = (
+                self._conn_socket_drain_in
+            )
+            self._socket_drain_in_coro = None
             self.conn_accept.socket_writer.wait_closed = AsyncMock()
 
     def set_next_num(self, num_in=None, num_out=None):
@@ -95,7 +100,7 @@ class FIXTester:
             index:
 
         Returns:
-            
+
 
         """
         return self.msg_in[index].query(*tags)
@@ -113,7 +118,7 @@ class FIXTester:
             index:
 
         Returns:
-            
+
 
         """
         return self.msg_out[index].query(*tags)
@@ -130,6 +135,15 @@ class FIXTester:
         if self.schema:
             self.schema.validate(msg)
         self.msg_in.append(msg)
+
+        self._socket_drain_in_coro = self.conn_init._process_message(msg, data)
+
+    async def _conn_socket_drain_in(self):
+        try:
+            if self._socket_drain_in_coro:
+                await self._socket_drain_in_coro
+        finally:
+            self._socket_drain_in_coro = None
 
     async def process_msg_acceptor(self, index=-1):
         assert len(self.msg_out), "no incoming messages registered"

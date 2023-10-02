@@ -19,8 +19,8 @@ async def fix_connection():
     j = Journaler()
     connection = AsyncFIXConnection(
         FIXProtocol44(),
-        "SENDERTEST",
-        "TARGETTEST",
+        "INITIATOR",
+        "ACCEPTOR",
         journaler=j,
         host="localhost",
         port="64444",
@@ -127,8 +127,8 @@ async def test_connection_logon_valid(fix_connection):
     assert ft.msg_out_count() == 1
 
     assert ft.msg_out_query((FTag.SenderCompID, FTag.TargetCompID)) == {
-        FTag.SenderCompID: "SENDERTEST",
-        FTag.TargetCompID: "TARGETTEST",
+        FTag.SenderCompID: "INITIATOR",
+        FTag.TargetCompID: "ACCEPTOR",
     }
 
     assert ft.msg_out_query((35, 34)) == {FTag.MsgType: FMsg.LOGON, "34": "1"}
@@ -137,8 +137,8 @@ async def test_connection_logon_valid(fix_connection):
     assert conn.connection_state == ConnectionState.ACTIVE
     # FIX Tester.reply() - simulated server response (SenderCompID/TargetCompID swapped)
     assert rmsg.query(FTag.SenderCompID, FTag.TargetCompID) == {
-        FTag.TargetCompID: "SENDERTEST",
-        FTag.SenderCompID: "TARGETTEST",
+        FTag.TargetCompID: "INITIATOR",
+        FTag.SenderCompID: "ACCEPTOR",
     }
 
 
@@ -158,8 +158,8 @@ async def test_connection_logon_low_seq_num_by_initator(fix_connection):
     assert ft.msg_out_count() == 1
 
     assert ft.msg_out_query((FTag.SenderCompID, FTag.TargetCompID)) == {
-        FTag.SenderCompID: "SENDERTEST",
-        FTag.TargetCompID: "TARGETTEST",
+        FTag.SenderCompID: "INITIATOR",
+        FTag.TargetCompID: "ACCEPTOR",
     }
 
     assert ft.msg_out_query((35, 34)) == {FTag.MsgType: FMsg.LOGON, "34": "20"}
@@ -167,6 +167,7 @@ async def test_connection_logon_low_seq_num_by_initator(fix_connection):
     await ft.process_msg_acceptor()
 
     assert ft.conn_accept.connection_state == ConnectionState.DISCONNECTED_BROKEN_CONN
+    assert conn.connection_state == ConnectionState.DISCONNECTED_BROKEN_CONN
 
     assert ft.msg_in_query((35, 58)) == {
         FTag.MsgType: FMsg.LOGOUT,
@@ -187,8 +188,8 @@ async def test_connection_logon_low_seq_num_by_acceptor(fix_connection):
     assert ft.msg_out_count() == 1
 
     assert ft.msg_out_query((FTag.SenderCompID, FTag.TargetCompID)) == {
-        FTag.SenderCompID: "SENDERTEST",
-        FTag.TargetCompID: "TARGETTEST",
+        FTag.SenderCompID: "INITIATOR",
+        FTag.TargetCompID: "ACCEPTOR",
     }
 
     assert ft.msg_out_query((35, 34)) == {FTag.MsgType: FMsg.LOGON, "34": "1"}
@@ -202,6 +203,9 @@ async def test_connection_logon_low_seq_num_by_acceptor(fix_connection):
         FTag.MsgType: FMsg.LOGOUT,
         "58": "MsgSeqNum is too low, expected 10, got 4",
     }
+
+    await ft.process_msg_acceptor()
+    assert ft.conn_accept.connection_state == ConnectionState.DISCONNECTED_BROKEN_CONN
 
 
 @pytest.mark.asyncio
@@ -302,3 +306,25 @@ async def test_connection_validation_target_mismatch(fix_connection):
 
     assert conn._validate_intergity(msg_out) == "TargetCompID / SenderCompID mismatch"
 
+
+@pytest.mark.asyncio
+async def test_connection_logon_high_seq_num_by_initator(fix_connection):
+    conn: AsyncFIXConnection = fix_connection
+    ft = FIXTester(schema=FIX_SCHEMA, connection=conn)
+
+    conn.session.next_num_out = 20
+    ft.set_next_num(num_in=15)
+
+    msg = conn.protocol.logon()
+    await conn.send_msg(msg)
+
+    await ft.process_msg_acceptor()
+    assert ft.conn_accept.connection_state == ConnectionState.RESEND_REQ_PROCESSING
+    await ft.reply(ft.msg_in[-1])
+
+    out_msg = ft.msg_in[-1]
+
+    assert out_msg.query((FTag.BeginSeqNo, FTag.EndSeqNo)) == {
+        FTag.BeginSeqNo: "15",
+        FTag.EndSeqNo: "0",
+    }
