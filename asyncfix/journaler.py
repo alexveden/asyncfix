@@ -103,13 +103,13 @@ class Journaler(object):
     def recover_msg(
         self, session: FIXSession, direction: MessageDirection, seq_no: int
     ) -> bytes:
-        msgs = self.recover_msgs(session, direction, seq_no, seq_no)
+        msgs = self.recover_messages(session, direction, seq_no, seq_no)
         if msgs:
             return msgs[0]
         else:
             return None
 
-    def recover_msgs(
+    def recover_messages(
         self, session: FIXSession, direction: MessageDirection, start_seq_no, end_seq_no
     ) -> list[bytes]:
         self.cursor.execute(
