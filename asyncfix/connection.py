@@ -127,6 +127,7 @@ class AsyncFIXConnection:
         self.sender_comp_id = sender_comp_id
         self.target_comp_id = target_comp_id
         self.connection_state = ConnectionState.DISCONNECTED_NOCONN_TODAY
+        self.connection_was_active = False
         self.connection_role = ConnectionRole.UNKNOWN
         self.journaler = journaler
         self.session: FIXSession = journaler.create_or_load(
@@ -156,8 +157,18 @@ class AsyncFIXConnection:
         raise NotImplementedError("connect() is not implemented in child")
 
     async def disconnect(
-        self, disconn_state: ConnectionState, logout_message: str = None
+        self,
+        disconn_state: ConnectionState,
+        logout_message: str = None,
     ):
+        """
+        Disconnect session and closes the socket
+
+        Args:
+            disconn_state: connection state after disconnection
+            logout_message: if not None, sends Logout() message to peer with
+                            (58=logout_message)
+        """
         if self.connection_state > ConnectionState.DISCONNECTED_BROKEN_CONN:
             assert disconn_state <= ConnectionState.DISCONNECTED_BROKEN_CONN
 
@@ -177,11 +188,10 @@ class AsyncFIXConnection:
             self._state_set(disconn_state)
             await self.on_disconnect()
 
-    async def reset_seq_num(self):
-        self.session.reset_seq_num()
-        self.journaler.set_seq_nums(self.session)
-
     async def socket_read_task(self):
+        """
+        Main socket reader task (decode raw messages and calls _process_message)
+        """
         while True:
             try:
                 if not self.socket_reader:
@@ -221,6 +231,9 @@ class AsyncFIXConnection:
                 # raise
 
     async def heartbeat_timer_task(self):
+        """
+        Heartbeat watcher task
+        """
         while True:
             try:
                 if not self.socket_writer or not self.socket_reader:
@@ -228,7 +241,7 @@ class AsyncFIXConnection:
                     await asyncio.sleep(1)
                     continue
 
-                if self.connection_state == ConnectionState.LOGGED_IN:
+                if self.connection_state == ConnectionState.ACTIVE:
                     if time.time() - self.message_last_time > self.heartbeat_period - 1:
                         await self.send_msg(self.protocol.heartbeat())
                         self.message_last_time = time.time()
@@ -258,10 +271,30 @@ class AsyncFIXConnection:
         pass
 
     def _state_set(self, connection_state: ConnectionState):
+        """
+        Sets internal connection state
+
+        Args:
+            connection_state:
+
+        """
         self.connection_state = connection_state
+        if connection_state == ConnectionState.ACTIVE:
+            self.connection_was_active = True
         self.on_state_change(connection_state)
 
     def _validate_intergity(self, msg: FIXMessage) -> bool:
+        """
+        validates incoming message critical integrity
+
+        Args:
+            msg: incoming message
+
+        Returns:
+            None - if no error
+            True - if critical error (no Logout() message has to be sent)
+            "err msg" - Logout(58="err msg") should be sent
+        """
         if msg[FTag.BeginString] != self.protocol.beginstring:
             return (
                 "Protocol BeginString(8) mismatch, expected"
@@ -293,6 +326,9 @@ class AsyncFIXConnection:
         return None
 
     async def _process_logon(self, msg: FIXMessage):
+        """
+        Processes logon message
+        """
         assert msg.msg_type == FMsg.LOGON
         assert (
             self.connection_role == ConnectionRole.ACCEPTOR
@@ -317,9 +353,23 @@ class AsyncFIXConnection:
         )
 
     async def _check_seqnum_gaps(self, msg_seq_num: int):
+        """
+        Validate incoming message seq num and determine if there any gaps
+
+        Args:
+            msg_seq_num: last msg seq num
+        """
         pass
 
     async def _process_message(self, msg: FIXMessage, raw_msg: bytes):
+        """
+        Main message processing dispatcher
+
+        Args:
+            msg: incoming decoded message
+            raw_msg: incoming raw message (bytes)
+
+        """
         self.log.debug(f"process_message (INCOMING)\n\t {msg}")
         err_msg = self._validate_intergity(msg)
         if err_msg:
@@ -362,6 +412,16 @@ class AsyncFIXConnection:
             self.journaler.persist_msg(raw_msg, self.session, MessageDirection.INBOUND)
 
     async def send_msg(self, msg: FIXMessage):
+        """
+        Sends message to the peer
+
+        Args:
+            msg: fix message
+
+        Raises:
+            FIXConnectionError: raised if connection state does not allow sending
+
+        """
         if self.connection_state < ConnectionState.NETWORK_CONN_ESTABLISHED:
             raise FIXConnectionError(
                 "Connection must be established before sending any "
@@ -396,4 +456,3 @@ class AsyncFIXConnection:
         await self.socket_writer.drain()
 
         self.journaler.persist_msg(encoded_msg, self.session, MessageDirection.OUTBOUND)
-
