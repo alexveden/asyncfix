@@ -173,7 +173,7 @@ class AsyncFIXConnection:
             assert disconn_state <= ConnectionState.DISCONNECTED_BROKEN_CONN
 
             if logout_message is not None:
-                msg = self.protocol.logout()
+                msg = FIXMessage(FMsg.LOGOUT)
                 if logout_message:
                     # Only add message if logout_message != ""
                     msg[FTag.Text] = logout_message
@@ -347,7 +347,10 @@ class AsyncFIXConnection:
         if self.connection_role == ConnectionRole.ACCEPTOR:
             assert self.connection_state == ConnectionState.LOGON_INITIAL_RECV
             if msg_seq_num >= self.session.next_num_in:
-                await self.send_msg(self.protocol.logon())
+                msg_logon = FIXMessage(FMsg.LOGON)
+                msg_logon.set(FTag.EncryptMethod, msg[FTag.EncryptMethod])
+                msg_logon.set(FTag.HeartBtInt, msg[FTag.HeartBtInt])
+                await self.send_msg(msg_logon)
 
         if msg_seq_num == self.session.next_num_in:
             self._state_set(ConnectionState.ACTIVE)
@@ -379,6 +382,90 @@ class AsyncFIXConnection:
             return False
 
         return True
+
+    async def _process_logout(self, msg: FIXMessage):
+        assert msg.msg_type == FMsg.LOGOUT
+
+        if self.connection_was_active:
+            dstate = ConnectionState.DISCONNECTED_WCONN_TODAY
+        else:
+            dstate = ConnectionState.DISCONNECTED_BROKEN_CONN
+
+        await self.disconnect(dstate)
+
+    def should_replay(self, msg: FIXMessage):
+        return True
+
+    async def _process_resend(self, msg: FIXMessage):
+        assert msg.msg_type == FMsg.RESENDREQUEST
+        assert self.connection_state == ConnectionState.RESEND_REQ_PROCESSING
+
+        begin_seq_no = msg[FTag.BeginSeqNo]
+        end_seq_no = msg[FTag.EndSeqNo]
+        if int(end_seq_no) == 0:
+            end_seq_no = sys.maxsize
+        logging.info("Received resent request from %s to %s", begin_seq_no, end_seq_no)
+        journal_replay_msgs = self.journaler.recover_messages(
+            self.session, MessageDirection.OUTBOUND, begin_seq_no, end_seq_no
+        )
+        gap_fill_begin = int(begin_seq_no)
+        gap_fill_end = int(begin_seq_no)
+
+        noreply_msgs = {
+            FMsg.LOGON,
+            FMsg.LOGOUT,
+            FMsg.RESENDREQUEST,
+            FMsg.HEARTBEAT,
+            FMsg.TESTREQUEST,
+            FMsg.SEQUENCERESET,
+        }
+
+        for enc_msg in journal_replay_msgs:
+            replay_msg, _, _ = self.codec.decode(enc_msg, silent=False)
+            msg_seq_num = int(replay_msg[FTag.MsgSeqNum])
+
+            is_sess_msg = replay_msg[FTag.MsgType] in noreply_msgs
+            if is_sess_msg or not self.should_replay(replay_msg):
+                gap_fill_end = msg_seq_num + 1
+            else:
+                if gap_fill_begin < gap_fill_end:
+                    # we need to send a gap fill message
+                    gap_fill_msg = FIXMessage(FMsg.SEQUENCERESET)
+                    gap_fill_msg[FTag.GapFillFlag] = "Y"
+                    gap_fill_msg[FTag.MsgSeqNum] = gap_fill_begin
+                    gap_fill_msg[FTag.NewSeqNo] = str(gap_fill_end)
+                    # breakpoint()
+                    await self.send_msg(gap_fill_msg)
+
+                # and then resent the replayMsg
+                replay_msg[FTag.PossDupFlag] = "Y"
+                replay_msg[FTag.OrigSendingTime] = replay_msg[FTag.SendingTime]
+                del replay_msg[FTag.MsgType]
+                del replay_msg[FTag.BeginString]
+                del replay_msg[FTag.BodyLength]
+                del replay_msg[FTag.SendingTime]
+                del replay_msg[FTag.SenderCompID]
+                del replay_msg[FTag.TargetCompID]
+                del replay_msg[FTag.CheckSum]
+                await self.send_msg(replay_msg)
+
+                gap_fill_begin = msg_seq_num + 1
+
+        if gap_fill_end < gap_fill_begin:
+            self.log.warning(
+                f"Journal MsgSeqNum not reflecting last {self.session.next_num_out=},"
+                " forcing reset."
+            )
+
+        assert gap_fill_end <= self.session.next_num_out, 'Unexpected end for gap'
+
+        # Remainder not available in some reason
+        if gap_fill_begin < self.session.next_num_out:
+            gap_fill_msg = FIXMessage(FMsg.SEQUENCERESET)
+            gap_fill_msg[FTag.GapFillFlag] = "Y"
+            gap_fill_msg[FTag.MsgSeqNum] = gap_fill_begin
+            gap_fill_msg[FTag.NewSeqNo] = str(self.session.next_num_out + 1)
+            await self.send_msg(gap_fill_msg)
 
     async def _process_message(self, msg: FIXMessage, raw_msg: bytes):
         """
@@ -422,18 +509,14 @@ class AsyncFIXConnection:
             await self._check_seqnum_gaps(msg_seq_num)
 
             if msg.msg_type == FMsg.RESENDREQUEST:
-                assert False, 'Resend req'
+                self._state_set(ConnectionState.RESEND_REQ_PROCESSING)
+                await self._process_resend(msg)
             elif msg.msg_type == FMsg.LOGON:
                 pass  # already processed
             elif msg.msg_type == FMsg.LOGOUT:
-                if self.connection_was_active:
-                    dstate = ConnectionState.DISCONNECTED_WCONN_TODAY
-                else:
-                    dstate = ConnectionState.DISCONNECTED_BROKEN_CONN
-
-                await self.disconnect(dstate)
+                await self._process_logout(msg)
             else:
-                raise NotImplementedError(f'{repr(msg)}')
+                raise NotImplementedError(f"{repr(msg)}")
 
         except asyncio.CancelledError:
             raise
