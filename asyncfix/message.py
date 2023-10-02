@@ -176,7 +176,7 @@ class FIXContainer(object):
             try:
                 t = FTag(str(t))
             except Exception:
-                t = str(t)
+                t = str(int(t))
 
             result[t] = self.get(t, None)
         return result
