@@ -84,7 +84,8 @@ async def test_connection_send_first_must_be_logon(fix_connection):
     with pytest.raises(
         FIXConnectionError,
         match=(
-            r"You must send first Logon\(35=A\) message immediately after connection.*"
+            r"You must send first Logon\(35=A\)/Logout\(\) message immediately after"
+            r" connection.*"
         ),
     ):
         await conn.send_msg(msg)
@@ -201,3 +202,103 @@ async def test_connection_logon_low_seq_num_by_acceptor(fix_connection):
         FTag.MsgType: FMsg.LOGOUT,
         "58": "MsgSeqNum is too low, expected 10, got 4",
     }
+
+
+@pytest.mark.asyncio
+async def test_connection_validation_missing_seqnum(fix_connection):
+    conn: AsyncFIXConnection = fix_connection
+    ft = FIXTester(schema=FIX_SCHEMA, connection=conn)
+
+    msg = conn.protocol.logon()
+    await conn.send_msg(msg)
+    msg_out = ft.msg_out[-1]
+
+    del msg_out[34]
+    assert ft.conn_accept._validate_intergity(msg_out) == "MsgSeqNum(34) tag is missing"
+
+
+@pytest.mark.asyncio
+async def test_connection_validation_seqnum_toolow(fix_connection):
+    conn: AsyncFIXConnection = fix_connection
+    ft = FIXTester(schema=FIX_SCHEMA, connection=conn)
+
+    conn.session.next_num_out = 20
+
+    msg = conn.protocol.logon()
+    await conn.send_msg(msg)
+    msg_out = ft.msg_out[-1]
+    ft.set_next_num(num_in=21)
+
+    assert (
+        ft.conn_accept._validate_intergity(msg_out)
+        == "MsgSeqNum is too low, expected 21, got 20"
+    )
+
+
+@pytest.mark.asyncio
+async def test_connection_validation_beginstring(fix_connection):
+    conn: AsyncFIXConnection = fix_connection
+    ft = FIXTester(schema=FIX_SCHEMA, connection=conn)
+
+    msg = conn.protocol.logon()
+    await conn.send_msg(msg)
+    msg_out = ft.msg_out[-1]
+    msg_out.set(FTag.BeginString, "FIX4.8", replace=True)
+
+    assert (
+        ft.conn_accept._validate_intergity(msg_out)
+        == "Protocol BeginString(8) mismatch, expected FIX.4.4, got FIX4.8"
+    )
+
+
+@pytest.mark.asyncio
+async def test_connection_validation_no_target(fix_connection):
+    conn: AsyncFIXConnection = fix_connection
+    ft = FIXTester(schema=FIX_SCHEMA, connection=conn)
+
+    msg = conn.protocol.logon()
+    await conn.send_msg(msg)
+    msg_out = ft.msg_out[-1]
+    del msg_out[FTag.TargetCompID]
+
+    assert conn._validate_intergity(msg_out) is True
+
+
+@pytest.mark.asyncio
+async def test_connection_validation_no_sender(fix_connection):
+    conn: AsyncFIXConnection = fix_connection
+    ft = FIXTester(schema=FIX_SCHEMA, connection=conn)
+
+    msg = conn.protocol.logon()
+    await conn.send_msg(msg)
+    msg_out = ft.msg_out[-1]
+    del msg_out[FTag.SenderCompID]
+
+    assert conn._validate_intergity(msg_out) is True
+
+
+@pytest.mark.asyncio
+async def test_connection_validation_sender_mismatch(fix_connection):
+    conn: AsyncFIXConnection = fix_connection
+    ft = FIXTester(schema=FIX_SCHEMA, connection=conn)
+
+    msg = conn.protocol.logon()
+    await conn.send_msg(msg)
+    msg_out = ft.msg_out[-1]
+    msg_out.set(FTag.SenderCompID, "as", replace=True)
+
+    assert conn._validate_intergity(msg_out) == "TargetCompID / SenderCompID mismatch"
+
+
+@pytest.mark.asyncio
+async def test_connection_validation_target_mismatch(fix_connection):
+    conn: AsyncFIXConnection = fix_connection
+    ft = FIXTester(schema=FIX_SCHEMA, connection=conn)
+
+    msg = conn.protocol.logon()
+    await conn.send_msg(msg)
+    msg_out = ft.msg_out[-1]
+    msg_out.set(FTag.TargetCompID, "as", replace=True)
+
+    assert conn._validate_intergity(msg_out) == "TargetCompID / SenderCompID mismatch"
+

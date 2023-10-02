@@ -163,7 +163,9 @@ class AsyncFIXConnection:
 
             if logout_message is not None:
                 msg = self.protocol.logout()
-                msg[FTag.Text] = logout_message
+                if logout_message:
+                    # Only add message if logout_message != ""
+                    msg[FTag.Text] = logout_message
                 await self.send_msg(msg)
 
             self.log.info(f"Client disconnected, with state: {repr(disconn_state)}")
@@ -172,7 +174,7 @@ class AsyncFIXConnection:
                 await self.socket_writer.wait_closed()
             self.socket_writer = None
             self.socket_reader = None
-            self.connection_state = disconn_state
+            self._state_set(disconn_state)
             await self.on_disconnect()
 
     async def reset_seq_num(self):
@@ -246,20 +248,49 @@ class AsyncFIXConnection:
     async def on_disconnect(self):
         pass
 
-    async def on_logon(self, msg: FIXMessage):
+    async def on_logon(self, msg: FIXMessage, is_healthy: bool):
         pass
 
     async def on_logout(self, msg: FIXMessage):
         pass
 
-    def _validate_intergity(self, msg: FIXMessage) -> bool:
-        # TODO: validate tag=BeginString(8) == protocol.beginstring
+    def on_state_change(self, connection_state: ConnectionState):
+        pass
 
-        # TODO: validate SenderCompID/TargetCompID match
+    def _state_set(self, connection_state: ConnectionState):
+        self.connection_state = connection_state
+        self.on_state_change(connection_state)
+
+    def _validate_intergity(self, msg: FIXMessage) -> bool:
+        if msg[FTag.BeginString] != self.protocol.beginstring:
+            return (
+                "Protocol BeginString(8) mismatch, expected"
+                f" {self.protocol.beginstring}, got {msg[FTag.BeginString]}"
+            )
+        if FTag.SenderCompID not in msg or FTag.TargetCompID not in msg:
+            # this will drop connection without a message
+            return True
+
+        if (
+            msg[FTag.SenderCompID] != self.target_comp_id
+            or msg[FTag.TargetCompID] != self.sender_comp_id
+        ):
+            # Sender/Target are reversed here
+            return "TargetCompID / SenderCompID mismatch"
 
         # TODO: validate SendingTime ~~ within 2x heartbeat_period
-        return True
-        pass
+        if FTag.MsgSeqNum not in msg:
+            return "MsgSeqNum(34) tag is missing"
+
+        msg_seq_num = int(msg[FTag.MsgSeqNum])
+        if msg_seq_num < self.session.next_num_in:
+            return (
+                f"MsgSeqNum is too low, expected {self.session.next_num_in}, got"
+                f" {msg_seq_num}"
+            )
+
+        # All good
+        return None
 
     async def _process_logon(self, msg: FIXMessage):
         assert msg.msg_type == FMsg.LOGON
@@ -270,42 +301,33 @@ class AsyncFIXConnection:
 
         msg_seq_num = int(msg[FTag.MsgSeqNum])
 
-        if self.connection_role == ConnectionRole.INITIATOR:
-            pass
-        elif self.connection_role == ConnectionRole.ACCEPTOR:
+        if self.connection_role == ConnectionRole.ACCEPTOR:
             assert self.connection_state == ConnectionState.LOGON_INITIAL_RECV
             if msg_seq_num >= self.session.next_num_in:
                 await self.send_msg(self.protocol.logon())
 
-        # TODO: figure out MsgSeqNum and request backfill?
         if msg_seq_num == self.session.next_num_in:
-            # https://www.fixtrading.org/standards/fix-session-layer-online/#establishing-a-fix-connection
-            # The initiator and acceptor should wait a short period of time following
-            # receipt of the Logon(35=A) message from the counterparty before
-            # transmitting queued or new application messages to permit both sides
-            # to synchronize the FIX session.
-            # await asyncio.sleep(1.0)
-            self.connection_state = ConnectionState.ACTIVE
+            self._state_set(ConnectionState.ACTIVE)
             # TODO: decide send extra test request?
-            await self.on_logon(msg)
-        elif msg_seq_num > self.session.next_num_in:
-            # TODO: request gap fill
-            assert False, f"TODO: gap fill, {msg_seq_num=} {self.session.next_num_in=}"
         else:
-            # Seq num less than
+            self._state_set(ConnectionState.RECV_SEQNUM_TOO_HIGH)
+
+        await self.on_logon(
+            msg, is_healthy=self.connection_state == ConnectionState.ACTIVE
+        )
+
+    async def _check_seqnum_gaps(self, msg_seq_num: int):
+        pass
+
+    async def _process_message(self, msg: FIXMessage, raw_msg: bytes):
+        self.log.debug(f"process_message (INCOMING)\n\t {msg}")
+        err_msg = self._validate_intergity(msg)
+        if err_msg:
+            # Some mandatory tags are missing or corrupt message
             await self.disconnect(
                 ConnectionState.DISCONNECTED_BROKEN_CONN,
-                logout_message=(
-                    "MsgSeqNum is too low, expected"
-                    f" {self.session.next_num_in}, got {msg_seq_num}"
-                ),
+                logout_message=err_msg if isinstance(err_msg, str) else None,
             )
-
-    async def _process_message(self, decoded_msg: FIXMessage, raw_msg: bytes):
-        self.log.debug(f"process_message (INCOMING)\n\t {decoded_msg}")
-        if not self._validate_intergity(decoded_msg):
-            # Some mandatory tags are missing or corrupt message
-            await self.disconnect(ConnectionState.DISCONNECTED_BROKEN_CONN)
             return
 
         try:
@@ -315,30 +337,28 @@ class AsyncFIXConnection:
 
             if self.connection_state == ConnectionState.NETWORK_CONN_ESTABLISHED:
                 # Applicable only for acceptor
-                if decoded_msg.msg_type != FMsg.LOGON:
+                if msg.msg_type != FMsg.LOGON:
                     # According to FIX session spec, first message must be Logon()
                     #  we must drop connection without Logout() if first message was
                     #  not logon
                     await self.disconnect(ConnectionState.DISCONNECTED_BROKEN_CONN)
                     return
-                self.connection_state = ConnectionState.LOGON_INITIAL_RECV
+                self._state_set(ConnectionState.LOGON_INITIAL_RECV)
                 self.connection_role = ConnectionRole.ACCEPTOR
 
-            if decoded_msg.msg_type == FMsg.LOGON:
-                await self._process_logon(decoded_msg)
-            else:
-                assert False, "Implement!"
-                # if self.connection_state == ConnectionState.LOGGED_IN:
-                #     await self.on_message(decoded_msg)
-                # else:
-                #     assert False, "Unexpected"
+            if msg.msg_type == FMsg.LOGON:
+                await self._process_logon(msg)
+
+            msg_seq_num = int(msg[FTag.MsgSeqNum])
+            await self._check_seqnum_gaps(msg_seq_num)
+
         except asyncio.CancelledError:
             raise
         except Exception:
             self.log.exception("_process_message error: ")
             raise
         finally:
-            self.session.set_recv_seq_no(decoded_msg[FTag.MsgSeqNum])
+            self.session.set_recv_seq_no(msg[FTag.MsgSeqNum])
             self.journaler.persist_msg(raw_msg, self.session, MessageDirection.INBOUND)
 
     async def send_msg(self, msg: FIXMessage):
@@ -349,12 +369,12 @@ class AsyncFIXConnection:
             )
         elif self.connection_state == ConnectionState.NETWORK_CONN_ESTABLISHED:
             # INITIATOR mode, connection was just established
-            if msg.msg_type != FMsg.LOGON:
+            if msg.msg_type != FMsg.LOGON and msg.msg_type != FMsg.LOGOUT:
                 raise FIXConnectionError(
-                    "You must send first Logon(35=A) message immediately after"
+                    "You must send first Logon(35=A)/Logout() message immediately after"
                     f" connection, got {repr(msg)}"
                 )
-            self.connection_state = ConnectionState.LOGON_INITIAL_SENT
+            self._state_set(ConnectionState.LOGON_INITIAL_SENT)
             self.connection_role = ConnectionRole.INITIATOR
         else:
             if self.connection_role == ConnectionRole.INITIATOR:
@@ -376,3 +396,4 @@ class AsyncFIXConnection:
         await self.socket_writer.drain()
 
         self.journaler.persist_msg(encoded_msg, self.session, MessageDirection.OUTBOUND)
+
