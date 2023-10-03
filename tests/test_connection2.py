@@ -360,16 +360,14 @@ async def test_connection__process_resend_req(fix_connection):
         ]
         enc_msg = [conn.codec.encode(m, conn.session).encode() for m in msgs]
         mock__journaler.recover_messages.return_value = enc_msg
-        print(enc_msg)
 
         resend_req = FIXMessage(
             FMsg.RESENDREQUEST,
-            {FTag.BeginSeqNo: 1, FTag.EndSeqNo: "223"},
+            {FTag.BeginSeqNo: 1, FTag.EndSeqNo: "0"},
         )
         conn.connection_state = ConnectionState.RESEND_REQ_PROCESSING
         await conn._process_resend(resend_req)
 
-        print(ft.initiator_sent)
         assert len(ft.initiator_sent) == 3
         assert ft.initiator_sent[0].query(35, 34, 36, 123) == {
             FTag.MsgType: str(FMsg.SEQUENCERESET),
