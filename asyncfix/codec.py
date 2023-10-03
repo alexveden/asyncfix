@@ -1,7 +1,7 @@
 import logging
 from datetime import datetime
 
-from asyncfix import FTag, FMsg
+from asyncfix import FMsg, FTag
 from asyncfix.errors import EncodingError
 from asyncfix.message import FIXContainer, FIXMessage, RepeatingTagError
 from asyncfix.protocol import FIXProtocolBase
@@ -35,7 +35,9 @@ class Codec(object):
         else:
             body.append("%s=%s" % (t, msg[t]))
 
-    def encode(self, msg: FIXMessage, session: FIXSession, raw_seq_num: bool = False) -> str:
+    def encode(
+        self, msg: FIXMessage, session: FIXSession, raw_seq_num: bool = False
+    ) -> str:
         # Create body
         body = []
 
@@ -60,8 +62,8 @@ class Codec(object):
                 if msg.get(FTag.PossDupFlag, "N") == "Y":
                     if FTag.MsgSeqNum not in msg:
                         raise EncodingError(
-                            "Failed to encode message with PossDupFlag=Y but no previous"
-                            " MsgSeqNum"
+                            "Failed to encode message with PossDupFlag=Y but no"
+                            " previous MsgSeqNum"
                         )
                     seq_no = msg[FTag.MsgSeqNum]
                 else:
@@ -120,7 +122,7 @@ class Codec(object):
         else:
             next_msg = len(msg)
 
-        encoded_msg = rawmsg[valid_idx:next_msg+valid_idx]
+        encoded_msg = rawmsg[valid_idx : next_msg + valid_idx]
 
         msg = msg[:next_msg].split(self.SOH)
         if not msg[-1]:

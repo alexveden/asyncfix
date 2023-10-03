@@ -4,12 +4,10 @@ from unittest.mock import patch
 
 import pytest
 
-
-from asyncfix.codec import Codec
-from asyncfix.protocol.protocol_fix44 import FIXProtocol44
 from asyncfix import FIXMessage, FMsg, FTag
-from asyncfix.session import FIXSession
+from asyncfix.codec import Codec
 from asyncfix.errors import FIXMessageError
+from asyncfix.protocol.protocol_fix44 import FIXProtocol44
 from asyncfix.protocol.schema import (
     FIXSchema,
     SchemaComponent,
@@ -18,6 +16,7 @@ from asyncfix.protocol.schema import (
     SchemaMessage,
     SchemaSet,
 )
+from asyncfix.session import FIXSession
 
 TEST_DIR = os.path.abspath(os.path.dirname(__file__))
 

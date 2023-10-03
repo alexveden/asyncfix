@@ -1,17 +1,13 @@
 from math import isnan, nan
-import asyncio
+from unittest.mock import AsyncMock, MagicMock
 
-from asyncfix.journaler import Journaler
 from asyncfix import FIXMessage, FMsg, FTag
-from asyncfix.protocol import FIXSchema, FIXProtocol44
+from asyncfix.connection import AsyncFIXConnection, ConnectionState
+from asyncfix.journaler import Journaler
+from asyncfix.protocol import FIXProtocol44, FIXSchema
 
 from .common import FExecType, FOrdStatus
 from .order_single import FIXNewOrderSingle
-from .schema import FIXSchema
-from asyncfix.session import FIXSession
-from asyncfix.connection import AsyncFIXConnection
-from unittest.mock import MagicMock, AsyncMock
-from asyncfix.connection import AsyncFIXConnection, ConnectionState, ConnectionRole
 
 
 class FIXTester:

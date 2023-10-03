@@ -98,7 +98,7 @@ class SchemaField:
             return True
 
     def _validate_special_cases(self, value, prev_err):
-        if self.tag == '16':
+        if self.tag == "16":
             # EndSeqNo
             if value == "0":
                 prev_err = None
@@ -539,7 +539,7 @@ class FIXSchema:
             self._validate_header(msg)
 
         for tag, val in msg.tags.items():
-            if tag == '10':
+            if tag == "10":
                 # TODO: check the checksum
                 continue
             if tag not in self.tag2field:

@@ -1,11 +1,12 @@
 import asyncio
+import logging
 import sys
 import time
-from enum import IntEnum, Enum
-import logging
-from asyncfix import FTag, FMsg
-from asyncfix.errors import FIXConnectionError
+from enum import Enum, IntEnum
+
+from asyncfix import FMsg, FTag
 from asyncfix.codec import Codec
+from asyncfix.errors import FIXConnectionError
 from asyncfix.journaler import Journaler
 from asyncfix.message import FIXMessage, MessageDirection
 from asyncfix.protocol import FIXProtocolBase
@@ -664,7 +665,7 @@ class AsyncFIXConnection:
         msg_sec_no = self.session.set_next_num_in(msg)
 
         if msg_sec_no <= 0:
-            self.log.warning(f'Trying to finalize invalid {msg=}')
+            self.log.warning(f"Trying to finalize invalid {msg=}")
             return
 
         if self.connection_state == ConnectionState.RESENDREQ_AWAITING:

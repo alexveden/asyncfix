@@ -1,12 +1,9 @@
 import asyncio
-import sys
-import time
 import logging
-from asyncfix import FTag, FMsg
-from asyncfix.message import FIXMessage, MessageDirection
-from asyncfix.protocol import FIXProtocolBase
-from asyncfix.connection import ConnectionState, AsyncFIXConnection
+
+from asyncfix.connection import AsyncFIXConnection, ConnectionState
 from asyncfix.journaler import Journaler
+from asyncfix.protocol import FIXProtocolBase
 
 
 class AsyncFIXClient(AsyncFIXConnection):
@@ -39,4 +36,3 @@ class AsyncFIXClient(AsyncFIXConnection):
         )
         self.connection_state = ConnectionState.CONNECTED
         await self.on_connect()
-

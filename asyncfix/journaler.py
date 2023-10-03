@@ -1,8 +1,8 @@
 import sqlite3
 
+from asyncfix.errors import DuplicateSeqNoError, FIXMessageError
 from asyncfix.message import MessageDirection
 from asyncfix.session import FIXSession
-from asyncfix.errors import FIXMessageError, DuplicateSeqNoError
 
 
 class Journaler(object):
@@ -63,7 +63,7 @@ class Journaler(object):
             )
             session_info = next(self.cursor)
             session = FIXSession(session_info[0], session_info[1], session_info[2])
-            session.next_num_out = session_info[3]
+            session.next_num_out = session_info[3] + 1
             session.next_num_in = session_info[4] + 1
             print(f"Journaler: Loaded session: {session}")
         return session

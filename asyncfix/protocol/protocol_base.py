@@ -1,4 +1,4 @@
-from asyncfix import FIXMessage, FMsg, FTag
+from asyncfix import FMsg, FTag
 
 
 class FIXProtocolBase(object):

@@ -1,4 +1,4 @@
-from asyncfix import FIXMessage, FMsg, FTag
+from asyncfix import FMsg, FTag
 from asyncfix.protocol.protocol_base import FIXProtocolBase
 
 
@@ -238,5 +238,3 @@ class FIXProtocol44(FIXProtocolBase):
             FTag.LegInterestAccrualDate,
         ],
     }
-
-

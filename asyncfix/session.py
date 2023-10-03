@@ -1,6 +1,6 @@
 import logging
 
-from asyncfix import FTag, FIXMessage, FMsg
+from asyncfix import FIXMessage, FMsg, FTag
 from asyncfix.message import MessageDirection
 
 
@@ -28,13 +28,13 @@ class FIXSession:
         elif isinstance(o, tuple):
             if len(o) != 2:
                 return False
-            return (self.target_comp_id == o[0] and self.sender_comp_id == o[1])
+            return self.target_comp_id == o[0] and self.sender_comp_id == o[1]
         return False
 
     def __repr__(self):
         return (
             f"FIXSession(key={self.key},"
-            f" target={self.target_comp_id} sender={self.sender_comp_id} InSN={self.next_num_in} OutSN={self.next_num_out})" # noqa
+            f" target={self.target_comp_id} sender={self.sender_comp_id} InSN={self.next_num_in} OutSN={self.next_num_out})"  # noqa
         )
 
     def reset_msgs(self):

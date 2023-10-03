@@ -13,10 +13,7 @@ from asyncfix.errors import (
     TagNotFoundError,
     UnmappedRepeatedGrpError,
 )
-from asyncfix.message import (
-    FIXContainer,
-    FIXMessage,
-)
+from asyncfix.message import FIXContainer, FIXMessage
 from asyncfix.protocol import FIXProtocol44
 
 
@@ -31,7 +28,7 @@ def fix_session():
     mock_session = Mock()
     mock_session.sender_comp_id = "sender"
     mock_session.target_comp_id = "target"
-    mock_session.allocate_snd_seq_no.return_value = 1
+    mock_session.allocate_next_num_out.return_value = 1
     return mock_session
 
 
@@ -157,7 +154,7 @@ def test_decode_invalid_with_added_fix(fix_session):
     msg, parsed_len, raw_msg = codec.decode(enc_msg)
     assert isinstance(msg, FIXMessage)
     assert parsed_len == len(enc_msg)
-    assert raw_msg == enc_msg[len(b"somejunk\n"):]
+    assert raw_msg == enc_msg[len(b"somejunk\n") :]
 
     msg, parsed_len, raw_msg = codec.decode(enc_msg, silent=False)
 
@@ -409,7 +406,7 @@ def test_encode_decode_seqnum_reset_gap_fill_no(fix_session):
 
     assert msg_dec[34] == "3"
     assert FTag.GapFillFlag not in msg_dec
-    assert msg_dec[FTag.NewSeqNo] == "1"
+    assert FTag.NewSeqNo not in msg_dec
 
 
 def test_encode_decode_seqnum_reset_gap_fill_no_msgseqnum(fix_session):
