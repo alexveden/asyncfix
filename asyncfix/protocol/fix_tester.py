@@ -144,12 +144,20 @@ class FIXTester:
             self._socket_drain_in_coro = None
 
     async def process_msg_acceptor(self, index=None):
+        """
+        Processes all messages qued by initiator.send_msg() or single if `index` given
+
+        Args:
+            index: None - processes all messages in que, number - only one at that index
+
+        """
         assert self.acceptor_rcv_que, "No messages in self.acceptor_rcv_que"
 
         while self.acceptor_rcv_que:
-            (msg, raw) = self.acceptor_rcv_que.pop(0)
-
+            (msg, raw) = self.acceptor_rcv_que.pop(0 if index is None else index)
             await self.conn_accept._process_message(msg, raw)
+            if index is not None:
+                break
 
     async def reply(self, msg: FIXMessage):
         if self.schema:

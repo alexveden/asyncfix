@@ -208,7 +208,10 @@ async def test_connection_logon_low_seq_num_by_acceptor(fix_connection):
     assert len(ft.initiator_sent) == 2
     assert len(ft.acceptor_sent) == 2
     assert ft.acceptor_sent_query((35, 34), 0) == {FTag.MsgType: FMsg.LOGON, "34": "4"}
-    assert ft.acceptor_sent_query((35, 34),  1) == {FTag.MsgType: FMsg.TESTREQUEST, "34": "5"}
+    assert ft.acceptor_sent_query((35, 34), 1) == {
+        FTag.MsgType: FMsg.TESTREQUEST,
+        "34": "5",
+    }
     assert ft.initiator_sent_query((35, 58)) == {
         FTag.MsgType: FMsg.LOGOUT,
         "58": "MsgSeqNum is too low, expected 10, got 4",
@@ -318,11 +321,9 @@ async def test_connection_validation_target_mismatch(fix_connection):
 
 
 @pytest.mark.asyncio
-async def test_connection__process_resend_req(fix_connection):
+async def test_connection__process_resend_req_synth(fix_connection):
     conn: AsyncFIXConnection = fix_connection
     ft = FIXTester(schema=FIX_SCHEMA, connection=conn)
-
-    conn.session.next_num_out = 10
 
     with patch.object(conn, "journaler") as mock__journaler:
         msgs = [
@@ -332,10 +333,18 @@ async def test_connection__process_resend_req(fix_connection):
             FIXMessage(FMsg.HEARTBEAT),
             FIXMessage(FMsg.TESTREQUEST),
             FIXMessage(FMsg.RESENDREQUEST),
-            FIXMessage(FMsg.SEQUENCERESET, {34: 8}),
+            FIXMessage(FMsg.SEQUENCERESET, {FTag.NewSeqNo: 800}),
+            FIXNewOrderSingle("test", "ticker", "1", 10, 10).new_req(),
+            FIXMessage(FMsg.TESTREQUEST),
         ]
+        seq_res = msgs[6]
+        assert (seq_res.msg_type == FMsg.SEQUENCERESET)
+        seq_res[34] = conn.session.next_num_out + 5
+        assert seq_res[34] == '6'
         enc_msg = [conn.codec.encode(m, conn.session).encode() for m in msgs]
         mock__journaler.recover_messages.return_value = enc_msg
+
+        conn.session.next_num_out = 20
 
         resend_req = FIXMessage(
             FMsg.RESENDREQUEST,
@@ -345,24 +354,37 @@ async def test_connection__process_resend_req(fix_connection):
         await conn._process_resend(resend_req)
         conn.connection_state = ConnectionState.ACTIVE
 
-        assert len(ft.initiator_sent) == 3
+        assert len(ft.initiator_sent) == 5
         assert ft.initiator_sent[0].query(35, 34, 36, 123) == {
             FTag.MsgType: str(FMsg.SEQUENCERESET),
             FTag.MsgSeqNum: "1",
-            FTag.NewSeqNo: "12",
+            FTag.NewSeqNo: "3",
             FTag.GapFillFlag: "Y",
         }
 
         assert ft.initiator_sent[1].query(35, 34, FTag.PossDupFlag) == {
             FTag.MsgType: str(FMsg.NEWORDERSINGLE),
-            FTag.MsgSeqNum: "12",
+            FTag.MsgSeqNum: "3",
             FTag.PossDupFlag: "Y",
         }
 
         assert ft.initiator_sent[2].query(35, 34, 36, 123) == {
             FTag.MsgType: str(FMsg.SEQUENCERESET),
-            FTag.MsgSeqNum: "13",
-            FTag.NewSeqNo: "17",
+            FTag.MsgSeqNum: "4",
+            FTag.NewSeqNo: "7",
+            FTag.GapFillFlag: "Y",
+        }
+
+        assert ft.initiator_sent[3].query(35, 34, FTag.PossDupFlag) == {
+            FTag.MsgType: str(FMsg.NEWORDERSINGLE),
+            FTag.MsgSeqNum: "7",
+            FTag.PossDupFlag: "Y",
+        }
+
+        assert ft.initiator_sent[4].query(35, 34, 36, 123) == {
+            FTag.MsgType: str(FMsg.SEQUENCERESET),
+            FTag.MsgSeqNum: "8",
+            FTag.NewSeqNo: "20",
             FTag.GapFillFlag: "Y",
         }
 
@@ -478,6 +500,13 @@ async def test_connection_both_seqnum_mismach_bidirectional_resend_req(fix_conne
     assert ft.conn_init.connection_state == ConnectionState.ACTIVE
     assert ft.conn_accept.connection_state == ConnectionState.ACTIVE
 
+    conn.log.debug(100 * "-")
+    conn.session.next_num_out = 40
+    await conn.send_msg(ft.msg_heartbeat())
+    await ft.process_msg_acceptor()
+    assert ft.conn_init.connection_state == ConnectionState.ACTIVE
+    assert ft.conn_accept.connection_state == ConnectionState.ACTIVE
+
 
 @pytest.mark.asyncio
 async def test_test_request_exchange(fix_connection):
@@ -565,3 +594,148 @@ async def test_test_request_errors_side_cases(fix_connection):
         assert conn.test_req_id is not None
         assert ft.conn_accept.connection_state == ConnectionState.ACTIVE
         assert ft.conn_init.connection_state == ConnectionState.ACTIVE
+
+
+@pytest.mark.asyncio
+async def test_extra_msg_during_seq_num_resend_alredy_journaled(fix_connection):
+    conn: AsyncFIXConnection = fix_connection
+    ft = FIXTester(schema=FIX_SCHEMA, connection=conn)
+
+    conn.session.next_num_out = 20
+    conn.session.next_num_in = 25
+    ft.set_next_num(num_in=15, num_out=30)
+
+    msg = ft.msg_logon()
+    await conn.send_msg(msg)
+    await ft.process_msg_acceptor()
+    assert ft.conn_init.connection_state == ConnectionState.ACTIVE
+    assert ft.conn_accept.connection_state == ConnectionState.ACTIVE
+
+    conn.log.debug(100 * "-")
+
+    # replace INITIATOR Journaler to avoid duplicate SQL error (just mock)
+    conn.journaler = Journaler()
+    conn.session.next_num_out = 15
+
+    ord = FIXNewOrderSingle("test", "ticker", "1", 10, 10).new_req()
+    ord[FTag.MsgSeqNum] = 15
+    ord[FTag.PossDupFlag] = "Y"
+
+    await conn.send_msg(ord)
+    await ft.process_msg_acceptor()
+
+    assert ft.conn_init.connection_state == ConnectionState.DISCONNECTED_WCONN_TODAY
+    assert ft.conn_accept.connection_state == ConnectionState.DISCONNECTED_BROKEN_CONN
+
+
+@pytest.mark.asyncio
+async def test_extra_msg_during_seq_num_resend_low_num_not_processed(fix_connection):
+    conn: AsyncFIXConnection = fix_connection
+    ft = FIXTester(schema=FIX_SCHEMA, connection=conn)
+
+    conn.session.next_num_out = 20
+    conn.session.next_num_in = 25
+    ft.set_next_num(num_in=15, num_out=30)
+
+    msg = ft.msg_logon()
+    await conn.send_msg(msg)
+    await ft.process_msg_acceptor()
+    assert ft.conn_init.connection_state == ConnectionState.ACTIVE
+    assert ft.conn_accept.connection_state == ConnectionState.ACTIVE
+
+    conn.log.debug(100 * "-")
+    # ft.set_next_num(num_in=15)
+    with patch.object(ft.conn_accept, "journaler") as mock_journaler:
+        mock_journaler.persist_msg.reset_mock()
+        conn.session.next_num_out = 17
+        await conn.send_msg(ft.msg_heartbeat())
+        await conn.send_msg(ft.msg_heartbeat())
+        await ft.process_msg_acceptor()
+
+        assert ft.conn_init.connection_state == ConnectionState.DISCONNECTED_WCONN_TODAY
+        assert (
+            ft.conn_accept.connection_state == ConnectionState.DISCONNECTED_BROKEN_CONN
+        )
+        assert len(mock_journaler.persist_msg.call_args_list) == 1
+        assert (
+            mock_journaler.persist_msg.call_args_list[0][0][2]
+            == MessageDirection.OUTBOUND
+        )
+
+
+@pytest.mark.asyncio
+async def test_connection__process_resend_req_real_processing(fix_connection):
+    conn: AsyncFIXConnection = fix_connection
+    ft = FIXTester(schema=FIX_SCHEMA, connection=conn)
+
+
+    with (
+        patch.object(conn, "journaler") as mock__journaler,
+        patch.object(ft.conn_accept, "on_message") as mock_on_message,
+    ):
+        msgs = [
+            FIXMessage(FMsg.LOGON),
+            FIXMessage(FMsg.HEARTBEAT),
+            FIXNewOrderSingle("test", "ticker", "1", 10, 10).new_req(),
+            FIXMessage(FMsg.HEARTBEAT),
+            FIXMessage(FMsg.TESTREQUEST),
+            FIXMessage(FMsg.RESENDREQUEST),
+        ]
+        enc_msg = [conn.codec.encode(m, conn.session).encode() for m in msgs]
+        mock__journaler.recover_messages.return_value = enc_msg
+        conn.session.next_num_out = 10
+        msg = ft.msg_logon()
+        await conn.send_msg(msg)
+        await ft.process_msg_acceptor()
+        assert ft.conn_init.connection_state == ConnectionState.ACTIVE
+        assert ft.conn_accept.connection_state == ConnectionState.ACTIVE
+        assert mock_on_message.called
+        assert mock_on_message.call_count == 1
+        (app_msg,) = mock_on_message.call_args[0]
+        assert app_msg.query(35) == {FTag.MsgType: FMsg.NEWORDERSINGLE}
+
+
+@pytest.mark.asyncio
+async def test_connection__process_resend__ignores_high_seq_num_msg(fix_connection):
+    conn: AsyncFIXConnection = fix_connection
+    ft = FIXTester(schema=FIX_SCHEMA, connection=conn)
+
+    conn.session.next_num_out = 10
+
+    with (
+        patch.object(conn, "journaler") as mock__journaler,
+        patch.object(ft.conn_accept, "on_message") as mock_on_message,
+    ):
+        msgs = [
+            FIXMessage(FMsg.LOGON),
+            FIXMessage(FMsg.HEARTBEAT),
+            FIXNewOrderSingle("test", "ticker", "1", 10, 10).new_req(),
+            FIXMessage(FMsg.HEARTBEAT),
+            FIXMessage(FMsg.TESTREQUEST),
+            FIXMessage(FMsg.RESENDREQUEST),
+            FIXNewOrderSingle("test2", "ticker", "1", 10, 10).new_req(),
+        ]
+        enc_msg = [conn.codec.encode(m, conn.session).encode() for m in msgs]
+        mock__journaler.recover_messages.return_value = enc_msg
+        msg = ft.msg_logon()
+        await conn.send_msg(msg)
+
+        await ft.process_msg_acceptor(0)
+        conn.log.debug(100*'-')
+        assert ft.conn_accept.connection_state == ConnectionState.RESENDREQ_AWAITING
+        # Pretending that last order was sent via wire, and received before RESENDREQUEST
+        #  we are sending already encoded message via socket mock
+        dec_msg, _, _ = conn.codec.decode(enc_msg[-1])
+        assert isinstance(dec_msg, FIXMessage)
+        assert dec_msg[35] == FMsg.NEWORDERSINGLE
+
+        # Prepend que to make OrderSingle arrive first
+        ft.acceptor_rcv_que.insert(0, (dec_msg, enc_msg[-1]))
+        await ft.process_msg_acceptor()
+
+        assert mock_on_message.called
+        assert mock_on_message.call_count == 2
+        (app_msg,) = mock_on_message.call_args_list[0][0]
+        assert app_msg.query(35, FTag.ClOrdID, FTag.PossDupFlag) == {FTag.MsgType: FMsg.NEWORDERSINGLE, FTag.ClOrdID: 'test', FTag.PossDupFlag: "Y"}
+        (app_msg,) = mock_on_message.call_args_list[1][0]
+        assert app_msg.query(35, FTag.ClOrdID, FTag.PossDupFlag) == {FTag.MsgType: FMsg.NEWORDERSINGLE, FTag.ClOrdID: 'test2', FTag.PossDupFlag: "Y"}

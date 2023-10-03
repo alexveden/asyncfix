@@ -80,7 +80,7 @@ class FIXSession:
                 return 0
             seq_no = int(msg[FTag.MsgSeqNum])
 
-            if seq_no > self.next_num_in:
+            if seq_no != self.next_num_in:
                 # Gap detected
                 return -1
 

@@ -356,7 +356,7 @@ class AsyncFIXConnection:
             msg:
 
         """
-        pass
+        raise NotImplementedError("You must implement this method on AppLevel")
 
     async def on_connect(self):
         """
@@ -497,6 +497,7 @@ class AsyncFIXConnection:
 
         if msg_seq_num == self.session.next_num_in:
             self._state_set(ConnectionState.ACTIVE)
+            # FIX: maybe delete!?
             if not self.test_req_id:
                 await self.send_test_req()
         else:
@@ -626,7 +627,7 @@ class AsyncFIXConnection:
             gap_fill_msg = FIXMessage(FMsg.SEQUENCERESET)
             gap_fill_msg[FTag.GapFillFlag] = "Y"
             gap_fill_msg[FTag.MsgSeqNum] = gap_fill_begin
-            gap_fill_msg[FTag.NewSeqNo] = str(self.session.next_num_out + 1)
+            gap_fill_msg[FTag.NewSeqNo] = self.session.next_num_out
             await self.send_msg(gap_fill_msg)
 
         if self.connection_state != ConnectionState.RESENDREQ_AWAITING:
@@ -661,18 +662,16 @@ class AsyncFIXConnection:
         msg_sec_no = self.session.set_next_num_in(msg)
         if msg_sec_no == 0:
             self.log.warning(f"Got possible garbled message: {msg}")
-            # Garbled message without needed tags
             return
         elif msg_sec_no == -1:
-            # TODO: decide probably need to que message
+            self.log.warning(f"Possible seqnum mismatch, skipped {msg_sec_no=}")
             return
 
-        if (
-            self.connection_state == ConnectionState.RESENDREQ_AWAITING
-            and msg_sec_no == self.session.next_num_in - 1
-        ):
-            # All messages were transferred
-            self._state_set(ConnectionState.ACTIVE)
+        if self.connection_state == ConnectionState.RESENDREQ_AWAITING:
+
+            if msg_sec_no == self.session.next_num_in - 1:
+                # All messages were transferred
+                self._state_set(ConnectionState.ACTIVE)
 
         self.message_last_time = time.time()
 
@@ -764,7 +763,7 @@ class AsyncFIXConnection:
                 await self._process_logon(msg)
 
             msg_seq_num = int(msg[FTag.MsgSeqNum])
-            await self._check_seqnum_gaps(msg_seq_num)
+            is_valid_msg_num = await self._check_seqnum_gaps(msg_seq_num)
 
             if msg.msg_type == FMsg.RESENDREQUEST:
                 await self._process_resend(msg)
@@ -779,8 +778,10 @@ class AsyncFIXConnection:
             elif msg.msg_type == FMsg.LOGOUT:
                 await self._process_logout(msg)
             else:
-                assert False, "Stub!"
-                await self.on_message(msg)
+                if is_valid_msg_num:
+                    await self.on_message(msg)
+                else:
+                    self.log.debug(f"_process_message: skipped app msg: {msg}")
 
         except asyncio.CancelledError:
             raise
