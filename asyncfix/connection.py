@@ -238,8 +238,8 @@ class AsyncFIXConnection:
 
         msg_raw = encoded_msg.replace(b"\x01", b"|")
         self.log.debug(
-            f"send_msg: (OUTBOUND | {self.connection_role})"
-            f" {repr(msg.msg_type)}\n\t{msg_raw.decode()}"
+            f"[{self.connection_role.name}]:send_msg ({self.connection_state.name})"
+            f" {repr(msg.msg_type)}\n\t {msg_raw.decode()}\n"
         )
 
         self.socket_writer.write(encoded_msg)
@@ -408,6 +408,9 @@ class AsyncFIXConnection:
             connection_state:
 
         """
+        self.log.debug(
+            f"[{self.connection_role.name}] NewState: {connection_state.name}"
+        )
         self.connection_state = connection_state
         if connection_state == ConnectionState.ACTIVE:
             self.connection_was_active = True
@@ -521,6 +524,8 @@ class AsyncFIXConnection:
         else:
             dstate = ConnectionState.DISCONNECTED_BROKEN_CONN
 
+        await self.on_logout()
+
         await self.disconnect(dstate)
 
     async def _process_resend(self, resend_msg: FIXMessage):
@@ -531,8 +536,11 @@ class AsyncFIXConnection:
             msg: ResendRequest(35=2) FIXMessage
 
         """
+        if self.connection_state != ConnectionState.RESENDREQ_AWAITING:
+            self._state_set(ConnectionState.RESENDREQ_HANDLING)
+
         assert resend_msg.msg_type == FMsg.RESENDREQUEST
-        assert self.connection_state == ConnectionState.RESENDREQ_HANDLING
+        assert self.connection_state in {ConnectionState.RESENDREQ_HANDLING, ConnectionState.RESENDREQ_AWAITING}
 
         begin_seq_no = resend_msg[FTag.BeginSeqNo]
         end_seq_no = resend_msg[FTag.EndSeqNo]
@@ -630,9 +638,7 @@ class AsyncFIXConnection:
             and msg_sec_no == self.session.next_num_in - 1
         ):
             # All messages were transferred
-            # breakpoint()
             self._state_set(ConnectionState.ACTIVE)
-            pass
 
         self.journaler.persist_msg(raw_msg, self.session, MessageDirection.INBOUND)
 
@@ -646,8 +652,8 @@ class AsyncFIXConnection:
 
         """
         self.log.debug(
-            f"process_message (INCOMING | {self.connection_role})"
-            f" {repr(msg.msg_type)}\n\t {msg}"
+            f"[{self.connection_role.name}]:process_message"
+            f" ({self.connection_state.name}) {repr(msg.msg_type)}\n\t {msg}\n"
         )
         err_msg = self._validate_intergity(msg)
         if err_msg:
@@ -681,7 +687,6 @@ class AsyncFIXConnection:
             await self._check_seqnum_gaps(msg_seq_num)
 
             if msg.msg_type == FMsg.RESENDREQUEST:
-                self._state_set(ConnectionState.RESENDREQ_HANDLING)
                 await self._process_resend(msg)
             elif msg.msg_type == FMsg.SEQUENCERESET:
                 await self._process_seqreset(msg)
