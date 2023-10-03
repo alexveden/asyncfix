@@ -476,3 +476,91 @@ async def test_connection_both_seqnum_mismach_bidirectional_resend_req(fix_conne
     await ft.process_msg_acceptor()
     assert ft.conn_init.connection_state == ConnectionState.ACTIVE
     assert ft.conn_accept.connection_state == ConnectionState.ACTIVE
+
+
+@pytest.mark.asyncio
+async def test_test_request_exchange(fix_connection):
+    conn: AsyncFIXConnection = fix_connection
+    ft = FIXTester(schema=FIX_SCHEMA, connection=conn)
+
+    msg = ft.msg_logon()
+    await conn.send_msg(msg)
+    await ft.process_msg_acceptor()
+    assert ft.conn_accept.connection_state == ConnectionState.ACTIVE
+    assert ft.conn_init.connection_state == ConnectionState.ACTIVE
+
+    await conn.send_test_req()
+    await ft.process_msg_acceptor()
+
+    assert conn.test_req_id is None
+    assert ft.conn_accept.connection_state == ConnectionState.ACTIVE
+    assert ft.conn_init.connection_state == ConnectionState.ACTIVE
+
+
+@pytest.mark.asyncio
+async def test_test_incorrect_response(fix_connection):
+    conn: AsyncFIXConnection = fix_connection
+    ft = FIXTester(schema=FIX_SCHEMA, connection=conn)
+
+    msg = ft.msg_logon()
+    await conn.send_msg(msg)
+    await ft.process_msg_acceptor()
+    assert ft.conn_accept.connection_state == ConnectionState.ACTIVE
+    assert ft.conn_init.connection_state == ConnectionState.ACTIVE
+
+    with patch.object(ft.conn_accept, "_process_testrequest") as mock__process_testreq:
+
+        async def _mock_test_req(msg):
+            m = ft.msg_heartbeat("asd")
+            await ft.conn_accept.send_msg(m)
+
+        mock__process_testreq.side_effect = _mock_test_req
+
+        await conn.send_test_req()
+        await ft.process_msg_acceptor()
+
+        assert conn.test_req_id is None
+        assert (
+            ft.conn_accept.connection_state == ConnectionState.DISCONNECTED_WCONN_TODAY
+        )
+        assert ft.conn_init.connection_state == ConnectionState.DISCONNECTED_BROKEN_CONN
+
+
+@pytest.mark.asyncio
+async def test_test_request_errors_side_cases(fix_connection):
+    conn: AsyncFIXConnection = fix_connection
+    ft = FIXTester(schema=FIX_SCHEMA, connection=conn)
+
+    msg = ft.msg_logon()
+    await conn.send_msg(msg)
+    await ft.process_msg_acceptor()
+    assert ft.conn_accept.connection_state == ConnectionState.ACTIVE
+    assert ft.conn_init.connection_state == ConnectionState.ACTIVE
+
+    with pytest.raises(
+        FIXConnectionError,
+        match=r"You must rend TestRequest\(\) message via self.send_test_req",
+    ):
+        testmsg = ft.msg_test_request("123")
+        await conn.send_msg(testmsg)
+
+    with patch.object(ft.conn_accept, "_process_testrequest") as mock__process_testreq:
+
+        async def _mock_test_req(msg):
+            m = ft.msg_heartbeat()
+            await ft.conn_accept.send_msg(m)
+
+        mock__process_testreq.side_effect = _mock_test_req
+
+        await conn.send_test_req()
+        await ft.process_msg_acceptor()
+
+        with pytest.raises(
+            FIXConnectionError, match=r"Another test request already pending"
+        ):
+            await conn.send_test_req()
+
+        # No Heartbeat(TestReqId) given, just skip until we get valid one
+        assert conn.test_req_id is not None
+        assert ft.conn_accept.connection_state == ConnectionState.ACTIVE
+        assert ft.conn_init.connection_state == ConnectionState.ACTIVE

@@ -54,7 +54,9 @@ class FIXTester:
             self.conn_accept.session.next_num_in = connection.session.next_num_out
 
             connection.socket_writer = MagicMock()
-            connection.socket_writer.write.side_effect = self._conn_socket_write_initiator
+            connection.socket_writer.write.side_effect = (
+                self._conn_socket_write_initiator
+            )
             connection.socket_writer.drain = AsyncMock()
             connection.socket_writer.wait_closed = AsyncMock()
 
@@ -142,7 +144,7 @@ class FIXTester:
             self._socket_drain_in_coro = None
 
     async def process_msg_acceptor(self, index=None):
-        assert self.acceptor_rcv_que, 'No messages in self.acceptor_rcv_que'
+        assert self.acceptor_rcv_que, "No messages in self.acceptor_rcv_que"
 
         while self.acceptor_rcv_que:
             (msg, raw) = self.acceptor_rcv_que.pop(0)
@@ -361,18 +363,23 @@ class FIXTester:
 
         return msg
 
-    def msg_heartbeat(self) -> FIXMessage:
+    def msg_heartbeat(self, test_req_id=None) -> FIXMessage:
         msg = FIXMessage(FMsg.HEARTBEAT)
+        if test_req_id is not None:
+            msg[FTag.TestReqID] = test_req_id
 
         if self.schema:
             self.schema.validate(msg)
 
         return msg
 
-    def msg_test_request(self) -> FIXMessage:
+    def msg_test_request(self, test_req_id) -> FIXMessage:
         msg = FIXMessage(FMsg.TESTREQUEST)
+        msg[FTag.TestReqID] = test_req_id
+
         if self.schema:
             self.schema.validate(msg)
+
         return msg
 
     def msg_sequence_reset(

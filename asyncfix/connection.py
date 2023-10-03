@@ -134,6 +134,7 @@ class AsyncFIXConnection:
         self.msg_buffer = b""
         self.heartbeat_period = heartbeat_period
         self.message_last_time = 0.0
+        self.test_req_id = None
         self.socket_reader = None
         self.socket_writer = None
         self.host = host
@@ -181,6 +182,7 @@ class AsyncFIXConnection:
         """
         if self.connection_state > ConnectionState.DISCONNECTED_BROKEN_CONN:
             assert disconn_state <= ConnectionState.DISCONNECTED_BROKEN_CONN
+            self.test_req_id = None
 
             if logout_message is not None:
                 msg = FIXMessage(FMsg.LOGOUT)
@@ -233,6 +235,12 @@ class AsyncFIXConnection:
                         "Initiator is waiting for Logon() response, you must not send"
                         " any additional messages before acceptor responce."
                     )
+
+        if msg.msg_type == FMsg.TESTREQUEST and self.test_req_id is None:
+            raise FIXConnectionError(
+                "You must rend TestRequest() message via self.send_test_req() method in"
+                " order to get valid response handling"
+            )
 
         encoded_msg = self.codec.encode(msg, self.session).encode("utf-8")
 
@@ -292,6 +300,14 @@ class AsyncFIXConnection:
                 self.log.exception("handle_read exception")
                 # raise
 
+    async def send_test_req(self):
+        if self.test_req_id is not None:
+            raise FIXConnectionError("Another test request already pending")
+
+        self.test_req_id = int(time.time())
+        test_msg = FIXMessage(FMsg.TESTREQUEST, {FTag.TestReqID: self.test_req_id})
+        await self.send_msg(test_msg)
+
     async def heartbeat_timer_task(self):
         """
         Heartbeat watcher task
@@ -311,6 +327,8 @@ class AsyncFIXConnection:
                 if time.time() - self.message_last_time > self.heartbeat_period * 2:
                     # Dead socket probably
                     await self.disconnect(ConnectionState.DISCONNECTED_BROKEN_CONN)
+
+                # TODO: implement TestRequest() timeout check!
 
             except asyncio.CancelledError:
                 raise
@@ -540,7 +558,10 @@ class AsyncFIXConnection:
             self._state_set(ConnectionState.RESENDREQ_HANDLING)
 
         assert resend_msg.msg_type == FMsg.RESENDREQUEST
-        assert self.connection_state in {ConnectionState.RESENDREQ_HANDLING, ConnectionState.RESENDREQ_AWAITING}
+        assert self.connection_state in {
+            ConnectionState.RESENDREQ_HANDLING,
+            ConnectionState.RESENDREQ_AWAITING,
+        }
 
         begin_seq_no = resend_msg[FTag.BeginSeqNo]
         end_seq_no = resend_msg[FTag.EndSeqNo]
@@ -658,6 +679,51 @@ class AsyncFIXConnection:
 
         self.journaler.persist_msg(raw_msg, self.session, MessageDirection.INBOUND)
 
+    async def _process_testrequest(self, testreq_msg: FIXMessage):
+        """
+        Handles TestRequest(35=1)
+
+        Replies with Heartbeat(35=0) message with TestReqID tag
+
+        Args:
+            testreq_msg: TestRequest FIXMessage
+
+        """
+        assert testreq_msg.msg_type == FMsg.TESTREQUEST
+        hbt_msg = FIXMessage(
+            FMsg.HEARTBEAT, {FTag.TestReqID: testreq_msg.get(FTag.TestReqID, 0)}
+        )
+        await self.send_msg(hbt_msg)
+
+    async def _process_heartbeat(self, hbt_msg: FIXMessage):
+        """
+        Handles Heartbeat(35=0) message (possible response on TestRequest(35=1))
+
+        Args:
+            hbt_msg: Heartbeat(35=0) FIXMessage
+
+        """
+        assert hbt_msg.msg_type == FMsg.HEARTBEAT
+
+        if self.test_req_id is not None:
+            if FTag.TestReqID not in hbt_msg:
+                # Possibly interval Heartbeat, just skip
+                return
+
+            # Expecting test_req_id
+            try:
+                msg_test_id = int(hbt_msg.get(FTag.TestReqID, "0"))
+            except Exception:
+                msg_test_id = 0
+
+            if self.test_req_id != msg_test_id:
+                await self.disconnect(
+                    ConnectionState.DISCONNECTED_BROKEN_CONN,
+                    logout_message="Invalid TestRequest(TestReqID) received",
+                )
+            else:
+                self.test_req_id = None
+
     async def _process_message(self, msg: FIXMessage, raw_msg: bytes):
         """
         Main message processing dispatcher
@@ -707,6 +773,10 @@ class AsyncFIXConnection:
                 await self._process_seqreset(msg)
             elif msg.msg_type == FMsg.LOGON:
                 pass  # already processed
+            elif msg.msg_type == FMsg.TESTREQUEST:
+                await self._process_testrequest(msg)
+            elif msg.msg_type == FMsg.HEARTBEAT:
+                await self._process_heartbeat(msg)
             elif msg.msg_type == FMsg.LOGOUT:
                 await self._process_logout(msg)
             else:
