@@ -206,8 +206,9 @@ async def test_connection_logon_low_seq_num_by_acceptor(fix_connection):
     ft.set_next_num(num_out=4)
     await ft.process_msg_acceptor()
     assert len(ft.initiator_sent) == 2
-    assert len(ft.acceptor_sent) == 1
-    assert ft.acceptor_sent_query((35, 34)) == {FTag.MsgType: FMsg.LOGON, "34": "4"}
+    assert len(ft.acceptor_sent) == 2
+    assert ft.acceptor_sent_query((35, 34), 0) == {FTag.MsgType: FMsg.LOGON, "34": "4"}
+    assert ft.acceptor_sent_query((35, 34),  1) == {FTag.MsgType: FMsg.TESTREQUEST, "34": "5"}
     assert ft.initiator_sent_query((35, 58)) == {
         FTag.MsgType: FMsg.LOGOUT,
         "58": "MsgSeqNum is too low, expected 10, got 4",

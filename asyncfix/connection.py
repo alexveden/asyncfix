@@ -497,7 +497,8 @@ class AsyncFIXConnection:
 
         if msg_seq_num == self.session.next_num_in:
             self._state_set(ConnectionState.ACTIVE)
-            # TODO: decide send extra test request?
+            if not self.test_req_id:
+                await self.send_test_req()
         else:
             self._state_set(ConnectionState.RECV_SEQNUM_TOO_HIGH)
 
@@ -514,16 +515,14 @@ class AsyncFIXConnection:
             True - no gap, MsgSeqNum is correct
             False - there is a gap, ResendRequest() sent
         """
-        if (
-            msg_seq_num > self.session.next_num_in
-            and self.connection_state != ConnectionState.RESENDREQ_AWAITING
-        ):
-            resend_req = FIXMessage(
-                FMsg.RESENDREQUEST,
-                {FTag.BeginSeqNo: self.session.next_num_in, FTag.EndSeqNo: "0"},
-            )
-            await self.send_msg(resend_req)
-            self._state_set(ConnectionState.RESENDREQ_AWAITING)
+        if msg_seq_num > self.session.next_num_in:
+            if self.connection_state != ConnectionState.RESENDREQ_AWAITING:
+                resend_req = FIXMessage(
+                    FMsg.RESENDREQUEST,
+                    {FTag.BeginSeqNo: self.session.next_num_in, FTag.EndSeqNo: "0"},
+                )
+                await self.send_msg(resend_req)
+                self._state_set(ConnectionState.RESENDREQ_AWAITING)
             return False
 
         return True
