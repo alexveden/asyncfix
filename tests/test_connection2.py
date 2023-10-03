@@ -420,9 +420,11 @@ async def test__finalize_message(fix_connection):
     ft = FIXTester(schema=FIX_SCHEMA, connection=conn)
 
     msg = ft.msg_sequence_reset(1, 10, is_gap_fill=True)
+    assert conn.message_last_time == 0
 
     with patch.object(conn, "journaler") as mock_journaler:
         await conn._finalize_message(msg, b"msg")
+        assert conn.message_last_time > 0
         assert mock_journaler.persist_msg.called
         assert mock_journaler.persist_msg.call_args[0] == (
             b"msg",

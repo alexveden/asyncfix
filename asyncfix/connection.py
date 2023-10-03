@@ -654,6 +654,8 @@ class AsyncFIXConnection:
             # All messages were transferred
             self._state_set(ConnectionState.ACTIVE)
 
+        self.message_last_time = time.time()
+
         self.journaler.persist_msg(raw_msg, self.session, MessageDirection.INBOUND)
 
     async def _process_message(self, msg: FIXMessage, raw_msg: bytes):
@@ -669,6 +671,7 @@ class AsyncFIXConnection:
             f"[{self.connection_role.name}]:process_message"
             f" ({self.connection_state.name}) {repr(msg.msg_type)}\n\t {msg}\n"
         )
+
         err_msg = self._validate_intergity(msg)
         if err_msg:
             # Some mandatory tags are missing or corrupt message
@@ -680,8 +683,6 @@ class AsyncFIXConnection:
 
         try:
             assert self.connection_state >= ConnectionState.NETWORK_CONN_ESTABLISHED
-
-            self.message_last_time = time.time()
 
             if self.connection_state == ConnectionState.NETWORK_CONN_ESTABLISHED:
                 # Applicable only for acceptor
