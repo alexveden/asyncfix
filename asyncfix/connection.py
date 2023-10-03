@@ -613,6 +613,13 @@ class AsyncFIXConnection:
             self._state_set(ConnectionState.ACTIVE)
 
     async def _process_seqreset(self, seqreset_msg: FIXMessage):
+        """
+        Handles SequenceReset(35=4) message
+
+        Args:
+            seqreset_msg:
+
+        """
         assert seqreset_msg.msg_type == FMsg.SEQUENCERESET
 
         if seqreset_msg.get(FTag.GapFillFlag, None) == "Y":
@@ -624,6 +631,13 @@ class AsyncFIXConnection:
             self.log.info(f"SequenceReset received from peer: {seqreset_msg}")
 
     async def _finalize_message(self, msg: FIXMessage, raw_msg: bytes):
+        """
+        Final message processing (MsgSeqNum checks / journaling)
+
+        Args:
+            msg: incoming message
+            raw_msg: encoded message for journal
+        """
         msg_sec_no = self.session.set_next_num_in(msg)
         if msg_sec_no == 0:
             self.log.warning(f"Got possible garbled message: {msg}")
