@@ -476,9 +476,7 @@ class AsyncFIXConnection:
         else:
             self._state_set(ConnectionState.RECV_SEQNUM_TOO_HIGH)
 
-        await self.on_logon(
-            logon_msg, is_healthy=self.connection_state == ConnectionState.ACTIVE
-        )
+        await self.on_logon(self.connection_state == ConnectionState.ACTIVE)
 
     async def _check_seqnum_gaps(self, msg_seq_num: int) -> bool:
         """
@@ -589,7 +587,7 @@ class AsyncFIXConnection:
                 " forcing reset."
             )
 
-        assert gap_fill_end <= self.session.next_num_out, 'Unexpected end for gap'
+        assert gap_fill_end <= self.session.next_num_out, "Unexpected end for gap"
 
         # Remainder not available in some reason
         if gap_fill_begin < self.session.next_num_out:
