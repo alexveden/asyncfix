@@ -151,9 +151,23 @@ class AsyncFIXConnection:
 
     @property
     def protocol(self) -> FIXProtocolBase:
+        """
+        Underlying FIXProtocolBase of a connection
+
+        Returns:
+            
+
+        """
         return self.codec.protocol
 
     async def connect(self):
+        """
+        Transport initialization method
+
+        Raises:
+            NotImplementedError:
+
+        """
         raise NotImplementedError("connect() is not implemented in child")
 
     async def disconnect(
@@ -260,22 +274,70 @@ class AsyncFIXConnection:
             await asyncio.sleep(1.0)
 
     async def on_message(self, msg: FIXMessage):
+        """
+        (AppEvent) Business message was received
+
+        Typically excludes session messages
+
+        Args:
+            msg:
+
+        """
         pass
 
     async def on_connect(self):
+        """
+        (AppEvent) Underlying socket connected
+
+        """
         pass
 
     async def on_disconnect(self):
+        """
+        (AppEvent) Underlying socket disconnected
+
+        """
         pass
 
-    async def on_logon(self, msg: FIXMessage, is_healthy: bool):
+    async def on_logon(self, is_healthy: bool):
+        """
+        (AppEvent) Logon(35=A) received from peer
+
+        Args:
+            is_healthy: True - if connection_state is ACTIVE
+        """
         pass
 
-    async def on_logout(self, msg: FIXMessage):
+    async def on_logout(self):
+        """
+        (AppEvent) Logout(35=5) received from peer
+
+        Args:
+            msg:
+
+        """
         pass
 
     def on_state_change(self, connection_state: ConnectionState):
+        """
+        (AppEvent) On ConnectionState change
+
+        Args:
+            connection_state: new connection state
+        """
         pass
+
+    def should_replay(self, historical_replay_msg: FIXMessage):
+        """
+        (AppLevel) Checks if historical_replay_msg from Journaler should be replayed
+
+        Args:
+            historical_replay_msg: message from Journaler log
+
+        Returns: True - replay, False - msg skipped (replaced by SequenceReset(35=4))
+
+        """
+        return True
 
     def _state_set(self, connection_state: ConnectionState):
         """
@@ -364,10 +426,14 @@ class AsyncFIXConnection:
 
     async def _check_seqnum_gaps(self, msg_seq_num: int) -> bool:
         """
-        Validate incoming message seq num and determine if there any gaps
+        Validates incoming MsgSeqNum, sends ResendRequest(35=2) if gap
 
         Args:
-            msg_seq_num: last msg seq num
+            msg_seq_num:
+
+        Returns:
+            True - no gap, MsgSeqNum is correct
+            False - there is a gap, ResendRequest() sent
         """
         if (
             msg_seq_num > self.session.next_num_in
@@ -383,8 +449,14 @@ class AsyncFIXConnection:
 
         return True
 
-    async def _process_logout(self, msg: FIXMessage):
-        assert msg.msg_type == FMsg.LOGOUT
+    async def _process_logout(self, logout_msg: FIXMessage):
+        """
+        Processes incoming Logout(35=5) message
+
+        Args:
+            msg: Logout(35=5) FIXMessage
+        """
+        assert logout_msg.msg_type == FMsg.LOGOUT
 
         if self.connection_was_active:
             dstate = ConnectionState.DISCONNECTED_WCONN_TODAY
@@ -393,10 +465,26 @@ class AsyncFIXConnection:
 
         await self.disconnect(dstate)
 
-    def should_replay(self, msg: FIXMessage):
+    def should_replay(self, historical_replay_msg: FIXMessage):
+        """
+        (AppLevel) Checks if historical_replay_msg from Journaler should be replayed
+
+        Args:
+            historical_replay_msg: message from Journaler log
+
+        Returns: True - replay, False - msg skipped (replaced by SequenceReset(35=4))
+
+        """
         return True
 
     async def _process_resend(self, msg: FIXMessage):
+        """
+        Handles ResendRequest(35=2) - fills message gaps
+
+        Args:
+            msg: ResendRequest(35=2) FIXMessage
+
+        """
         assert msg.msg_type == FMsg.RESENDREQUEST
         assert self.connection_state == ConnectionState.RESEND_REQ_PROCESSING
 
