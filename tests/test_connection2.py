@@ -10,6 +10,7 @@ from asyncfix.protocol.order_single import FIXNewOrderSingle
 import xml.etree.ElementTree as ET
 import pytest_asyncio
 import os
+import logging
 
 TEST_DIR = os.path.abspath(os.path.dirname(__file__))
 fix44_schema = ET.parse(os.path.join(TEST_DIR, "FIX44.xml"))
@@ -18,6 +19,8 @@ FIX_SCHEMA = FIXSchema(fix44_schema)
 
 @pytest_asyncio.fixture
 async def fix_connection():
+    log = logging.getLogger('asyncfix_test')
+    log.setLevel(logging.DEBUG)
     j = Journaler()
     connection = AsyncFIXConnection(
         FIXProtocol44(),
@@ -28,6 +31,7 @@ async def fix_connection():
         port="64444",
         heartbeat_period=30,
         start_tasks=False,
+        logger=log
     )
     connection.connection_state = ConnectionState.NETWORK_CONN_ESTABLISHED
     assert connection.connection_role == ConnectionRole.UNKNOWN
@@ -320,11 +324,14 @@ async def test_connection_logon_high_seq_num_by_initator(fix_connection):
     ft.set_next_num(num_in=15)
 
     with patch.object(conn, '_process_resend') as mock__process_resend:
+    # if True:
         msg = ft.msg_logon()
         await conn.send_msg(msg)
 
         await ft.process_msg_acceptor()
-        assert ft.conn_accept.connection_state == ConnectionState.RESEND_REQ_PROCESSING
+        # assert ft.initiator_sent == []
+        # assert ft.acceptor_sent == []
+        assert ft.conn_accept.connection_state == ConnectionState.RESENDREQ_AWAITING
 
         out_msg = ft.acceptor_sent[-1]
         assert out_msg.query(35, FTag.BeginSeqNo, FTag.EndSeqNo) == {
@@ -337,7 +344,7 @@ async def test_connection_logon_high_seq_num_by_initator(fix_connection):
         assert mock__process_resend.call_args[0] == (out_msg, )
         assert mock__process_resend.call_args[1] == {}
 
-        assert ft.conn_init.connection_state == ConnectionState.RESEND_REQ_PROCESSING
+        assert ft.conn_init.connection_state == ConnectionState.RESENDREQ_HANDLING
 
 
 @pytest.mark.asyncio
@@ -365,8 +372,9 @@ async def test_connection__process_resend_req(fix_connection):
             FMsg.RESENDREQUEST,
             {FTag.BeginSeqNo: 1, FTag.EndSeqNo: "0"},
         )
-        conn.connection_state = ConnectionState.RESEND_REQ_PROCESSING
+        conn.connection_state = ConnectionState.RESENDREQ_HANDLING
         await conn._process_resend(resend_req)
+        conn.connection_state = ConnectionState.ACTIVE
 
         assert len(ft.initiator_sent) == 3
         assert ft.initiator_sent[0].query(35, 34, 36, 123) == {
@@ -388,3 +396,26 @@ async def test_connection__process_resend_req(fix_connection):
             FTag.NewSeqNo: "17",
             FTag.GapFillFlag: "Y"
         }
+
+
+@pytest.mark.asyncio
+async def test_sequence_reset_request__no_gap(fix_connection):
+    conn: AsyncFIXConnection = fix_connection
+    ft = FIXTester(schema=FIX_SCHEMA, connection=conn)
+
+    msg = ft.msg_logon()
+    await conn.send_msg(msg)
+    await ft.process_msg_acceptor()
+
+    assert ft.conn_accept.connection_state == ConnectionState.ACTIVE
+    assert ft.conn_init.connection_state == ConnectionState.ACTIVE
+
+    seqreset_msg = FIXMessage(
+        FMsg.SEQUENCERESET,
+        {FTag.NewSeqNo: 10, FTag.MsgSeqNum: conn.session.next_num_out},
+    )
+    await conn.send_msg(seqreset_msg)
+    await ft.process_msg_acceptor()
+
+    assert ft.conn_accept.session.next_num_in == 10
+    assert False

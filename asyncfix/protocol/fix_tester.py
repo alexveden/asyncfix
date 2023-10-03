@@ -47,6 +47,7 @@ class FIXTester:
                 port="64444",
                 heartbeat_period=30,
                 start_tasks=False,
+                logger=self.conn_init.log,
             )
             self.conn_accept.connection_state = ConnectionState.NETWORK_CONN_ESTABLISHED
             self.conn_accept.session.next_num_out = connection.session.next_num_in

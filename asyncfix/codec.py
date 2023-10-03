@@ -65,7 +65,7 @@ class Codec(object):
                         )
                     seq_no = msg[FTag.MsgSeqNum]
                 else:
-                    seq_no = session.allocate_snd_seq_no()
+                    seq_no = session.allocate_next_num_out()
 
         body.append("%s=%s" % (FTag.MsgSeqNum, seq_no))
         body.append("%s=%s" % (FTag.SendingTime, self.current_datetime()))
@@ -189,7 +189,10 @@ class Codec(object):
                 else:
                     checksum_passed = True
             elif tag == FTag.MsgType:
-                decoded_msg.msg_type = value
+                try:
+                    decoded_msg.msg_type = FMsg(value)
+                except ValueError:
+                    decoded_msg.msg_type = value
 
             # found the start of a repeating group
             if tag in repeating_group_tags:

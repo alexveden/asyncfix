@@ -61,7 +61,7 @@ class ConnectionState(IntEnum):
     Session acceptor Logon respond to peer with Logon message to handshake.
     """
 
-    HANDLE_RESENDREQ = 10            # both
+    RESENDREQ_HANDLING = 10            # both
     """Receive and respond to counterparty’s ResendRequest(35=2) sending requested
        messages and/or SequenceReset(35=4) gap fill messages for the range of
        MsgSeqNum(34) requested."""
@@ -70,7 +70,7 @@ class ConnectionState(IntEnum):
     """Receive too high of MsgSeqNum(34) from counterparty, queue message,
        and send ResendRequest(35=2)."""
 
-    RESEND_REQ_PROCESSING = 12       # both
+    RESENDREQ_AWAITING = 12          # both
     """Process requested MsgSeqNum(34) with PossDupFlag(43)=Y resent messages and/or
        SequenceReset(35=4) gap fill messages from counterparty. """
 
@@ -124,8 +124,6 @@ class AsyncFIXConnection:
         start_tasks: bool = True,
     ):
         self.codec = Codec(protocol)
-        self.sender_comp_id = sender_comp_id
-        self.target_comp_id = target_comp_id
         self.connection_state = ConnectionState.DISCONNECTED_NOCONN_TODAY
         self.connection_was_active = False
         self.connection_role = ConnectionRole.UNKNOWN
@@ -239,7 +237,10 @@ class AsyncFIXConnection:
         encoded_msg = self.codec.encode(msg, self.session).encode("utf-8")
 
         msg_raw = encoded_msg.replace(b"\x01", b"|")
-        self.log.debug(f"send_msg: (OUTBOUND)\n\t{msg_raw.decode()}")
+        self.log.debug(
+            f"send_msg: (OUTBOUND | {self.connection_role})"
+            f" {repr(msg.msg_type)}\n\t{msg_raw.decode()}"
+        )
 
         self.socket_writer.write(encoded_msg)
         await self.socket_writer.drain()
@@ -272,7 +273,7 @@ class AsyncFIXConnection:
                     (decoded_msg, parsed_length, raw_msg) = self.codec.decode(
                         self.msg_buffer
                     )
-                    # logging.debug(decoded_msg)
+                    # self.log.debug(decoded_msg)
 
                     if parsed_length > 0:
                         self.msg_buffer = self.msg_buffer[parsed_length:]
@@ -284,11 +285,11 @@ class AsyncFIXConnection:
             except asyncio.CancelledError:
                 raise
             except ConnectionError as why:
-                logging.debug("Connection has been closed %s" % (why,))
+                self.log.debug("Connection has been closed %s" % (why,))
                 await self.disconnect(ConnectionState.DISCONNECTED_BROKEN_CONN)
                 continue
             except Exception:
-                logging.exception("handle_read exception")
+                self.log.exception("handle_read exception")
                 # raise
 
     async def heartbeat_timer_task(self):
@@ -314,8 +315,12 @@ class AsyncFIXConnection:
             except asyncio.CancelledError:
                 raise
             except Exception:
-                logging.exception("heartbeat_timer() error")
+                self.log.exception("heartbeat_timer() error")
             await asyncio.sleep(1.0)
+
+    async def reset_seq_num(self):
+        # TODO: implement resetting session numbers with SequenceReset(GapFillFlag=N)
+        pass
 
     ####################################################
     #
@@ -429,9 +434,8 @@ class AsyncFIXConnection:
             # this will drop connection without a message
             return True
 
-        if (
-            msg[FTag.SenderCompID] != self.target_comp_id
-            or msg[FTag.TargetCompID] != self.sender_comp_id
+        if not self.session.validate_comp_ids(
+            msg[FTag.SenderCompID], msg[FTag.TargetCompID]
         ):
             # Sender/Target are reversed here
             return "TargetCompID / SenderCompID mismatch"
@@ -491,14 +495,14 @@ class AsyncFIXConnection:
         """
         if (
             msg_seq_num > self.session.next_num_in
-            and self.connection_state != ConnectionState.RESEND_REQ_PROCESSING
+            and self.connection_state != ConnectionState.RESENDREQ_AWAITING
         ):
             resend_req = FIXMessage(
                 FMsg.RESENDREQUEST,
                 {FTag.BeginSeqNo: self.session.next_num_in, FTag.EndSeqNo: "0"},
             )
             await self.send_msg(resend_req)
-            self._state_set(ConnectionState.RESEND_REQ_PROCESSING)
+            self._state_set(ConnectionState.RESENDREQ_AWAITING)
             return False
 
         return True
@@ -528,13 +532,13 @@ class AsyncFIXConnection:
 
         """
         assert resend_msg.msg_type == FMsg.RESENDREQUEST
-        assert self.connection_state == ConnectionState.RESEND_REQ_PROCESSING
+        assert self.connection_state == ConnectionState.RESENDREQ_HANDLING
 
         begin_seq_no = resend_msg[FTag.BeginSeqNo]
         end_seq_no = resend_msg[FTag.EndSeqNo]
         if int(end_seq_no) == 0:
             end_seq_no = sys.maxsize
-        logging.info("Received resent request from %s to %s", begin_seq_no, end_seq_no)
+        self.log.info("Received resent request from %s to %s", begin_seq_no, end_seq_no)
         journal_replay_msgs = self.journaler.recover_messages(
             self.session, MessageDirection.OUTBOUND, begin_seq_no, end_seq_no
         )
@@ -597,6 +601,41 @@ class AsyncFIXConnection:
             gap_fill_msg[FTag.NewSeqNo] = str(self.session.next_num_out + 1)
             await self.send_msg(gap_fill_msg)
 
+        if self.connection_state != ConnectionState.RESENDREQ_AWAITING:
+            self._state_set(ConnectionState.ACTIVE)
+
+    async def _process_seqreset(self, seqreset_msg: FIXMessage):
+        assert seqreset_msg.msg_type == FMsg.SEQUENCERESET
+
+        if seqreset_msg.get(FTag.GapFillFlag, None) == "Y":
+            if self.connection_state != ConnectionState.RESENDREQ_AWAITING:
+                self.log.warning(
+                    "Getting SEQUENCERESET(GapFillFlag=Y) while not filling gaps"
+                )
+        else:
+            self.log.info(f"SequenceReset received from peer: {seqreset_msg}")
+
+    async def _finalize_message(self, msg: FIXMessage, raw_msg: bytes):
+        msg_sec_no = self.session.set_next_num_in(msg)
+        if msg_sec_no == 0:
+            self.log.warning(f"Got possible garbled message: {msg}")
+            # Garbled message without needed tags
+            return
+        elif msg_sec_no == -1:
+            # TODO: decide probably need to que message
+            return
+
+        if (
+            self.connection_state == ConnectionState.RESENDREQ_AWAITING
+            and msg_sec_no == self.session.next_num_in - 1
+        ):
+            # All messages were transferred
+            # breakpoint()
+            self._state_set(ConnectionState.ACTIVE)
+            pass
+
+        self.journaler.persist_msg(raw_msg, self.session, MessageDirection.INBOUND)
+
     async def _process_message(self, msg: FIXMessage, raw_msg: bytes):
         """
         Main message processing dispatcher
@@ -606,7 +645,10 @@ class AsyncFIXConnection:
             raw_msg: incoming raw message (bytes)
 
         """
-        self.log.debug(f"process_message (INCOMING)\n\t {msg}")
+        self.log.debug(
+            f"process_message (INCOMING | {self.connection_role})"
+            f" {repr(msg.msg_type)}\n\t {msg}"
+        )
         err_msg = self._validate_intergity(msg)
         if err_msg:
             # Some mandatory tags are missing or corrupt message
@@ -639,14 +681,17 @@ class AsyncFIXConnection:
             await self._check_seqnum_gaps(msg_seq_num)
 
             if msg.msg_type == FMsg.RESENDREQUEST:
-                self._state_set(ConnectionState.RESEND_REQ_PROCESSING)
+                self._state_set(ConnectionState.RESENDREQ_HANDLING)
                 await self._process_resend(msg)
+            elif msg.msg_type == FMsg.SEQUENCERESET:
+                await self._process_seqreset(msg)
             elif msg.msg_type == FMsg.LOGON:
                 pass  # already processed
             elif msg.msg_type == FMsg.LOGOUT:
                 await self._process_logout(msg)
             else:
-                raise NotImplementedError(f"{repr(msg)}")
+                assert False, "Stub!"
+                await self.on_message(msg)
 
         except asyncio.CancelledError:
             raise
@@ -654,5 +699,4 @@ class AsyncFIXConnection:
             self.log.exception("_process_message error: ")
             raise
         finally:
-            self.session.set_recv_seq_no(msg[FTag.MsgSeqNum])
-            self.journaler.persist_msg(raw_msg, self.session, MessageDirection.INBOUND)
+            await self._finalize_message(msg, raw_msg)
