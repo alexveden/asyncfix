@@ -134,6 +134,7 @@ class AsyncFIXConnection:
         self.msg_buffer = b""
         self.heartbeat_period = heartbeat_period
         self.message_last_time = 0.0
+        self._max_seq_num_resend = 0
         self.test_req_id = None
         self.socket_reader = None
         self.socket_writer = None
@@ -522,6 +523,7 @@ class AsyncFIXConnection:
                     FMsg.RESENDREQUEST,
                     {FTag.BeginSeqNo: self.session.next_num_in, FTag.EndSeqNo: "0"},
                 )
+                self._max_seq_num_resend = msg_seq_num
                 await self.send_msg(resend_req)
                 self._state_set(ConnectionState.RESENDREQ_AWAITING)
             return False
@@ -660,17 +662,17 @@ class AsyncFIXConnection:
             raw_msg: encoded message for journal
         """
         msg_sec_no = self.session.set_next_num_in(msg)
-        if msg_sec_no == 0:
-            self.log.warning(f"Got possible garbled message: {msg}")
-            return
-        elif msg_sec_no == -1:
-            self.log.warning(f"Possible seqnum mismatch, skipped {msg_sec_no=}")
+
+        if msg_sec_no <= 0:
+            self.log.warning(f'Trying to finalize invalid {msg=}')
             return
 
         if self.connection_state == ConnectionState.RESENDREQ_AWAITING:
+            assert self._max_seq_num_resend > 0
 
-            if msg_sec_no == self.session.next_num_in - 1:
+            if msg_sec_no >= self._max_seq_num_resend:
                 # All messages were transferred
+                self._max_seq_num_resend = 0
                 self._state_set(ConnectionState.ACTIVE)
 
         self.message_last_time = time.time()
@@ -744,7 +746,7 @@ class AsyncFIXConnection:
                 logout_message=err_msg if isinstance(err_msg, str) else None,
             )
             return
-
+        is_valid_msg_num = False
         try:
             assert self.connection_state >= ConnectionState.NETWORK_CONN_ESTABLISHED
 
@@ -789,4 +791,5 @@ class AsyncFIXConnection:
             self.log.exception("_process_message error: ")
             raise
         finally:
-            await self._finalize_message(msg, raw_msg)
+            if is_valid_msg_num:
+                await self._finalize_message(msg, raw_msg)
