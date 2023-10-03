@@ -155,8 +155,6 @@ class AsyncFIXConnection:
         Underlying FIXProtocolBase of a connection
 
         Returns:
-            
-
         """
         return self.codec.protocol
 
@@ -201,6 +199,52 @@ class AsyncFIXConnection:
             self.socket_reader = None
             self._state_set(disconn_state)
             await self.on_disconnect()
+
+    async def send_msg(self, msg: FIXMessage):
+        """
+        Sends message to the peer
+
+        Args:
+            msg: fix message
+
+        Raises:
+            FIXConnectionError: raised if connection state does not allow sending
+
+        """
+        if self.connection_state < ConnectionState.NETWORK_CONN_ESTABLISHED:
+            raise FIXConnectionError(
+                "Connection must be established before sending any "
+                f"FIX message, got state: {repr(self.connection_state)}"
+            )
+        elif self.connection_state == ConnectionState.NETWORK_CONN_ESTABLISHED:
+            # INITIATOR mode, connection was just established
+            if msg.msg_type != FMsg.LOGON and msg.msg_type != FMsg.LOGOUT:
+                raise FIXConnectionError(
+                    "You must send first Logon(35=A)/Logout() message immediately after"
+                    f" connection, got {repr(msg)}"
+                )
+            self._state_set(ConnectionState.LOGON_INITIAL_SENT)
+            self.connection_role = ConnectionRole.INITIATOR
+        else:
+            if self.connection_role == ConnectionRole.INITIATOR:
+                if (
+                    self.connection_state == ConnectionState.LOGON_INITIAL_SENT
+                    and msg.msg_type != FMsg.LOGOUT
+                ):
+                    raise FIXConnectionError(
+                        "Initiator is waiting for Logon() response, you must not send"
+                        " any additional messages before acceptor responce."
+                    )
+
+        encoded_msg = self.codec.encode(msg, self.session).encode("utf-8")
+
+        msg_raw = encoded_msg.replace(b"\x01", b"|")
+        self.log.debug(f"send_msg: (OUTBOUND)\n\t{msg_raw.decode()}")
+
+        self.socket_writer.write(encoded_msg)
+        await self.socket_writer.drain()
+
+        self.journaler.persist_msg(encoded_msg, self.session, MessageDirection.OUTBOUND)
 
     async def socket_read_task(self):
         """
@@ -273,6 +317,12 @@ class AsyncFIXConnection:
                 logging.exception("heartbeat_timer() error")
             await asyncio.sleep(1.0)
 
+    ####################################################
+    #
+    #  User Application methods
+    #
+    ####################################################
+
     async def on_message(self, msg: FIXMessage):
         """
         (AppEvent) Business message was received
@@ -339,6 +389,12 @@ class AsyncFIXConnection:
         """
         return True
 
+    ####################################################
+    #
+    #  Private methods
+    #
+    ####################################################
+
     def _state_set(self, connection_state: ConnectionState):
         """
         Sets internal connection state
@@ -394,24 +450,24 @@ class AsyncFIXConnection:
         # All good
         return None
 
-    async def _process_logon(self, msg: FIXMessage):
+    async def _process_logon(self, logon_msg: FIXMessage):
         """
-        Processes logon message
+        Processes Logon(35=A) message
         """
-        assert msg.msg_type == FMsg.LOGON
+        assert logon_msg.msg_type == FMsg.LOGON
         assert (
             self.connection_role == ConnectionRole.ACCEPTOR
             or self.connection_role == ConnectionRole.INITIATOR
         )
 
-        msg_seq_num = int(msg[FTag.MsgSeqNum])
+        msg_seq_num = int(logon_msg[FTag.MsgSeqNum])
 
         if self.connection_role == ConnectionRole.ACCEPTOR:
             assert self.connection_state == ConnectionState.LOGON_INITIAL_RECV
             if msg_seq_num >= self.session.next_num_in:
                 msg_logon = FIXMessage(FMsg.LOGON)
-                msg_logon.set(FTag.EncryptMethod, msg[FTag.EncryptMethod])
-                msg_logon.set(FTag.HeartBtInt, msg[FTag.HeartBtInt])
+                msg_logon.set(FTag.EncryptMethod, logon_msg[FTag.EncryptMethod])
+                msg_logon.set(FTag.HeartBtInt, logon_msg[FTag.HeartBtInt])
                 await self.send_msg(msg_logon)
 
         if msg_seq_num == self.session.next_num_in:
@@ -421,7 +477,7 @@ class AsyncFIXConnection:
             self._state_set(ConnectionState.RECV_SEQNUM_TOO_HIGH)
 
         await self.on_logon(
-            msg, is_healthy=self.connection_state == ConnectionState.ACTIVE
+            logon_msg, is_healthy=self.connection_state == ConnectionState.ACTIVE
         )
 
     async def _check_seqnum_gaps(self, msg_seq_num: int) -> bool:
@@ -465,19 +521,7 @@ class AsyncFIXConnection:
 
         await self.disconnect(dstate)
 
-    def should_replay(self, historical_replay_msg: FIXMessage):
-        """
-        (AppLevel) Checks if historical_replay_msg from Journaler should be replayed
-
-        Args:
-            historical_replay_msg: message from Journaler log
-
-        Returns: True - replay, False - msg skipped (replaced by SequenceReset(35=4))
-
-        """
-        return True
-
-    async def _process_resend(self, msg: FIXMessage):
+    async def _process_resend(self, resend_msg: FIXMessage):
         """
         Handles ResendRequest(35=2) - fills message gaps
 
@@ -485,11 +529,11 @@ class AsyncFIXConnection:
             msg: ResendRequest(35=2) FIXMessage
 
         """
-        assert msg.msg_type == FMsg.RESENDREQUEST
+        assert resend_msg.msg_type == FMsg.RESENDREQUEST
         assert self.connection_state == ConnectionState.RESEND_REQ_PROCESSING
 
-        begin_seq_no = msg[FTag.BeginSeqNo]
-        end_seq_no = msg[FTag.EndSeqNo]
+        begin_seq_no = resend_msg[FTag.BeginSeqNo]
+        end_seq_no = resend_msg[FTag.EndSeqNo]
         if int(end_seq_no) == 0:
             end_seq_no = sys.maxsize
         logging.info("Received resent request from %s to %s", begin_seq_no, end_seq_no)
@@ -614,49 +658,3 @@ class AsyncFIXConnection:
         finally:
             self.session.set_recv_seq_no(msg[FTag.MsgSeqNum])
             self.journaler.persist_msg(raw_msg, self.session, MessageDirection.INBOUND)
-
-    async def send_msg(self, msg: FIXMessage):
-        """
-        Sends message to the peer
-
-        Args:
-            msg: fix message
-
-        Raises:
-            FIXConnectionError: raised if connection state does not allow sending
-
-        """
-        if self.connection_state < ConnectionState.NETWORK_CONN_ESTABLISHED:
-            raise FIXConnectionError(
-                "Connection must be established before sending any "
-                f"FIX message, got state: {repr(self.connection_state)}"
-            )
-        elif self.connection_state == ConnectionState.NETWORK_CONN_ESTABLISHED:
-            # INITIATOR mode, connection was just established
-            if msg.msg_type != FMsg.LOGON and msg.msg_type != FMsg.LOGOUT:
-                raise FIXConnectionError(
-                    "You must send first Logon(35=A)/Logout() message immediately after"
-                    f" connection, got {repr(msg)}"
-                )
-            self._state_set(ConnectionState.LOGON_INITIAL_SENT)
-            self.connection_role = ConnectionRole.INITIATOR
-        else:
-            if self.connection_role == ConnectionRole.INITIATOR:
-                if (
-                    self.connection_state == ConnectionState.LOGON_INITIAL_SENT
-                    and msg.msg_type != FMsg.LOGOUT
-                ):
-                    raise FIXConnectionError(
-                        "Initiator is waiting for Logon() response, you must not send"
-                        " any additional messages before acceptor responce."
-                    )
-
-        encoded_msg = self.codec.encode(msg, self.session).encode("utf-8")
-
-        msg_raw = encoded_msg.replace(b"\x01", b"|")
-        self.log.debug(f"send_msg: (OUTBOUND)\n\t{msg_raw.decode()}")
-
-        self.socket_writer.write(encoded_msg)
-        await self.socket_writer.drain()
-
-        self.journaler.persist_msg(encoded_msg, self.session, MessageDirection.OUTBOUND)
