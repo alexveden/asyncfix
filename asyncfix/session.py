@@ -1,6 +1,6 @@
 import logging
 
-from asyncfix import FTag
+from asyncfix import FTag, FIXMessage, FMsg
 from asyncfix.message import MessageDirection
 
 
@@ -42,13 +42,13 @@ class FIXSession:
         self.next_num_in = 1
         self.messages = {MessageDirection.OUTBOUND: {}, MessageDirection.INBOUND: {}}
 
-    def validate_comp_ids(self, target_comp_id, sender_comp_id):
+    def validate_comp_ids(self, target_comp_id: str, sender_comp_id: str) -> bool:
         return (
             self.sender_comp_id == sender_comp_id
             and self.target_comp_id == target_comp_id
         )
 
-    def allocate_snd_seq_no(self):
+    def allocate_next_num_out(self):
         n = str(self.next_num_out)
         self.next_num_out += 1
         return n
@@ -67,8 +67,26 @@ class FIXSession:
         self.next_num_out = 1
         self.next_num_in = 1
 
-    def set_recv_seq_no(self, seq_no):
-        self.next_num_in = int(seq_no) + 1
+    def set_next_num_in(self, msg: FIXMessage) -> int:
+        if msg.msg_type == FMsg.SEQUENCERESET:
+            if FTag.NewSeqNo not in msg:
+                # Garbled message
+                return 0
+            seq_no = int(msg[FTag.NewSeqNo]) - 1
+
+        else:
+            if FTag.MsgSeqNum not in msg:
+                # Garbled message
+                return 0
+            seq_no = int(msg[FTag.MsgSeqNum])
+
+            if seq_no > self.next_num_in:
+                # Gap detected
+                return -1
+
+        self.next_num_in = seq_no + 1
+
+        return seq_no
 
     def persist_msg(self, msg, direction):
         seqNo = msg[FTag.MsgSeqNum]
