@@ -1,6 +1,6 @@
 [project]
 name = "asyncfix"
-version = "0.3.1"
+version = "0.8.0"
 description = "AsyncIO FIX Protocol client for Python"
 readme = "README.md"
 authors = [{ name = "Alex Veden", email = "i@alexveden.com" }]
@@ -9,9 +9,9 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3.8",
-    "Development Status :: 2 - Pre-Alpha",
+    "Development Status :: 4 - Beta",
 ]
-keywords = ["asyncio", "FIX", "protocol", "client", "server", "parser", "unit tests", "simplefix" ]
+keywords = ["asyncio", "FIX", "protocol", "client", "server", "parser", "unit tests", "simplefix", "tester", "orders"]
 requires-python = ">=3.8"
 
 dependencies = []
