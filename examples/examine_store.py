@@ -1,5 +1,7 @@
 import argparse
 import logging
+import os
+import sys
 
 from asyncfix.journaler import Journaler
 from asyncfix.message import MessageDirection
@@ -37,6 +39,10 @@ def main():
 
     args = parser.parse_args()
 
+    if not os.path.exists(args.filename):
+        print(f"filename not exists {args.filename}")
+        sys.exit(1)
+
     journal = Journaler(args.filename)
 
     if args.list is True:
@@ -66,8 +72,10 @@ def main():
         for seqNo, msg, msgDirection, session in journal.get_all_msgs(
             args.sessions, direction
         ):
+            mfmt = msg.decode()
+            mfmt = mfmt.replace("\x01", "|")
             d = "---->" if msgDirection == MessageDirection.OUTBOUND.value else "<----"
-            print("{:>3} {:^5} [{:>5}] {}".format(session, d, seqNo, msg))
+            print("{:>3} {:^5} [{:>5}] {}".format(session, d, seqNo, mfmt))
 
 
 if __name__ == "__main__":
