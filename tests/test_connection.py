@@ -1,4 +1,5 @@
 import logging
+import time
 import asyncio
 import os
 import warnings
@@ -1227,3 +1228,137 @@ async def test_disconnect_empty_text_logout(fix_connection_socket, fix_msg):
         assert isinstance(mock_send_msg.call_args[0][0], FIXMessage)
         assert mock_send_msg.call_args[0][0].msg_type == FMsg.LOGOUT
         assert FTag.Text not in mock_send_msg.call_args[0][0]
+
+
+@pytest.mark.asyncio
+async def test_heartbeat_task__notconnected_socket(fix_connection_socket, fix_msg):
+    conn: AsyncFIXConnection = fix_connection_socket
+    conn._connection_state = ConnectionState.AWAITING_CONNECTION
+    with (
+        patch.object(conn, "disconnect") as mock_disconnect,
+        patch("asyncio.sleep") as mock_sleep,
+        patch.object(conn, "send_test_req") as mock_send_test_req,
+    ):
+        mock_sleep.side_effect = [1, asyncio.CancelledError]
+
+        conn._socket_reader = None
+        await conn.heartbeat_timer_task()
+
+        assert mock_sleep.call_count == 2
+        assert mock_sleep.call_args[0] == (1,)
+
+        assert not mock_disconnect.called
+        assert not mock_send_test_req.called
+
+
+@pytest.mark.asyncio
+async def test_heartbeat_task__idle_w_exception(fix_connection_socket, fix_msg):
+    conn: AsyncFIXConnection = fix_connection_socket
+    conn._connection_state = ConnectionState.AWAITING_CONNECTION
+    with (
+        patch.object(conn, "disconnect") as mock_disconnect,
+        patch("asyncio.sleep") as mock_sleep,
+        patch.object(conn, "send_test_req") as mock_send_test_req,
+    ):
+        mock_sleep.side_effect = [1, RuntimeError, asyncio.CancelledError]
+
+        conn._heartbeat_period = -1  # Negative always triggers
+        conn._test_req_id = None
+        conn._message_last_time = 0.0
+
+        await conn.heartbeat_timer_task()
+
+        assert mock_sleep.call_count == 3
+
+        assert not mock_disconnect.called
+        assert not mock_send_test_req.called
+
+
+@pytest.mark.asyncio
+async def test_heartbeat_task__msg_last_time_disconnect(fix_connection_socket, fix_msg):
+    conn: AsyncFIXConnection = fix_connection_socket
+    conn._connection_state = ConnectionState.AWAITING_CONNECTION
+    with (
+        patch.object(conn, "disconnect") as mock_disconnect,
+        patch("asyncio.sleep") as mock_sleep,
+        patch.object(conn, "send_test_req") as mock_send_test_req,
+    ):
+        mock_sleep.side_effect = [1, 1, asyncio.CancelledError]
+
+        conn._heartbeat_period = -1  # Negative always triggers
+        conn._test_req_id = None
+        conn._message_last_time = 1.0
+
+        def _disconn_side(*args):
+            conn._message_last_time = 0
+        mock_disconnect.side_effect = _disconn_side
+
+        await conn.heartbeat_timer_task()
+
+        assert mock_sleep.call_count == 3
+
+        assert mock_disconnect.call_count == 1
+        assert mock_disconnect.call_args[0] == (ConnectionState.DISCONNECTED_BROKEN_CONN,)
+        assert mock_disconnect.call_args[1] == {}
+
+        assert not mock_send_test_req.called
+
+
+@pytest.mark.asyncio
+async def test_heartbeat_task__test_req_timeout(fix_connection_socket, fix_msg):
+    conn: AsyncFIXConnection = fix_connection_socket
+    conn._connection_state = ConnectionState.AWAITING_CONNECTION
+    with (
+        patch.object(conn, "disconnect") as mock_disconnect,
+        patch("asyncio.sleep") as mock_sleep,
+        patch.object(conn, "send_test_req") as mock_send_test_req,
+    ):
+        mock_sleep.side_effect = [1, 1, asyncio.CancelledError]
+
+        conn._heartbeat_period = -1  # Negative always triggers
+        conn._test_req_id = 1
+        conn._message_last_time = 0
+
+        def _disconn_side(*args):
+            conn._test_req_id = None
+        mock_disconnect.side_effect = _disconn_side
+
+        await conn.heartbeat_timer_task()
+
+        assert mock_sleep.call_count == 3
+
+        assert mock_disconnect.call_count == 1
+        assert mock_disconnect.call_args[0] == (ConnectionState.DISCONNECTED_BROKEN_CONN,)
+        assert mock_disconnect.call_args[1] == {}
+
+        assert not mock_send_test_req.called
+
+
+@pytest.mark.asyncio
+async def test_heartbeat_task__test_req_sent(fix_connection_socket, fix_msg):
+    conn: AsyncFIXConnection = fix_connection_socket
+    conn._connection_state = ConnectionState.ACTIVE
+    with (
+        patch.object(conn, "disconnect") as mock_disconnect,
+        patch("asyncio.sleep") as mock_sleep,
+        patch.object(conn, "send_test_req") as mock_send_test_req,
+    ):
+        mock_sleep.side_effect = [1, 1, asyncio.CancelledError]
+
+        conn._heartbeat_period = 1  # Negative always triggers
+        conn._test_req_id = None
+        conn._message_last_time = 0
+
+        def _test_req_side(*args):
+            conn._test_req_id = time.time()
+        mock_send_test_req.side_effect = _test_req_side
+
+        await conn.heartbeat_timer_task()
+        assert mock_sleep.call_count == 3
+
+        assert mock_disconnect.call_count == 0
+
+        assert mock_send_test_req.call_count == 1
+        assert conn._message_last_time != 0
+
+

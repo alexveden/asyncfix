@@ -222,7 +222,7 @@ class AsyncFIXConnection:
         if self._connection_state > ConnectionState.DISCONNECTED_BROKEN_CONN:
             assert disconn_state <= ConnectionState.DISCONNECTED_BROKEN_CONN
             self._test_req_id = None
-            self._message_last_time = 0
+            self._message_last_time = 0.0
             self._max_seq_num_resend = 0
 
             if logout_message is not None:
@@ -371,25 +371,35 @@ class AsyncFIXConnection:
                     await asyncio.sleep(1)
                     continue
 
-                if self._connection_state == ConnectionState.ACTIVE:
-                    if (
-                        time.time() - self._message_last_time
-                        > self._heartbeat_period - 1
-                    ):
-                        await self.send_msg(self.protocol.heartbeat())
-                        self._message_last_time = time.time()
+                tm = time.time()
 
-                if time.time() - self._message_last_time > self._heartbeat_period * 2:
+                if self._connection_state == ConnectionState.ACTIVE:
+                    if tm - self._message_last_time > self._heartbeat_period - 1:
+                        if not self._test_req_id:
+                            await self.send_test_req()
+                        self._message_last_time = tm
+
+                if (
+                    self._message_last_time
+                    and tm - self._message_last_time > self._heartbeat_period * 2
+                ):
                     # Dead socket probably
+                    self.log.debug('heartbeat_timer_task: message last time timeout')
                     await self.disconnect(ConnectionState.DISCONNECTED_BROKEN_CONN)
 
-                # TODO: implement TestRequest() timeout check!
+                if (
+                    self._test_req_id
+                    and tm - self._test_req_id > self._heartbeat_period * 2
+                ):
+                    # No sensible reply on TestRequest
+                    self.log.debug('heartbeat_timer_task: test request timeout')
+                    await self.disconnect(ConnectionState.DISCONNECTED_BROKEN_CONN)
 
+                await asyncio.sleep(1.0)
             except asyncio.CancelledError:
-                raise
+                return
             except Exception:
                 self.log.exception("heartbeat_timer() error")
-            await asyncio.sleep(1.0)
 
     ####################################################
     #
