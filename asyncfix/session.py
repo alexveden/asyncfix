@@ -1,7 +1,4 @@
-import logging
-
 from asyncfix import FIXMessage, FMsg, FTag
-from asyncfix.message import MessageDirection
 
 
 class FIXSession:

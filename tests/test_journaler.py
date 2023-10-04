@@ -1,5 +1,6 @@
-import pytest
 import os
+
+import pytest
 
 from asyncfix.connection import MessageDirection
 from asyncfix.errors import DuplicateSeqNoError, FIXMessageError
@@ -217,6 +218,6 @@ def test_set_seqnum():
 def test_persist_tofile():
     enc_msg = b"8=FIX.4.4\x019=75\x0135=D\x0149=sender\x0156=target\x0134=073\x0152=20230919-07:13:26.808\x0144=123.45\x0138\x0155=VOD.L\x0110=100\x01"  # noqa
 
-    j = Journaler('test.store')
-    assert os.path.exists('test.store')
-    os.unlink('test.store')
+    j = Journaler("test.store")
+    assert os.path.exists("test.store")
+    os.unlink("test.store")

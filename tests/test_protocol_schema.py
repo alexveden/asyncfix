@@ -1015,5 +1015,7 @@ def test_schema_validation_header(fix_simple_xml):
     schema.validate(dec_m)
 
     del dec_m[FTag.MsgSeqNum]
-    with pytest.raises(FIXMessageError, match=r"Missing required field=SchemaField\(MsgSeqNum|34,"):
+    with pytest.raises(
+        FIXMessageError, match=r"Missing required field=SchemaField\(MsgSeqNum|34,"
+    ):
         schema.validate(dec_m)

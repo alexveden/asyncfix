@@ -384,7 +384,7 @@ class AsyncFIXConnection:
                     and tm - self._message_last_time > self._heartbeat_period * 2
                 ):
                     # Dead socket probably
-                    self.log.debug('heartbeat_timer_task: message last time timeout')
+                    self.log.debug("heartbeat_timer_task: message last time timeout")
                     await self.disconnect(ConnectionState.DISCONNECTED_BROKEN_CONN)
 
                 if (
@@ -392,7 +392,7 @@ class AsyncFIXConnection:
                     and tm - self._test_req_id > self._heartbeat_period * 2
                 ):
                     # No sensible reply on TestRequest
-                    self.log.debug('heartbeat_timer_task: test request timeout')
+                    self.log.debug("heartbeat_timer_task: test request timeout")
                     await self.disconnect(ConnectionState.DISCONNECTED_BROKEN_CONN)
 
                 await asyncio.sleep(1.0)

@@ -45,7 +45,9 @@ class FIXTester:
                 start_tasks=False,
                 logger=self.conn_init.log,
             )
-            self.conn_accept._connection_state = ConnectionState.NETWORK_CONN_ESTABLISHED
+            self.conn_accept._connection_state = (
+                ConnectionState.NETWORK_CONN_ESTABLISHED
+            )
             self.conn_accept._session.next_num_out = connection._session.next_num_in
             self.conn_accept._session.next_num_in = connection._session.next_num_out
 

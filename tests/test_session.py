@@ -1,4 +1,5 @@
 import pytest
+
 from asyncfix import FIXMessage, FMsg, FTag
 from asyncfix.session import FIXSession
 
@@ -29,7 +30,7 @@ def test_equality():
     assert s1 != s4
     assert s1 == ("target", "sender")
     assert s1 != ("target",)
-    assert s1 != ("target", "sender", 'unexp')
+    assert s1 != ("target", "sender", "unexp")
     assert s1 != ("1target", "sender")
     assert s1 != ("target", "1sender")
     assert s1 != "target,sender"
@@ -38,7 +39,7 @@ def test_equality():
 def test_repr():
     s1 = FIXSession("1", "target", "sender")
     assert "FIXSession(key=1, target=target sender=sender InSN=1 OutSN=1)" == repr(s1)
-    
+
 
 def test_reset_msg():
     s1 = FIXSession("1", "target", "sender")
@@ -47,7 +48,7 @@ def test_reset_msg():
     s1.reset_msgs()
     assert s1.next_num_out == 1
     assert s1.next_num_in == 1
-    
+
 
 def test_validate_compid():
     s1 = FIXSession("1", "target", "sender")
@@ -60,7 +61,7 @@ def test_allocate_next_num_out():
     s1 = FIXSession("1", "target", "sender")
     assert s1.next_num_out == 1
     assert s1.allocate_next_num_out() == "1"
-    assert s1.next_num_out == 2 
+    assert s1.next_num_out == 2
 
 
 def test_set_next_num_in():

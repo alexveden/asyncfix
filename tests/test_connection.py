@@ -1,10 +1,10 @@
-import logging
-import time
 import asyncio
+import logging
 import os
+import time
 import warnings
 import xml.etree.ElementTree as ET
-from unittest.mock import patch, MagicMock, AsyncMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 import pytest_asyncio
