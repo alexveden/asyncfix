@@ -173,7 +173,7 @@ class AsyncFIXConnection:
         self._socket_reader = None
         self._socket_writer = None
         self._host = host
-        self._port = port
+        self._port = int(port)
 
         if start_tasks:
             asyncio.create_task(self.socket_read_task())
@@ -204,7 +204,7 @@ class AsyncFIXConnection:
             NotImplementedError:
 
         """
-        raise NotImplementedError("connect() is not implemented in child")
+        raise NotImplementedError("connect() must be implemented in app class")
 
     async def disconnect(
         self,
@@ -403,13 +403,14 @@ class AsyncFIXConnection:
             msg:
 
         """
-        raise NotImplementedError("You must implement this method on AppLevel")
+        raise NotImplementedError("on_message() must be implemented in app class")
 
     async def on_connect(self):
         """
         (AppEvent) Underlying socket connected
 
         """
+        raise NotImplementedError("on_connect() must be implemented in app class")
         pass
 
     async def on_disconnect(self):
@@ -481,7 +482,7 @@ class AsyncFIXConnection:
             self._connection_was_active = True
         self.on_state_change(connection_state)
 
-    def _validate_intergity(self, msg: FIXMessage) -> bool:
+    def _validate_integrity(self, msg: FIXMessage) -> bool:
         """
         Validates incoming message critical integrity
 
@@ -784,7 +785,7 @@ class AsyncFIXConnection:
             f" ({self._connection_state.name}) {repr(msg.msg_type)}\n\t {msg}\n"
         )
 
-        err_msg = self._validate_intergity(msg)
+        err_msg = self._validate_integrity(msg)
         if err_msg:
             # Some mandatory tags are missing or corrupt message
             await self.disconnect(
@@ -834,8 +835,10 @@ class AsyncFIXConnection:
         except asyncio.CancelledError:
             raise
         except Exception:
-            self.log.exception("_process_message error: ")
-            raise
+            self.log.exception(
+                f"[{self._connection_role.name}]:process_message"
+                f" ({self._connection_state.name}) {repr(msg.msg_type)}\n\t {msg}\n"
+            )
         finally:
             if is_valid_msg_num:
                 await self._finalize_message(msg, raw_msg)

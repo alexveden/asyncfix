@@ -1,7 +1,9 @@
 import logging
+import asyncio
 import os
+import warnings
 import xml.etree.ElementTree as ET
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 
 import pytest
 import pytest_asyncio
@@ -233,7 +235,7 @@ async def test_connection_validation_missing_seqnum(fix_connection):
     msg_out = ft.initiator_sent[-1]
 
     del msg_out[34]
-    assert ft.conn_accept._validate_intergity(msg_out) == "MsgSeqNum(34) tag is missing"
+    assert ft.conn_accept._validate_integrity(msg_out) == "MsgSeqNum(34) tag is missing"
 
 
 @pytest.mark.asyncio
@@ -249,7 +251,7 @@ async def test_connection_validation_seqnum_toolow(fix_connection):
     ft.set_next_num(num_in=21)
 
     assert (
-        ft.conn_accept._validate_intergity(msg_out)
+        ft.conn_accept._validate_integrity(msg_out)
         == "MsgSeqNum is too low, expected 21, got 20"
     )
 
@@ -265,7 +267,7 @@ async def test_connection_validation_beginstring(fix_connection):
     msg_out.set(FTag.BeginString, "FIX4.8", replace=True)
 
     assert (
-        ft.conn_accept._validate_intergity(msg_out)
+        ft.conn_accept._validate_integrity(msg_out)
         == "Protocol BeginString(8) mismatch, expected FIX.4.4, got FIX4.8"
     )
 
@@ -280,7 +282,7 @@ async def test_connection_validation_no_target(fix_connection):
     msg_out = ft.initiator_sent[-1]
     del msg_out[FTag.TargetCompID]
 
-    assert conn._validate_intergity(msg_out) is True
+    assert conn._validate_integrity(msg_out) is True
 
 
 @pytest.mark.asyncio
@@ -293,7 +295,7 @@ async def test_connection_validation_no_sender(fix_connection):
     msg_out = ft.initiator_sent[-1]
     del msg_out[FTag.SenderCompID]
 
-    assert conn._validate_intergity(msg_out) is True
+    assert conn._validate_integrity(msg_out) is True
 
 
 @pytest.mark.asyncio
@@ -306,7 +308,7 @@ async def test_connection_validation_sender_mismatch(fix_connection):
     msg_out = ft.initiator_sent[-1]
     msg_out.set(FTag.SenderCompID, "as", replace=True)
 
-    assert conn._validate_intergity(msg_out) == "TargetCompID / SenderCompID mismatch"
+    assert conn._validate_integrity(msg_out) == "TargetCompID / SenderCompID mismatch"
 
 
 @pytest.mark.asyncio
@@ -319,7 +321,7 @@ async def test_connection_validation_target_mismatch(fix_connection):
     msg_out = ft.initiator_sent[-1]
     msg_out.set(FTag.TargetCompID, "as", replace=True)
 
-    assert conn._validate_intergity(msg_out) == "TargetCompID / SenderCompID mismatch"
+    assert conn._validate_integrity(msg_out) == "TargetCompID / SenderCompID mismatch"
 
 
 @pytest.mark.asyncio
@@ -555,7 +557,9 @@ async def test_test_incorrect_response(fix_connection):
         assert (
             ft.conn_accept._connection_state == ConnectionState.DISCONNECTED_WCONN_TODAY
         )
-        assert ft.conn_init._connection_state == ConnectionState.DISCONNECTED_BROKEN_CONN
+        assert (
+            ft.conn_init._connection_state == ConnectionState.DISCONNECTED_BROKEN_CONN
+        )
 
 
 @pytest.mark.asyncio
@@ -654,7 +658,9 @@ async def test_extra_msg_during_seq_num_resend_low_num_not_processed(fix_connect
         await conn.send_msg(ft.msg_heartbeat())
         await ft.process_msg_acceptor()
 
-        assert ft.conn_init._connection_state == ConnectionState.DISCONNECTED_WCONN_TODAY
+        assert (
+            ft.conn_init._connection_state == ConnectionState.DISCONNECTED_WCONN_TODAY
+        )
         assert (
             ft.conn_accept._connection_state == ConnectionState.DISCONNECTED_BROKEN_CONN
         )
@@ -748,3 +754,107 @@ async def test_connection__process_resend__ignores_high_seq_num_msg(fix_connecti
             FTag.ClOrdID: "test2",
             FTag.PossDupFlag: "Y",
         }
+
+
+@pytest.mark.asyncio
+async def test_connection_init_launch_tasks(fix_connection):
+    conn: AsyncFIXConnection = fix_connection
+    ft = FIXTester(schema=FIX_SCHEMA, connection=conn)
+
+    journaler_mock = MagicMock()
+    with (
+        patch("asyncio.create_task") as mock_create_task,
+        patch("asyncfix.connection.AsyncFIXConnection.socket_read_task") as t1,
+        patch("asyncfix.connection.AsyncFIXConnection.heartbeat_timer_task") as t2,
+    ):
+        connection = AsyncFIXConnection(
+            FIXProtocol44(),
+            "INITIATOR",
+            "ACCEPTOR",
+            journaler=journaler_mock,
+            host="localhost",
+            port="64444",
+            heartbeat_period=33,
+            start_tasks=True,
+        )
+
+        assert connection._journaler is journaler_mock
+        assert journaler_mock.create_or_load.call_args[0] == ("ACCEPTOR", "INITIATOR")
+        assert journaler_mock.create_or_load.call_args[1] == {}
+
+        assert connection._session == journaler_mock.create_or_load()
+        assert connection._connection_state == ConnectionState.DISCONNECTED_NOCONN_TODAY
+        assert connection.connection_role == ConnectionRole.UNKNOWN
+        assert isinstance(connection._codec.protocol, FIXProtocol44)
+        assert not connection._connection_was_active
+        assert connection._heartbeat_period == 33
+        assert connection._host == "localhost"
+        assert connection._port == 64444
+        assert connection._socket_reader is None
+        assert connection._socket_writer is None
+        assert connection._message_last_time == 0
+        assert connection._max_seq_num_resend == 0
+        assert not connection._msg_buffer
+        assert connection._test_req_id is None
+
+        assert mock_create_task.call_count == 2
+        assert t1.called
+        assert t2.called
+
+        # This one just suppress warning about coro was not awaited
+        await mock_create_task.call_args_list[0][0][0]
+        await mock_create_task.call_args_list[1][0][0]
+
+
+@pytest.mark.asyncio
+async def test_connect_raises(fix_connection):
+    conn: AsyncFIXConnection = fix_connection
+
+    with pytest.raises(
+        NotImplementedError, match=r"connect\(\) must be implemented in app class"
+    ):
+        await conn.connect()
+
+    with pytest.raises(
+        NotImplementedError, match=r"on_connect\(\) must be implemented in app class"
+    ):
+        await conn.on_connect()
+
+    with pytest.raises(
+        NotImplementedError, match=r"on_message\(\) must be implemented in app class"
+    ):
+        await conn.on_message(None)
+
+
+@pytest.mark.asyncio
+async def test_process_message_exception(fix_connection):
+    conn: AsyncFIXConnection = fix_connection
+
+    conn.log = MagicMock()
+    with (
+        patch.object(conn, "_validate_integrity") as mock__validate_integrity,
+        patch.object(conn, "_finalize_message") as mock_finalize_message,
+        patch.object(conn, "_process_logon") as mock_process_logon,
+    ):
+        mock__validate_integrity.side_effect = RuntimeError
+        
+        msg = FIXMessage(FMsg.LOGON)
+
+        with pytest.raises(RuntimeError):
+            await conn._process_message(msg, b'msg')
+
+        mock__validate_integrity.return_value = None
+        mock__validate_integrity.side_effect = None
+        mock_process_logon.side_effect = RuntimeError
+        await conn._process_message(msg, b'msg')
+        
+        # except block
+        assert conn.log.exception.called
+
+        # finally block
+        #  not called because is_valid_msg_num - not passed
+        assert not mock_finalize_message.called
+        
+        mock_process_logon.side_effect = asyncio.CancelledError
+        with pytest.raises(asyncio.CancelledError):
+            await conn._process_message(msg, b'msg')
