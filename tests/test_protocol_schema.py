@@ -1013,3 +1013,7 @@ def test_schema_validation_header(fix_simple_xml):
     dec_m, _, _ = codec.decode(enc_m.encode(), silent=False)
 
     schema.validate(dec_m)
+
+    del dec_m[FTag.MsgSeqNum]
+    with pytest.raises(FIXMessageError, match=r"Missing required field=SchemaField\(MsgSeqNum|34,"):
+        schema.validate(dec_m)
