@@ -3,7 +3,7 @@ import asyncio
 import os
 import warnings
 import xml.etree.ElementTree as ET
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, AsyncMock
 
 import pytest
 import pytest_asyncio
@@ -20,6 +20,43 @@ from asyncfix.protocol.order_single import FIXNewOrderSingle
 TEST_DIR = os.path.abspath(os.path.dirname(__file__))
 fix44_schema = ET.parse(os.path.join(TEST_DIR, "FIX44.xml"))
 FIX_SCHEMA = FIXSchema(fix44_schema)
+
+
+@pytest_asyncio.fixture
+async def fix_msg():
+    msg = FIXMessage(FMsg.NEWORDERSINGLE)
+    msg.set(FTag.Price, "123.45")
+    msg.set(FTag.OrderQty, 9876)
+    msg.set(FTag.Symbol, "VOD.L")
+    return msg
+
+
+@pytest_asyncio.fixture
+async def fix_connection_socket():
+    log = logging.getLogger("asyncfix_test")
+    log.setLevel(logging.DEBUG)
+    j = Journaler()
+    connection = AsyncFIXConnection(
+        FIXProtocol44(),
+        "INITIATOR",
+        "ACCEPTOR",
+        journaler=j,
+        host="localhost",
+        port="64444",
+        heartbeat_period=30,
+        start_tasks=False,
+        logger=log,
+    )
+    connection._connection_state = ConnectionState.NETWORK_CONN_ESTABLISHED
+    assert connection._connection_role == ConnectionRole.UNKNOWN
+    connection._socket_reader = MagicMock()
+    connection._socket_reader.read = AsyncMock()
+
+    connection._socket_writer = MagicMock()
+    connection._socket_writer.close = MagicMock()
+    connection._socket_writer.wait_closed = AsyncMock()
+
+    return connection
 
 
 @pytest_asyncio.fixture
@@ -837,24 +874,356 @@ async def test_process_message_exception(fix_connection):
         patch.object(conn, "_process_logon") as mock_process_logon,
     ):
         mock__validate_integrity.side_effect = RuntimeError
-        
+
         msg = FIXMessage(FMsg.LOGON)
 
         with pytest.raises(RuntimeError):
-            await conn._process_message(msg, b'msg')
+            await conn._process_message(msg, b"msg")
 
         mock__validate_integrity.return_value = None
         mock__validate_integrity.side_effect = None
         mock_process_logon.side_effect = RuntimeError
-        await conn._process_message(msg, b'msg')
-        
+        await conn._process_message(msg, b"msg")
+
         # except block
         assert conn.log.exception.called
 
         # finally block
         #  not called because is_valid_msg_num - not passed
         assert not mock_finalize_message.called
-        
+
         mock_process_logon.side_effect = asyncio.CancelledError
         with pytest.raises(asyncio.CancelledError):
-            await conn._process_message(msg, b'msg')
+            await conn._process_message(msg, b"msg")
+
+
+@pytest.mark.asyncio
+async def test_socket_read__valid(fix_connection_socket, fix_msg):
+    conn: AsyncFIXConnection = fix_connection_socket
+    socket_reader_mock = conn._socket_reader
+
+    socket_reader_mock.read.side_effect = [
+        conn._codec.encode(fix_msg, conn._session).encode(),
+        conn._codec.encode(fix_msg, conn._session).encode(),
+        asyncio.CancelledError,  # This stops infinite loop
+    ]
+
+    with patch.object(conn, "_process_message") as mock_process_message:
+        await asyncio.wait_for(conn.socket_read_task(), 1)
+
+    assert mock_process_message.call_count == 2
+
+    for args in mock_process_message.call_args_list:
+        assert len(args[0]) == 2  # 2 args
+        assert args[1] == {}  # no kwargs
+
+        assert {
+            FTag.Symbol: "VOD.L",
+            FTag.Price: "123.45",
+            FTag.OrderQty: "9876",
+        } in args[0][0]
+
+        assert isinstance(args[0][1], bytes)
+        assert args[0][1].startswith(b"8=FIX")
+
+
+@pytest.mark.asyncio
+async def test_socket_read__partial(fix_connection_socket, fix_msg):
+    conn: AsyncFIXConnection = fix_connection_socket
+    socket_reader_mock = conn._socket_reader
+
+    full = conn._codec.encode(fix_msg, conn._session).encode()
+    partial_1 = full[:20]
+    partial_2 = full[20:]
+    assert partial_1 + partial_2 == full
+
+    socket_reader_mock.read.side_effect = [
+        conn._codec.encode(fix_msg, conn._session).encode(),
+        partial_1,
+        partial_2,
+        asyncio.CancelledError,  # This stops infinite loop
+    ]
+
+    with patch.object(conn, "_process_message") as mock_process_message:
+        await asyncio.wait_for(conn.socket_read_task(), 1)
+
+    for args in mock_process_message.call_args_list:
+        assert len(args[0]) == 2  # 2 args
+        assert args[1] == {}  # no kwargs
+
+        assert {
+            FTag.Symbol: "VOD.L",
+            FTag.Price: "123.45",
+            FTag.OrderQty: "9876",
+        } in args[0][0]
+
+        assert isinstance(args[0][1], bytes)
+        assert args[0][1].startswith(b"8=FIX")
+
+
+@pytest.mark.asyncio
+async def test_socket_read__partial_bad_data(fix_connection_socket, fix_msg):
+    conn: AsyncFIXConnection = fix_connection_socket
+    socket_reader_mock = conn._socket_reader
+    full = conn._codec.encode(fix_msg, conn._session).encode()
+    partial_1 = full[:20]
+    partial_2 = full[20:]
+    assert partial_1 + partial_2 == full
+
+    socket_reader_mock.read.side_effect = [
+        conn._codec.encode(fix_msg, conn._session).encode(),
+        partial_1,
+        partial_1,
+        asyncio.CancelledError,  # This stops infinite loop
+    ]
+
+    with patch.object(conn, "_process_message") as mock_process_message:
+        await asyncio.wait_for(conn.socket_read_task(), 1)
+
+    assert mock_process_message.call_count == 1
+
+    for args in mock_process_message.call_args_list:
+        assert len(args[0]) == 2  # 2 args
+        assert args[1] == {}  # no kwargs
+
+        assert {
+            FTag.Symbol: "VOD.L",
+            FTag.Price: "123.45",
+            FTag.OrderQty: "9876",
+        } in args[0][0]
+
+        assert isinstance(args[0][1], bytes)
+        assert args[0][1].startswith(b"8=FIX")
+
+
+@pytest.mark.asyncio
+async def test_socket_read__decode_logic_msg_buff_management(
+    fix_connection_socket, fix_msg
+):
+    conn: AsyncFIXConnection = fix_connection_socket
+    socket_reader_mock = conn._socket_reader
+
+    full = conn._codec.encode(fix_msg, conn._session).encode()
+    partial_1 = full[:20]
+    partial_2 = full[20:]
+    assert partial_1 + partial_2 == full
+
+    msg_valid = b"8=FIX.4.4\x019=82\x0135=D\x0149=sender\x0156=target\x0134=1\x0152=20230919-07:13:26.808\x0144=123.45\x0138=9876\x0155=VOD.L\x0110=100\x01"  # noqa
+
+    with patch.object(conn, "_process_message") as mock_process_message:
+        socket_reader_mock.read.side_effect = [
+            b"abcd",
+            msg_valid,
+            asyncio.CancelledError,  # This stops infinite loop
+        ]
+        await asyncio.wait_for(conn.socket_read_task(), 1)
+
+    assert mock_process_message.call_count == 1
+
+
+@pytest.mark.asyncio
+async def test_socket_read__partial_one_after_another(fix_connection_socket, fix_msg):
+    conn: AsyncFIXConnection = fix_connection_socket
+    socket_reader_mock = conn._socket_reader
+    full = conn._codec.encode(fix_msg, conn._session).encode()
+    partial_1 = full[:20]
+    partial_2 = full[20:]
+    assert partial_1 + partial_2 == full
+
+    socket_reader_mock.read.side_effect = [
+        partial_1,
+        # remainder comes with next valid message
+        partial_2 + conn._codec.encode(fix_msg, conn._session).encode(),
+        asyncio.CancelledError,  # This stops infinite loop
+    ]
+
+    with patch.object(conn, "_process_message") as mock_process_message:
+        await asyncio.wait_for(conn.socket_read_task(), 1)
+
+    assert mock_process_message.call_count == 2
+
+    for args in mock_process_message.call_args_list:
+        assert len(args[0]) == 2  # 2 args
+        assert args[1] == {}  # no kwargs
+
+        assert {
+            FTag.Symbol: "VOD.L",
+            FTag.Price: "123.45",
+            FTag.OrderQty: "9876",
+        } in args[0][0]
+
+        assert isinstance(args[0][1], bytes)
+        assert args[0][1].startswith(b"8=FIX")
+
+
+@pytest.mark.asyncio
+async def test_socket_read__connection_closed_by_peer(fix_connection_socket, fix_msg):
+    conn: AsyncFIXConnection = fix_connection_socket
+    socket_reader_mock = conn._socket_reader
+
+    conn._connection_state = ConnectionState.ACTIVE
+
+    socket_reader_mock.read.side_effect = [
+        ConnectionError,
+        asyncio.CancelledError,  # This stops infinite loop
+    ]
+    mock_socket_writer = conn._socket_writer
+    mock_socket_reader = conn._socket_reader
+
+    with (
+        patch.object(conn, "_process_message") as mock_process_message,
+        patch("asyncio.sleep") as mock_sleep,
+        patch.object(conn, "send_msg") as mock_send_msg,
+    ):
+        mock_sleep.side_effect = [
+            1,
+            asyncio.CancelledError,
+        ]
+        await asyncio.wait_for(conn.socket_read_task(), 1)
+
+    assert conn.connection_state == ConnectionState.DISCONNECTED_BROKEN_CONN
+    assert conn._socket_reader is None
+    assert conn._socket_writer is None
+    assert mock_socket_writer.close.called
+    assert mock_socket_writer.wait_closed.awaited
+    assert not mock_send_msg.called  # no LOGOUT sent!
+
+    assert mock_sleep.call_count == 2
+    assert mock_sleep.call_args[0] == (1,)
+
+
+@pytest.mark.asyncio
+async def test_socket_read__empty_message_closes_socket(fix_connection_socket, fix_msg):
+    conn: AsyncFIXConnection = fix_connection_socket
+    socket_reader_mock = conn._socket_reader
+
+    conn._connection_state = ConnectionState.ACTIVE
+
+    socket_reader_mock.read.side_effect = [
+        b"",
+        asyncio.CancelledError,  # This stops infinite loop
+    ]
+    mock_socket_writer = conn._socket_writer
+    mock_socket_reader = conn._socket_reader
+
+    with (
+        patch.object(conn, "_process_message") as mock_process_message,
+        patch("asyncio.sleep") as mock_sleep,
+        patch.object(conn, "send_msg") as mock_send_msg,
+    ):
+        mock_sleep.side_effect = [
+            1,
+            asyncio.CancelledError,
+        ]
+        await asyncio.wait_for(conn.socket_read_task(), 1)
+
+    assert conn.connection_state == ConnectionState.DISCONNECTED_BROKEN_CONN
+    assert conn._socket_reader is None
+    assert conn._socket_writer is None
+    assert mock_socket_writer.close.called
+    assert mock_socket_writer.wait_closed.awaited
+    assert not mock_send_msg.called  # no LOGOUT sent!
+
+    assert mock_sleep.call_count == 2
+    assert mock_sleep.call_args[0] == (1,)
+
+
+@pytest.mark.asyncio
+async def test_socket_read__exception_inside(fix_connection_socket, fix_msg):
+    conn: AsyncFIXConnection = fix_connection_socket
+    socket_reader_mock = conn._socket_reader
+
+    conn._connection_state = ConnectionState.ACTIVE
+
+    socket_reader_mock.read.side_effect = [
+        conn._codec.encode(fix_msg, conn._session).encode(),
+        conn._codec.encode(fix_msg, conn._session).encode(),
+        asyncio.CancelledError,  # This stops infinite loop
+    ]
+    mock_socket_writer = conn._socket_writer
+    mock_socket_reader = conn._socket_reader
+
+    def _process_side(*args):
+        conn._connection_state = ConnectionState.DISCONNECTED_BROKEN_CONN
+        raise RuntimeError("test")
+
+    with (
+        patch.object(conn, "_process_message") as mock_process_message,
+        patch("asyncio.sleep") as mock_sleep,
+        patch.object(conn, "send_msg") as mock_send_msg,
+    ):
+        mock_process_message.side_effect = _process_side
+        await asyncio.wait_for(conn.socket_read_task(), 1)
+
+    assert mock_process_message.call_count == 1
+    assert conn.connection_state == ConnectionState.DISCONNECTED_BROKEN_CONN
+    assert conn._socket_reader is not None
+    assert conn._socket_writer is not None
+
+    assert not mock_sleep.called
+
+
+@pytest.mark.asyncio
+async def test_disconnect(fix_connection_socket, fix_msg):
+    conn: AsyncFIXConnection = fix_connection_socket
+    socket_reader_mock = conn._socket_reader
+
+    conn._connection_state = ConnectionState.AWAITING_CONNECTION
+    with (
+        patch.object(conn, "_process_message") as mock_process_message,
+        patch("asyncio.sleep") as mock_sleep,
+        patch.object(conn, "send_msg") as mock_send_msg,
+    ):
+        mock_socket_writer = conn._socket_writer
+        mock_socket_reader = conn._socket_reader
+        conn._test_req_id = 123
+        conn._message_last_time = 222
+        conn._max_seq_num_resend = 8
+
+        await conn.disconnect(
+            ConnectionState.DISCONNECTED_WCONN_TODAY, logout_message="test disconn"
+        )
+
+        assert conn.connection_state == ConnectionState.DISCONNECTED_WCONN_TODAY
+        assert conn._socket_reader is None
+        assert conn._socket_writer is None
+        assert mock_socket_writer.close.called
+        assert mock_socket_writer.wait_closed.awaited
+        assert mock_send_msg.call_count == 1
+
+        assert isinstance(mock_send_msg.call_args[0][0], FIXMessage)
+        assert mock_send_msg.call_args[0][0].msg_type == FMsg.LOGOUT
+        assert mock_send_msg.call_args[0][0].query(FTag.Text) == {
+            FTag.Text: "test disconn",
+        }
+
+        assert conn._test_req_id is None
+        assert conn._message_last_time == 0
+        assert conn._max_seq_num_resend == 0
+        
+        # already disconnected, skipped
+        mock_send_msg.reset_mock()
+        await conn.disconnect(
+            ConnectionState.DISCONNECTED_WCONN_TODAY, logout_message="test disconn"
+        )
+        assert mock_send_msg.call_count == 0
+
+
+@pytest.mark.asyncio
+async def test_disconnect_empty_text_logout(fix_connection_socket, fix_msg):
+    conn: AsyncFIXConnection = fix_connection_socket
+    socket_reader_mock = conn._socket_reader
+
+    conn._connection_state = ConnectionState.AWAITING_CONNECTION
+    with (
+        patch.object(conn, "_process_message") as mock_process_message,
+        patch("asyncio.sleep") as mock_sleep,
+        patch.object(conn, "send_msg") as mock_send_msg,
+    ):
+        await conn.disconnect(
+            ConnectionState.DISCONNECTED_WCONN_TODAY, logout_message=""
+        )
+
+        assert isinstance(mock_send_msg.call_args[0][0], FIXMessage)
+        assert mock_send_msg.call_args[0][0].msg_type == FMsg.LOGOUT
+        assert FTag.Text not in mock_send_msg.call_args[0][0]

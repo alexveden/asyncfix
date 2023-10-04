@@ -222,6 +222,8 @@ class AsyncFIXConnection:
         if self._connection_state > ConnectionState.DISCONNECTED_BROKEN_CONN:
             assert disconn_state <= ConnectionState.DISCONNECTED_BROKEN_CONN
             self._test_req_id = None
+            self._message_last_time = 0
+            self._max_seq_num_resend = 0
 
             if logout_message is not None:
                 msg = FIXMessage(FMsg.LOGOUT)
@@ -347,13 +349,15 @@ class AsyncFIXConnection:
 
                     await self._process_message(decoded_msg, raw_msg)
             except asyncio.CancelledError:
-                raise
+                return
             except ConnectionError as why:
-                self.log.debug("Connection has been closed %s" % (why,))
+                self.log.debug(
+                    "socket_read_task: connection has been closed %s" % (why,)
+                )
                 await self.disconnect(ConnectionState.DISCONNECTED_BROKEN_CONN)
                 continue
             except Exception:
-                self.log.exception("handle_read exception")
+                self.log.exception("socket_read_task: exception")
                 # raise
 
     async def heartbeat_timer_task(self):
