@@ -188,6 +188,10 @@ class AsyncFIXConnection:
         return self._connection_role
 
     @property
+    def heartbeat_period(self) -> int:
+        return self._heartbeat_period
+
+    @property
     def protocol(self) -> FIXProtocolBase:
         """
         Underlying FIXProtocolBase of a connection
@@ -238,7 +242,7 @@ class AsyncFIXConnection:
                 await self._socket_writer.wait_closed()
             self._socket_writer = None
             self._socket_reader = None
-            self._state_set(disconn_state)
+            await self._state_set(disconn_state)
             await self.on_disconnect()
 
     async def send_msg(self, msg: FIXMessage):
@@ -264,7 +268,7 @@ class AsyncFIXConnection:
                     "You must send first Logon(35=A)/Logout() message immediately after"
                     f" connection, got {repr(msg)}"
                 )
-            self._state_set(ConnectionState.LOGON_INITIAL_SENT)
+            await self._state_set(ConnectionState.LOGON_INITIAL_SENT)
             self._connection_role = ConnectionRole.INITIATOR
         else:
             if self._connection_role == ConnectionRole.INITIATOR:
@@ -453,7 +457,7 @@ class AsyncFIXConnection:
         """
         pass
 
-    def on_state_change(self, connection_state: ConnectionState):
+    async def on_state_change(self, connection_state: ConnectionState):
         """
         (AppEvent) On ConnectionState change
 
@@ -462,7 +466,7 @@ class AsyncFIXConnection:
         """
         pass
 
-    def should_replay(self, historical_replay_msg: FIXMessage) -> bool:
+    async def should_replay(self, historical_replay_msg: FIXMessage) -> bool:
         """
         (AppLevel) Checks if historical_replay_msg from Journaler should be replayed
 
@@ -480,7 +484,7 @@ class AsyncFIXConnection:
     #
     ####################################################
 
-    def _state_set(self, connection_state: ConnectionState):
+    async def _state_set(self, connection_state: ConnectionState):
         """
         Sets internal connection state
 
@@ -494,7 +498,7 @@ class AsyncFIXConnection:
         self._connection_state = connection_state
         if connection_state == ConnectionState.ACTIVE:
             self._connection_was_active = True
-        self.on_state_change(connection_state)
+        await self.on_state_change(connection_state)
 
     def _validate_integrity(self, msg: FIXMessage) -> bool:
         """
@@ -558,12 +562,9 @@ class AsyncFIXConnection:
                 await self.send_msg(msg_logon)
 
         if msg_seq_num == self._session.next_num_in:
-            self._state_set(ConnectionState.ACTIVE)
-            # FIX: maybe delete!?
-            if not self._test_req_id:
-                await self.send_test_req()
+            await self._state_set(ConnectionState.ACTIVE)
         else:
-            self._state_set(ConnectionState.RECV_SEQNUM_TOO_HIGH)
+            await self._state_set(ConnectionState.RECV_SEQNUM_TOO_HIGH)
 
         await self.on_logon(self._connection_state == ConnectionState.ACTIVE)
 
@@ -586,7 +587,7 @@ class AsyncFIXConnection:
                 )
                 self._max_seq_num_resend = msg_seq_num
                 await self.send_msg(resend_req)
-                self._state_set(ConnectionState.RESENDREQ_AWAITING)
+                await self._state_set(ConnectionState.RESENDREQ_AWAITING)
             return False
 
         return True
@@ -618,7 +619,7 @@ class AsyncFIXConnection:
 
         """
         if self._connection_state != ConnectionState.RESENDREQ_AWAITING:
-            self._state_set(ConnectionState.RESENDREQ_HANDLING)
+            await self._state_set(ConnectionState.RESENDREQ_HANDLING)
 
         assert resend_msg.msg_type == FMsg.RESENDREQUEST
         assert self._connection_state in {
@@ -651,7 +652,7 @@ class AsyncFIXConnection:
             msg_seq_num = int(replay_msg[FTag.MsgSeqNum])
 
             is_sess_msg = replay_msg[FTag.MsgType] in noreply_msgs
-            if is_sess_msg or not self.should_replay(replay_msg):
+            if is_sess_msg or not await self.should_replay(replay_msg):
                 gap_fill_end = msg_seq_num + 1
             else:
                 if gap_fill_begin < gap_fill_end:
@@ -694,7 +695,7 @@ class AsyncFIXConnection:
             await self.send_msg(gap_fill_msg)
 
         if self._connection_state != ConnectionState.RESENDREQ_AWAITING:
-            self._state_set(ConnectionState.ACTIVE)
+            await self._state_set(ConnectionState.ACTIVE)
 
     async def _process_seqreset(self, seqreset_msg: FIXMessage):
         """
@@ -734,7 +735,7 @@ class AsyncFIXConnection:
             if msg_sec_no >= self._max_seq_num_resend:
                 # All messages were transferred
                 self._max_seq_num_resend = 0
-                self._state_set(ConnectionState.ACTIVE)
+                await self._state_set(ConnectionState.ACTIVE)
 
         self._message_last_time = time.time()
 
@@ -819,7 +820,7 @@ class AsyncFIXConnection:
                     #  not logon
                     await self.disconnect(ConnectionState.DISCONNECTED_BROKEN_CONN)
                     return
-                self._state_set(ConnectionState.LOGON_INITIAL_RECV)
+                await self._state_set(ConnectionState.LOGON_INITIAL_RECV)
                 self._connection_role = ConnectionRole.ACCEPTOR
 
             if msg.msg_type == FMsg.LOGON:

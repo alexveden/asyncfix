@@ -1,130 +1,139 @@
 import asyncio
 import logging
-from enum import Enum
 
-from asyncfix import FIXMessage, FMsg, FTag
-from asyncfix.connection import ConnectionState, FIXConnectionHandler, MessageDirection
-from asyncfix.connection_server import FIXServer
-from asyncfix.engine import FIXEngine
-from asyncfix.protocol.protocol_fix44 import FIXProtocol44
+from asyncfix import (
+    FIXMessage,
+    FMsg,
+    FTag,
+    AsyncFIXDummyServer,
+    Journaler,
+    FIXTester,
+    ConnectionState,
+)
+
+from asyncfix.protocol import (
+    FIXProtocol44,
+    FIXNewOrderSingle,
+    FExecType,
+    FOrdStatus,
+)
 
 
-class Side(Enum):
-    buy = 1
-    sell = 2
-
-
-class Server(FIXEngine):
+class Server(AsyncFIXDummyServer):
     def __init__(self):
-        FIXEngine.__init__(self, "server_example.store")
-        # create a FIX Server using the FIX 4.4 standard
-        self.server = FIXServer(self, FIXProtocol44())
-
-        # we register some listeners since we want to know when
-        #    the connection goes up or down
-        self.server.add_connection_listener(self.on_connect, ConnectionState.CONNECTED)
-        self.server.add_connection_listener(
-            self.on_disconnect, ConnectionState.DISCONNECTED
+        journal = Journaler("server_example.store")
+        super().__init__(
+            protocol=FIXProtocol44(),
+            sender_comp_id="TSERVER",
+            target_comp_id="TCLIENT",
+            journaler=journal,
+            host="localhost",
+            port=9898,
         )
-        # start our event listener indefinitely
+        self.fix_tester = FIXTester()
+        self.orders: dict[str, FIXNewOrderSingle] = {}
+        self.clord_id = 0
 
-    async def start(self, host, port):
-        await self.server.start(host, port)
+    async def on_connect(self):
+        """
+        (AppEvent) Underlying socket connected
 
-    def validate_session(self, target_comp_id, sender_comp_id):
-        logging.info(
-            "Received login request for %s / %s" % (sender_comp_id, target_comp_id)
-        )
+        """
+        self.log.info("on_connect")
+
+    async def on_disconnect(self):
+        """
+        (AppEvent) Underlying socket disconnected
+
+        """
+        self.log.info("on_disconnect")
+
+    async def on_logon(self, is_healthy: bool):
+        """
+        (AppEvent) Logon(35=A) received from peer
+
+        Args:
+            is_healthy: True - if connection_state is ACTIVE
+        """
+        self.log.info("on_logon")
+
+    async def on_logout(self):
+        """
+        (AppEvent) Logout(35=5) received from peer
+
+        Args:
+            msg:
+
+        """
+        self.log.info("on_logout")
+
+    async def should_replay(self, historical_replay_msg: FIXMessage) -> bool:
+        """
+        (AppLevel) Checks if historical_replay_msg from Journaler should be replayed
+
+        Args:
+            historical_replay_msg: message from Journaler log
+
+        Returns: True - replay, False - msg skipped (replaced by SequenceReset(35=4))
+
+        """
         return True
 
-    async def on_connect(self, connection: FIXConnectionHandler):
-        logging.info("Accepted new connection from %s" % (connection.address(),))
+    async def on_state_change(self, connection_state: ConnectionState):
+        """
+        (AppEvent) On ConnectionState change
 
-        # register to receive message notifications on the session
-        #  which has just been created
-        connection.add_message_handler(
-            self.on_login, MessageDirection.OUTBOUND, self.server.protocol.msgtype.LOGON
-        )
-        connection.add_message_handler(
-            self.on_new_order,
-            MessageDirection.INBOUND,
-            self.server.protocol.msgtype.NEWORDERSINGLE,
-        )
+        Args:
+            connection_state: new connection state
+        """
+        self.log.info("on_state_change")
 
-    async def on_disconnect(self, connection: FIXConnectionHandler):
-        logging.info("%s has disconnected" % (connection.address(),))
+    async def on_message(self, msg: FIXMessage):
+        """
+        (AppEvent) Business message was received
 
-        # we need to clean up our handlers, since this session is disconnected now
-        connection.remove_message_handler(
-            self.on_login, MessageDirection.OUTBOUND, self.server.protocol.msgtype.LOGON
-        )
-        connection.remove_message_handler(
-            self.on_new_order,
-            MessageDirection.INBOUND,
-            self.server.protocol.msgtype.NEWORDERSINGLE,
-        )
+        Typically excludes session messages
 
-    async def on_login(self, connection_handler: FIXConnectionHandler, msg: FIXMessage):
-        logging.info(
-            "onLogin [" + msg[FTag.SenderCompID] + "] <---- " + msg[FTag.MsgType]
-        )
+        Args:
+            msg:
 
-    async def on_new_order(self, connection: FIXConnectionHandler, request: FIXMessage):
+        """
+        if msg.msg_type == FMsg.NEWORDERSINGLE:
+            await self.on_new_order(msg)
+        else:
+            self.log.debug(f"on_message: app msg skipped: {msg}")
+
+    async def on_new_order(self, msg: FIXMessage):
         try:
-            side = Side(int(request.get(FTag.Side)))
-            logging.debug(
-                "<--- [%s] %s: %s %s %s@%s"
-                % (
-                    request.get(FTag.MsgType),
-                    request.get(FTag.ClOrdID),
-                    request.get(FTag.Symbol),
-                    side.name,
-                    request.get(FTag.OrderQty),
-                    request.get(FTag.Price),
-                )
+            msg = FIXMessage(
+                FMsg.EXECUTIONREPORT,
+                {
+                    FTag.Price: msg.get(FTag.Price, 0),
+                    FTag.OrderQty: msg[FTag.OrderQty],
+                    FTag.Symbol: msg.get(FTag.Symbol),
+                    FTag.Account: msg[1],  # tag=1 (not index!)
+                    FTag.OrdStatus: FOrdStatus.NEW,
+                    FTag.ExecType: FExecType.NEW,
+                    FTag.LeavesQty: "0",
+                    FTag.Side: msg.get(FTag.Side),
+                    FTag.ClOrdID: msg.get(FTag.ClOrdID),
+                },
             )
-
-            # respond with an ExecutionReport Ack
-            msg = FIXMessage(FMsg.EXECUTIONREPORT)
-            msg.set(FTag.Price, request.get(FTag.Price))
-            msg.set(FTag.OrderQty, request.get(FTag.OrderQty))
-            msg.set(FTag.Symbol, request.get(FTag.OrderQty))
-
-            msg.set(FTag.SecurityID, "GB00BH4HKS39")
-            msg.set(FTag.SecurityIDSource, "4")
-            msg.set(FTag.Symbol, request.get(FTag.Symbol))
-            msg.set(FTag.Account, request.get(FTag.Account))
-            msg.set(FTag.HandlInst, "1")
-            msg.set(FTag.OrdStatus, "0")
-            msg.set(FTag.ExecType, "0")
-            msg.set(FTag.LeavesQty, "0")
-            msg.set(FTag.Side, request.get(FTag.Side))
-            msg.set(FTag.ClOrdID, request.get(FTag.ClOrdID))
-            msg.set(FTag.Currency, request.get(FTag.Currency))
-
-            await connection.send_msg(msg)
-
-            logging.debug(
-                "---> [%s] %s: %s %s %s@%s"
-                % (
-                    msg.msg_type,
-                    msg.get(FTag.ClOrdID),
-                    request.get(FTag.Symbol),
-                    side.name,
-                    request.get(FTag.OrderQty),
-                    request.get(FTag.Price),
-                )
-            )
+            await self.send_msg(msg)
 
         except Exception as e:
             msg = FIXMessage(FMsg.EXECUTIONREPORT)
-            msg.set(FTag.OrdStatus, "4")
-            msg.set(FTag.ExecType, "4")
+            msg.set(FTag.OrdStatus, FOrdStatus.REJECTED)
+            msg.set(FTag.ExecType, FExecType.REJECTED)
             msg.set(FTag.LeavesQty, "0")
             msg.set(FTag.Text, str(e))
-            msg.set(FTag.ClOrdID, request.get(FTag.ClOrdID))
+            msg.set(FTag.ClOrdID, msg.get(FTag.ClOrdID))
+            await self.send_msg(msg)
 
-            await connection.send_msg(msg)
+
+async def main():
+    server = Server()
+    await server.connect()
 
 
 if __name__ == "__main__":
@@ -132,7 +141,4 @@ if __name__ == "__main__":
         level=logging.DEBUG,
         format="%(asctime)s [%(filename)20s:%(lineno)-4s] %(levelname)5s - %(message)s",
     )
-    loop = asyncio.get_event_loop()
-    server = Server()
-    asyncio.run(server.start("localhost", 9898))
-    loop.run_forever()
+    asyncio.run(main())

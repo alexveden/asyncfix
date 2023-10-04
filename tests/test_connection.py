@@ -252,12 +252,8 @@ async def test_connection_logon_low_seq_num_by_acceptor(fix_connection):
     ft.set_next_num(num_out=4)
     await ft.process_msg_acceptor()
     assert len(ft.initiator_sent) == 2
-    assert len(ft.acceptor_sent) == 2
+    assert len(ft.acceptor_sent) == 1
     assert ft.acceptor_sent_query((35, 34), 0) == {FTag.MsgType: FMsg.LOGON, "34": "4"}
-    assert ft.acceptor_sent_query((35, 34), 1) == {
-        FTag.MsgType: FMsg.TESTREQUEST,
-        "34": "5",
-    }
     assert ft.initiator_sent_query((35, 58)) == {
         FTag.MsgType: FMsg.LOGOUT,
         "58": "MsgSeqNum is too low, expected 10, got 4",
@@ -826,7 +822,7 @@ async def test_connection_init_launch_tasks(fix_connection):
         assert connection.connection_role == ConnectionRole.UNKNOWN
         assert isinstance(connection._codec.protocol, FIXProtocol44)
         assert not connection._connection_was_active
-        assert connection._heartbeat_period == 33
+        assert connection.heartbeat_period == 33
         assert connection._host == "localhost"
         assert connection._port == 64444
         assert connection._socket_reader is None
