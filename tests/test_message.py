@@ -259,9 +259,16 @@ def test_dict_equals():
         } == msg
 
 
-def test_query_equals():
+def test_query():
     msg = FIXMessage(
-        "AB", {11: "clordis", "1": "account", FTag.Price: 21.21, FTag.OrderQty: 2}
+        "AB",
+        {
+            11: "clordis",
+            "1": "account",
+            FTag.Price: 21.21,
+            FTag.OrderQty: 2,
+            21238: "test",
+        },
     )
     assert msg[11] == "clordis"
     assert msg[FTag.Account] == "account"
@@ -273,5 +280,6 @@ def test_query_equals():
         "1": "account",
         FTag.Price: "21.21",
         FTag.OrderQty: "2",
+        "21238": "test",
     } == msg.query()
     assert {FTag.ClOrdID: "clordis", FTag.Account: "account"} != msg.query(12, 1)
