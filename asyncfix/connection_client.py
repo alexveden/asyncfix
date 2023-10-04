@@ -3,6 +3,7 @@ import logging
 
 from asyncfix.connection import AsyncFIXConnection, ConnectionState
 from asyncfix.journaler import Journaler
+from asyncfix.errors import FIXConnectionError
 from asyncfix.protocol import FIXProtocolBase
 
 
@@ -30,9 +31,13 @@ class AsyncFIXClient(AsyncFIXConnection):
         )
 
     async def connect(self):
-        assert self.connection_state == ConnectionState.DISCONNECTED
+        if self.socket_reader:
+            raise FIXConnectionError("Socket already connected")
+
         self.socket_reader, self.socket_writer = await asyncio.open_connection(
             self._host, self._port
         )
-        self.connection_state = ConnectionState.CONNECTED
+
+        self.connection_state = ConnectionState.NETWORK_CONN_ESTABLISHED
+
         await self.on_connect()

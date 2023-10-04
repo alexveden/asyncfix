@@ -15,7 +15,7 @@ from asyncfix.errors import FIXConnectionError
 from asyncfix.journaler import Journaler
 from asyncfix.message import MessageDirection
 from asyncfix.protocol import FIXProtocol44, FIXSchema
-from asyncfix.protocol.fix_tester import FIXTester
+from asyncfix import FIXTester
 from asyncfix.protocol.order_single import FIXNewOrderSingle
 
 TEST_DIR = os.path.abspath(os.path.dirname(__file__))

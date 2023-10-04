@@ -9,7 +9,7 @@ import pytest
 from asyncfix import FMsg, FTag
 from asyncfix.errors import FIXError
 from asyncfix.protocol.common import FExecType, FOrdSide, FOrdStatus, FOrdType
-from asyncfix.protocol.fix_tester import FIXTester
+from asyncfix import FIXTester
 from asyncfix.protocol.order_single import FIXNewOrderSingle
 from asyncfix.protocol.schema import FIXSchema
 

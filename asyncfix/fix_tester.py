@@ -6,8 +6,8 @@ from asyncfix.connection import AsyncFIXConnection, ConnectionState
 from asyncfix.journaler import Journaler
 from asyncfix.protocol import FIXProtocol44, FIXSchema
 
-from .common import FExecType, FOrdStatus
-from .order_single import FIXNewOrderSingle
+from asyncfix.protocol.common import FExecType, FOrdStatus
+from asyncfix.protocol.order_single import FIXNewOrderSingle
 
 
 class FIXTester:
