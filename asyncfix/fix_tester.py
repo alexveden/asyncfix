@@ -5,7 +5,6 @@ from asyncfix import FIXMessage, FMsg, FTag
 from asyncfix.connection import AsyncFIXConnection, ConnectionState
 from asyncfix.journaler import Journaler
 from asyncfix.protocol import FIXProtocol44, FIXSchema
-
 from asyncfix.protocol.common import FExecType, FOrdStatus
 from asyncfix.protocol.order_single import FIXNewOrderSingle
 

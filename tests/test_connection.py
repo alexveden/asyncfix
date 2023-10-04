@@ -9,13 +9,12 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 import pytest_asyncio
 
-from asyncfix import FIXMessage, FMsg, FTag
+from asyncfix import FIXMessage, FIXTester, FMsg, FTag
 from asyncfix.connection import AsyncFIXConnection, ConnectionRole, ConnectionState
 from asyncfix.errors import FIXConnectionError
 from asyncfix.journaler import Journaler
 from asyncfix.message import MessageDirection
 from asyncfix.protocol import FIXProtocol44, FIXSchema
-from asyncfix import FIXTester
 from asyncfix.protocol.order_single import FIXNewOrderSingle
 
 TEST_DIR = os.path.abspath(os.path.dirname(__file__))

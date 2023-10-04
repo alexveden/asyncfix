@@ -7,7 +7,11 @@ from asyncfix.journaler import Journaler
 from asyncfix.protocol import FIXProtocolBase
 
 
-class AsyncFIXClient(AsyncFIXConnection):
+class AsyncFIXDummyServer(AsyncFIXConnection):
+    """
+    Simple server which supports only single connection (just for testing)
+    """
+
     def __init__(
         self,
         protocol: FIXProtocolBase,
@@ -31,16 +35,36 @@ class AsyncFIXClient(AsyncFIXConnection):
             logger=logger,
             start_tasks=start_tasks,
         )
-        self._connection_role = ConnectionRole.INITIATOR
+        self._connection_role = ConnectionRole.ACCEPTOR
 
     async def connect(self):
+        """
+        Starts the server and infinitely runs it
+
+        Raises:
+            FIXConnectionError: when already connected
+
+        """
         if self._socket_reader:
-            raise FIXConnectionError("Socket already connected")
+            raise FIXConnectionError("Server already working")
 
-        self._socket_reader, self._socket_writer = await asyncio.open_connection(
-            self._host, self._port
-        )
+        server = await asyncio.start_server(self._handle_accept, self._host, self._port)
+        async with server:
+            await server.serve_forever()
 
+    async def _handle_accept(
+        self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter
+    ):
+        if self._socket_writer:
+            self.log.info("Multiple connections are not allowed for dummy server")
+
+            writer.close()
+            await writer.wait_closed()
+
+        self._socket_reader = reader
+        self._socket_writer = writer
         self._connection_state = ConnectionState.NETWORK_CONN_ESTABLISHED
+        addr = writer.get_extra_info("peername")
+        self.log.info("Connection from %s" % repr(addr))
 
         await self.on_connect()

@@ -6,10 +6,9 @@ from math import nan
 
 import pytest
 
-from asyncfix import FMsg, FTag
+from asyncfix import FIXTester, FMsg, FTag
 from asyncfix.errors import FIXError
 from asyncfix.protocol.common import FExecType, FOrdSide, FOrdStatus, FOrdType
-from asyncfix import FIXTester
 from asyncfix.protocol.order_single import FIXNewOrderSingle
 from asyncfix.protocol.schema import FIXSchema
 

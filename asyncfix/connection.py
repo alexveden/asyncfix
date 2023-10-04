@@ -170,8 +170,8 @@ class AsyncFIXConnection:
         self._message_last_time = 0.0
         self._max_seq_num_resend = 0
         self._test_req_id = None
-        self._socket_reader = None
-        self._socket_writer = None
+        self._socket_reader: asyncio.StreamReader = None
+        self._socket_writer: asyncio.StreamWriter = None
         self._host = host
         self._port = int(port)
 
