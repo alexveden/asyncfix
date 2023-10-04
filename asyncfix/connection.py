@@ -321,11 +321,18 @@ class AsyncFIXConnection:
         """
         Main socket reader task (decode raw messages and calls _process_message)
         """
+        last_connect = time.time()
+
         while True:
             try:
                 if not self._socket_reader:
                     # Socket was not connected, just wait
                     await asyncio.sleep(1)
+                    if self.connection_role == ConnectionRole.INITIATOR:
+                        if time.time() - last_connect > self.heartbeat_period * 1.5:
+                            self.log.debug('Trying reconnect')
+                            last_connect = time.time()
+                            await self.connect()
                     continue
 
                 msg = await self._socket_reader.read(4096)
@@ -359,6 +366,9 @@ class AsyncFIXConnection:
                     "socket_read_task: connection has been closed %s" % (why,)
                 )
                 await self.disconnect(ConnectionState.DISCONNECTED_BROKEN_CONN)
+
+                # Reset reconnect time
+                last_connect = time.time()
                 continue
             except Exception:
                 self.log.exception("socket_read_task: exception")

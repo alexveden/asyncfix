@@ -37,10 +37,17 @@ class AsyncFIXClient(AsyncFIXConnection):
         if self._socket_reader:
             raise FIXConnectionError("Socket already connected")
 
-        self._socket_reader, self._socket_writer = await asyncio.open_connection(
-            self._host, self._port
-        )
+        try:
+            self._socket_reader, self._socket_writer = await asyncio.open_connection(
+                self._host, self._port
+            )
+        except Exception as exc:
+            self.log.info(f"Connection error (waiting reconnect): {repr(exc)}")
+            self._connection_state = ConnectionState.DISCONNECTED_BROKEN_CONN
+        else:
+            self._connection_state = ConnectionState.NETWORK_CONN_ESTABLISHED
+            await self.on_connect()
 
-        self._connection_state = ConnectionState.NETWORK_CONN_ESTABLISHED
 
-        await self.on_connect()
+
+

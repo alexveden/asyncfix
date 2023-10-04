@@ -109,14 +109,17 @@ class Server(AsyncFIXDummyServer):
                 FMsg.EXECUTIONREPORT,
                 {
                     FTag.Price: msg.get(FTag.Price, 0),
-                    FTag.OrderQty: msg[FTag.OrderQty],
                     FTag.Symbol: msg.get(FTag.Symbol),
                     FTag.Account: msg[1],  # tag=1 (not index!)
                     FTag.OrdStatus: FOrdStatus.NEW,
                     FTag.ExecType: FExecType.NEW,
-                    FTag.LeavesQty: "0",
                     FTag.Side: msg.get(FTag.Side),
                     FTag.ClOrdID: msg.get(FTag.ClOrdID),
+                    FTag.OrderQty: msg[FTag.OrderQty],
+                    FTag.OrderID: 77,
+                    FTag.LeavesQty: "10",
+                    FTag.CumQty: "0",
+                    FTag.AvgPx: "0",
                 },
             )
             await self.send_msg(msg)

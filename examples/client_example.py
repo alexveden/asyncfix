@@ -121,6 +121,7 @@ class Client(AsyncFIXClient):
         msg = order.new_req()
         msg[FTag.AcctIDSource] = 12
         msg[21994] = "ExtraInfo"
+        self.orders[order.clord_id] = order
 
         await self.send_msg(msg)
 
