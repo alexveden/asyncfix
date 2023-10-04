@@ -183,10 +183,15 @@ async def test_connection_logon_valid(fix_connection):
 
     assert ft.initiator_sent_query((35, 34)) == {FTag.MsgType: FMsg.LOGON, "34": "1"}
 
-    rmsg = await ft.reply(ft.msg_logon())
+    ft.reset_messages()
+    assert not ft.acceptor_sent
+    assert not ft.initiator_sent
+    assert not ft.acceptor_rcv_que
+
+    await ft.reply(ft.msg_logon())
     assert conn._connection_state == ConnectionState.ACTIVE
     # FIX Tester.reply() - simulated server response (SenderCompID/TargetCompID swapped)
-    assert rmsg.query(FTag.SenderCompID, FTag.TargetCompID) == {
+    assert ft.acceptor_sent_query((FTag.SenderCompID, FTag.TargetCompID)) == {
         FTag.TargetCompID: "INITIATOR",
         FTag.SenderCompID: "ACCEPTOR",
     }
@@ -388,10 +393,7 @@ async def test_connection__process_resend_req_synth(fix_connection):
 
         conn._session.next_num_out = 20
 
-        resend_req = FIXMessage(
-            FMsg.RESENDREQUEST,
-            {FTag.BeginSeqNo: 1, FTag.EndSeqNo: "0"},
-        )
+        resend_req = ft.msg_resend_request(1, end_seq_no=0)
         conn._connection_state = ConnectionState.RESENDREQ_HANDLING
         await conn._process_resend(resend_req)
         conn._connection_state = ConnectionState.ACTIVE
@@ -1201,7 +1203,7 @@ async def test_disconnect(fix_connection_socket, fix_msg):
         assert conn._test_req_id is None
         assert conn._message_last_time == 0
         assert conn._max_seq_num_resend == 0
-        
+
         # already disconnected, skipped
         mock_send_msg.reset_mock()
         await conn.disconnect(
@@ -1291,6 +1293,7 @@ async def test_heartbeat_task__msg_last_time_disconnect(fix_connection_socket, f
 
         def _disconn_side(*args):
             conn._message_last_time = 0
+
         mock_disconnect.side_effect = _disconn_side
 
         await conn.heartbeat_timer_task()
@@ -1298,7 +1301,9 @@ async def test_heartbeat_task__msg_last_time_disconnect(fix_connection_socket, f
         assert mock_sleep.call_count == 3
 
         assert mock_disconnect.call_count == 1
-        assert mock_disconnect.call_args[0] == (ConnectionState.DISCONNECTED_BROKEN_CONN,)
+        assert mock_disconnect.call_args[0] == (
+            ConnectionState.DISCONNECTED_BROKEN_CONN,
+        )
         assert mock_disconnect.call_args[1] == {}
 
         assert not mock_send_test_req.called
@@ -1321,6 +1326,7 @@ async def test_heartbeat_task__test_req_timeout(fix_connection_socket, fix_msg):
 
         def _disconn_side(*args):
             conn._test_req_id = None
+
         mock_disconnect.side_effect = _disconn_side
 
         await conn.heartbeat_timer_task()
@@ -1328,7 +1334,9 @@ async def test_heartbeat_task__test_req_timeout(fix_connection_socket, fix_msg):
         assert mock_sleep.call_count == 3
 
         assert mock_disconnect.call_count == 1
-        assert mock_disconnect.call_args[0] == (ConnectionState.DISCONNECTED_BROKEN_CONN,)
+        assert mock_disconnect.call_args[0] == (
+            ConnectionState.DISCONNECTED_BROKEN_CONN,
+        )
         assert mock_disconnect.call_args[1] == {}
 
         assert not mock_send_test_req.called
@@ -1351,6 +1359,7 @@ async def test_heartbeat_task__test_req_sent(fix_connection_socket, fix_msg):
 
         def _test_req_side(*args):
             conn._test_req_id = time.time()
+
         mock_send_test_req.side_effect = _test_req_side
 
         await conn.heartbeat_timer_task()
@@ -1362,3 +1371,18 @@ async def test_heartbeat_task__test_req_sent(fix_connection_socket, fix_msg):
         assert conn._message_last_time != 0
 
 
+@pytest.mark.asyncio
+async def test_process_logout(fix_connection):
+    conn: AsyncFIXConnection = fix_connection
+    ft = FIXTester(schema=FIX_SCHEMA, connection=conn)
+
+    conn._connection_state = ConnectionState.ACTIVE
+
+    with (
+        patch.object(conn, "on_logout") as mock_on_logout,
+        patch.object(conn, "disconnect") as mock_disconnect,
+    ):
+        await conn._process_logout(ft.msg_logout())
+
+        assert mock_on_logout.called
+        assert mock_disconnect.called

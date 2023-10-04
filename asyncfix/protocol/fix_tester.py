@@ -171,6 +171,8 @@ class FIXTester:
         if self.schema:
             self.schema.validate(decoded_msg)
 
+        self.acceptor_sent.append(decoded_msg)
+
         await self.conn_init._process_message(decoded_msg, raw_msg)
 
         return decoded_msg
