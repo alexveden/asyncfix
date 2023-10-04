@@ -11,7 +11,6 @@ class FIXSession:
         self.target_comp_id = target_comp_id
 
         self.next_num_out = None
-        self.messages = None
         self.next_num_in = None
 
         self.reset_msgs()
@@ -40,7 +39,6 @@ class FIXSession:
     def reset_msgs(self):
         self.next_num_out = 1
         self.next_num_in = 1
-        self.messages = {MessageDirection.OUTBOUND: {}, MessageDirection.INBOUND: {}}
 
     def validate_comp_ids(self, target_comp_id: str, sender_comp_id: str) -> bool:
         return (
@@ -52,16 +50,6 @@ class FIXSession:
         n = str(self.next_num_out)
         self.next_num_out += 1
         return n
-
-    def validate_recv_seq_no(self, seq_no):
-        if self.next_num_in != int(seq_no):
-            logging.warning(
-                "SeqNum from client unexpected (Rcvd: %s Expected: %s)"
-                % (seq_no, self.next_num_in)
-            )
-            return (False, self.next_num_in)
-        else:
-            return (True, seq_no)
 
     def reset_seq_num(self):
         self.next_num_out = 1
@@ -87,7 +75,3 @@ class FIXSession:
         self.next_num_in = seq_no + 1
 
         return seq_no
-
-    def persist_msg(self, msg, direction):
-        seqNo = msg[FTag.MsgSeqNum]
-        self.messages[direction][seqNo] = msg
