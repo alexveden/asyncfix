@@ -169,7 +169,7 @@ class FIXContainer(object):
 
     def query(self, *tags: tuple[FTag | str | int]) -> dict[FTag | str, str]:
         result = {}
-        if tags is None:
+        if not tags:
             tags = self.tags
 
         for t in tags:
