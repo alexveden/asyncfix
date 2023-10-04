@@ -2,21 +2,15 @@ import asyncio
 import logging
 
 from asyncfix import (
+    AsyncFIXDummyServer,
+    ConnectionState,
     FIXMessage,
+    FIXTester,
     FMsg,
     FTag,
-    AsyncFIXDummyServer,
     Journaler,
-    FIXTester,
-    ConnectionState,
 )
-
-from asyncfix.protocol import (
-    FIXProtocol44,
-    FIXNewOrderSingle,
-    FExecType,
-    FOrdStatus,
-)
+from asyncfix.protocol import FExecType, FIXNewOrderSingle, FIXProtocol44, FOrdStatus
 
 
 class Server(AsyncFIXDummyServer):
@@ -104,6 +98,13 @@ class Server(AsyncFIXDummyServer):
             self.log.debug(f"on_message: app msg skipped: {msg}")
 
     async def on_new_order(self, msg: FIXMessage):
+        """
+        Reply execution report on incoming order request
+
+        Args:
+            msg:
+
+        """
         try:
             msg = FIXMessage(
                 FMsg.EXECUTIONREPORT,
@@ -136,6 +137,8 @@ class Server(AsyncFIXDummyServer):
 
 async def main():
     server = Server()
+
+    # Works forever
     await server.connect()
 
 

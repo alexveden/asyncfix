@@ -1249,6 +1249,30 @@ async def test_heartbeat_task__notconnected_socket(fix_connection_socket, fix_ms
 
 
 @pytest.mark.asyncio
+async def test_socket_read_task__socket_reconnect(fix_connection_socket, fix_msg):
+    conn: AsyncFIXConnection = fix_connection_socket
+    conn._connection_state = ConnectionState.AWAITING_CONNECTION
+    conn._connection_role = ConnectionRole.INITIATOR
+
+    with (
+        patch.object(conn, "disconnect") as mock_disconnect,
+        patch("asyncio.sleep") as mock_sleep,
+        patch.object(conn, "connect") as mock_connect,
+    ):
+        mock_sleep.side_effect = [1, asyncio.CancelledError]
+
+        conn._socket_reader = None
+        conn._heartbeat_period = -1  # let connect call immediately
+        await conn.socket_read_task()
+
+        assert mock_sleep.call_count == 2
+        assert mock_sleep.call_args[0] == (1,)
+
+        assert not mock_disconnect.called
+        assert mock_connect.await_count == 1
+
+
+@pytest.mark.asyncio
 async def test_heartbeat_task__idle_w_exception(fix_connection_socket, fix_msg):
     conn: AsyncFIXConnection = fix_connection_socket
     conn._connection_state = ConnectionState.AWAITING_CONNECTION

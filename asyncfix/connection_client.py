@@ -47,7 +47,3 @@ class AsyncFIXClient(AsyncFIXConnection):
         else:
             self._connection_state = ConnectionState.NETWORK_CONN_ESTABLISHED
             await self.on_connect()
-
-
-
-

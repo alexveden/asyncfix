@@ -1,12 +1,8 @@
 import asyncio
 import logging
-from asyncfix import FIXMessage, FTag, FMsg, AsyncFIXClient, Journaler, ConnectionState
-from asyncfix.protocol import (
-    FIXProtocol44,
-    FIXNewOrderSingle,
-    FOrdSide,
-    FOrdType,
-)
+
+from asyncfix import AsyncFIXClient, ConnectionState, FIXMessage, FMsg, FTag, Journaler
+from asyncfix.protocol import FIXNewOrderSingle, FIXProtocol44, FOrdSide, FOrdType
 
 
 class Client(AsyncFIXClient):
@@ -102,9 +98,12 @@ class Client(AsyncFIXClient):
         if msg.msg_type == FMsg.EXECUTIONREPORT:
             await self.on_execution_report(msg)
         else:
-            self.log.debug(f'on_message: app msg skipped: {msg}')
+            self.log.debug(f"on_message: app msg skipped: {msg}")
 
     async def send_order(self):
+        """
+        Sends test order
+        """
         self.clord_id = self.clord_id + 1
         order = FIXNewOrderSingle(
             f"test-order-{self.clord_id}",
@@ -126,16 +125,19 @@ class Client(AsyncFIXClient):
         await self.send_msg(msg)
 
     async def on_execution_report(self, msg: FIXMessage):
+        """
+        Processes execution report
+        """
         clord_id = msg[FTag.ClOrdID]
         if clord_id in self.orders:
             order = self.orders[clord_id]
 
             order.process_execution_report(msg)
 
-            self.log.info(f'ExecutionReport: {repr(order)}')
+            self.log.info(f"ExecutionReport: {repr(order)}")
 
             if order.can_cancel():
-                self.log.debug('cancelling order')
+                self.log.debug("cancelling order")
                 cxl_req = order.cancel_req()
                 await self.send_msg(cxl_req)
         else:
@@ -149,10 +151,10 @@ async def main():
     while True:
         await asyncio.sleep(0.1)
 
+
 if __name__ == "__main__":
     logging.basicConfig(
         level=logging.DEBUG,
         format="%(asctime)s [%(filename)20s:%(lineno)-4s] %(levelname)5s - %(message)s",
     )
     asyncio.run(main())
-

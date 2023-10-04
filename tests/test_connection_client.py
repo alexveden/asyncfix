@@ -70,3 +70,35 @@ async def test_connect():
 
         with pytest.raises(FIXConnectionError, match="Socket already connected"):
             await client.connect()
+
+
+@pytest.mark.asyncio
+async def test_connect_exception():
+    log = MagicMock()
+    j = Journaler()
+    client = AsyncFIXClient(
+        FIXProtocol44(),
+        "sender",
+        "target",
+        j,
+        "local",
+        777,
+        heartbeat_period=12,
+        logger=log,
+        start_tasks=False,
+    )
+
+    assert client.connection_state == ConnectionState.DISCONNECTED_NOCONN_TODAY
+    with (
+        patch("asyncio.open_connection") as mock_open_connection,
+        patch.object(client, "on_connect") as mock_on_connect,
+    ):
+        mock_open_connection.side_effect = ValueError
+
+        await client.connect()
+        assert mock_open_connection.await_count == 1
+        assert client.connection_state == ConnectionState.DISCONNECTED_BROKEN_CONN
+        assert client._socket_reader is None
+        assert client._socket_writer is None
+
+        assert mock_on_connect.await_count == 0

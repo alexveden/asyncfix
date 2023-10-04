@@ -330,7 +330,7 @@ class AsyncFIXConnection:
                     await asyncio.sleep(1)
                     if self.connection_role == ConnectionRole.INITIATOR:
                         if time.time() - last_connect > self.heartbeat_period * 1.5:
-                            self.log.debug('Trying reconnect')
+                            self.log.debug("Trying reconnect")
                             last_connect = time.time()
                             await self.connect()
                     continue
