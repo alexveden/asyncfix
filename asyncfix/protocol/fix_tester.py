@@ -36,8 +36,8 @@ class FIXTester:
             j = Journaler()
             self.conn_accept = AsyncFIXConnection(
                 FIXProtocol44(),
-                target_comp_id=self.conn_init.session.sender_comp_id,
-                sender_comp_id=self.conn_init.session.target_comp_id,
+                target_comp_id=self.conn_init._session.sender_comp_id,
+                sender_comp_id=self.conn_init._session.target_comp_id,
                 journaler=j,
                 host="localhost",
                 port="64444",
@@ -45,37 +45,37 @@ class FIXTester:
                 start_tasks=False,
                 logger=self.conn_init.log,
             )
-            self.conn_accept.connection_state = ConnectionState.NETWORK_CONN_ESTABLISHED
-            self.conn_accept.session.next_num_out = connection.session.next_num_in
-            self.conn_accept.session.next_num_in = connection.session.next_num_out
+            self.conn_accept._connection_state = ConnectionState.NETWORK_CONN_ESTABLISHED
+            self.conn_accept._session.next_num_out = connection._session.next_num_in
+            self.conn_accept._session.next_num_in = connection._session.next_num_out
 
-            connection.socket_writer = MagicMock()
-            connection.socket_writer.write.side_effect = (
+            connection._socket_writer = MagicMock()
+            connection._socket_writer.write.side_effect = (
                 self._conn_socket_write_initiator
             )
-            connection.socket_writer.drain = AsyncMock()
-            connection.socket_writer.wait_closed = AsyncMock()
+            connection._socket_writer.drain = AsyncMock()
+            connection._socket_writer.wait_closed = AsyncMock()
 
-            self.conn_accept.socket_writer = MagicMock()
-            self.conn_accept.socket_writer.write.side_effect = (
+            self.conn_accept._socket_writer = MagicMock()
+            self.conn_accept._socket_writer.write.side_effect = (
                 self._conn_socket_write_acceptor
             )
-            self.conn_accept.socket_writer.drain = AsyncMock()
-            self.conn_accept.socket_writer.drain.side_effect = (
+            self.conn_accept._socket_writer.drain = AsyncMock()
+            self.conn_accept._socket_writer.drain.side_effect = (
                 self._conn_socket_drain_acceptor
             )
             self._socket_drain_in_coro = None
-            self.conn_accept.socket_writer.wait_closed = AsyncMock()
+            self.conn_accept._socket_writer.wait_closed = AsyncMock()
 
     def set_next_num(self, num_in=None, num_out=None):
         if num_in is not None:
             assert isinstance(num_in, int)
             assert num_in > 0
-            self.conn_accept.session.next_num_in = num_in
+            self.conn_accept._session.next_num_in = num_in
         if num_out is not None:
             assert isinstance(num_out, int)
             assert num_out > 0
-            self.conn_accept.session.next_num_out = num_out
+            self.conn_accept._session.next_num_out = num_out
 
     def reset_messages(self):
         self.initiator_sent.clear()
@@ -118,14 +118,14 @@ class FIXTester:
         return self.initiator_sent[index].query(*tags)
 
     def _conn_socket_write_initiator(self, data):
-        msg, _, _ = self.conn_init.codec.decode(data, silent=False)
+        msg, _, _ = self.conn_init._codec.decode(data, silent=False)
         if self.schema:
             self.schema.validate(msg)
         self.initiator_sent.append(msg)
         self.acceptor_rcv_que.append((msg, data))
 
     def _conn_socket_write_acceptor(self, data):
-        msg, _, _ = self.conn_accept.codec.decode(data, silent=False)
+        msg, _, _ = self.conn_accept._codec.decode(data, silent=False)
         if self.schema:
             self.schema.validate(msg)
         self.acceptor_sent.append(msg)
@@ -159,14 +159,14 @@ class FIXTester:
         if self.schema:
             self.schema.validate(msg)
 
-        raw_msg = self.conn_accept.codec.encode(
+        raw_msg = self.conn_accept._codec.encode(
             msg,
-            self.conn_accept.session,
+            self.conn_accept._session,
             raw_seq_num=FTag.MsgSeqNum in msg,
         ).encode()
 
         # Pretend the message was transfered to initiator
-        decoded_msg, _, _ = self.conn_init.codec.decode(raw_msg, silent=False)
+        decoded_msg, _, _ = self.conn_init._codec.decode(raw_msg, silent=False)
 
         if self.schema:
             self.schema.validate(decoded_msg)

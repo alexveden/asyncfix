@@ -112,6 +112,16 @@ class ConnectionRole(Enum):
 
 
 class AsyncFIXConnection:
+    """
+    AsyncFIX bidirectional connection
+
+    Attributes:
+        connection_state: Current connection_state
+        connection_role: Current connection_role ACCEPTOR | INITIATOR
+        log: logger
+
+    """
+
     def __init__(
         self,
         protocol: FIXProtocolBase,
@@ -124,31 +134,58 @@ class AsyncFIXConnection:
         logger: logging.Logger | None = None,
         start_tasks: bool = True,
     ):
-        self.codec = Codec(protocol)
-        self.connection_state = ConnectionState.DISCONNECTED_NOCONN_TODAY
-        self.connection_was_active = False
-        self.connection_role = ConnectionRole.UNKNOWN
-        self.journaler = journaler
-        self.session: FIXSession = journaler.create_or_load(
+        """
+        AsyncFIX bidirectional connection
+
+        Args:
+            protocol: FIX protocol
+            sender_comp_id: initiator SenderCompID
+            target_comp_id: acceptor TargetCompID
+            journaler: fix messages journaling engine
+            host: endpoint host
+            port: endpoint port
+            heartbeat_period: heartbeat interval in seconds
+            logger: logger instance (by default logging.getLogger())
+            start_tasks: True - starts socket/heartbeat asyncio tasks, False - no tasks
+                        (this is useful in debugging / testing)
+        """
+        if not logger:
+            self.log: logging.Logger = logging.getLogger()
+        else:
+            self.log: logging.Logger = logger
+
+        # Private attributes
+        self._connection_state: ConnectionState = (
+            ConnectionState.DISCONNECTED_NOCONN_TODAY
+        )
+        self._connection_role: ConnectionRole = ConnectionRole.UNKNOWN
+        self._codec = Codec(protocol)
+        self._journaler: Journaler = journaler
+        self._session: FIXSession = journaler.create_or_load(
             target_comp_id, sender_comp_id
         )
-        self.msg_buffer = b""
-        self.heartbeat_period = heartbeat_period
-        self.message_last_time = 0.0
+        self._connection_was_active = False
+        self._msg_buffer = b""
+        self._heartbeat_period = heartbeat_period
+        self._message_last_time = 0.0
         self._max_seq_num_resend = 0
-        self.test_req_id = None
-        self.socket_reader = None
-        self.socket_writer = None
-        self.host = host
-        self.port = port
-        if not logger:
-            self.log = logging.getLogger()
-        else:
-            self.log = logger
+        self._test_req_id = None
+        self._socket_reader = None
+        self._socket_writer = None
+        self._host = host
+        self._port = port
 
         if start_tasks:
             asyncio.create_task(self.socket_read_task())
             asyncio.create_task(self.heartbeat_timer_task())
+
+    @property
+    def connection_state(self) -> ConnectionState:
+        return self._connection_state
+
+    @property
+    def connection_role(self) -> ConnectionRole:
+        return self._connection_role
 
     @property
     def protocol(self) -> FIXProtocolBase:
@@ -157,7 +194,7 @@ class AsyncFIXConnection:
 
         Returns:
         """
-        return self.codec.protocol
+        return self._codec.protocol
 
     async def connect(self):
         """
@@ -182,9 +219,9 @@ class AsyncFIXConnection:
             logout_message: if not None, sends Logout() message to peer with
                             (58=logout_message)
         """
-        if self.connection_state > ConnectionState.DISCONNECTED_BROKEN_CONN:
+        if self._connection_state > ConnectionState.DISCONNECTED_BROKEN_CONN:
             assert disconn_state <= ConnectionState.DISCONNECTED_BROKEN_CONN
-            self.test_req_id = None
+            self._test_req_id = None
 
             if logout_message is not None:
                 msg = FIXMessage(FMsg.LOGOUT)
@@ -194,11 +231,11 @@ class AsyncFIXConnection:
                 await self.send_msg(msg)
 
             self.log.info(f"Client disconnected, with state: {repr(disconn_state)}")
-            if self.socket_writer:
-                self.socket_writer.close()
-                await self.socket_writer.wait_closed()
-            self.socket_writer = None
-            self.socket_reader = None
+            if self._socket_writer:
+                self._socket_writer.close()
+                await self._socket_writer.wait_closed()
+            self._socket_writer = None
+            self._socket_reader = None
             self._state_set(disconn_state)
             await self.on_disconnect()
 
@@ -213,12 +250,12 @@ class AsyncFIXConnection:
             FIXConnectionError: raised if connection state does not allow sending
 
         """
-        if self.connection_state < ConnectionState.NETWORK_CONN_ESTABLISHED:
+        if self._connection_state < ConnectionState.NETWORK_CONN_ESTABLISHED:
             raise FIXConnectionError(
                 "Connection must be established before sending any "
-                f"FIX message, got state: {repr(self.connection_state)}"
+                f"FIX message, got state: {repr(self._connection_state)}"
             )
-        elif self.connection_state == ConnectionState.NETWORK_CONN_ESTABLISHED:
+        elif self._connection_state == ConnectionState.NETWORK_CONN_ESTABLISHED:
             # INITIATOR mode, connection was just established
             if msg.msg_type != FMsg.LOGON and msg.msg_type != FMsg.LOGOUT:
                 raise FIXConnectionError(
@@ -226,11 +263,11 @@ class AsyncFIXConnection:
                     f" connection, got {repr(msg)}"
                 )
             self._state_set(ConnectionState.LOGON_INITIAL_SENT)
-            self.connection_role = ConnectionRole.INITIATOR
+            self._connection_role = ConnectionRole.INITIATOR
         else:
-            if self.connection_role == ConnectionRole.INITIATOR:
+            if self._connection_role == ConnectionRole.INITIATOR:
                 if (
-                    self.connection_state == ConnectionState.LOGON_INITIAL_SENT
+                    self._connection_state == ConnectionState.LOGON_INITIAL_SENT
                     and msg.msg_type != FMsg.LOGOUT
                 ):
                     raise FIXConnectionError(
@@ -238,24 +275,41 @@ class AsyncFIXConnection:
                         " any additional messages before acceptor responce."
                     )
 
-        if msg.msg_type == FMsg.TESTREQUEST and self.test_req_id is None:
+        if msg.msg_type == FMsg.TESTREQUEST and self._test_req_id is None:
             raise FIXConnectionError(
                 "You must rend TestRequest() message via self.send_test_req() method in"
                 " order to get valid response handling"
             )
 
-        encoded_msg = self.codec.encode(msg, self.session).encode("utf-8")
+        encoded_msg = self._codec.encode(msg, self._session).encode("utf-8")
 
         msg_raw = encoded_msg.replace(b"\x01", b"|")
         self.log.debug(
-            f"[{self.connection_role.name}]:send_msg ({self.connection_state.name})"
+            f"[{self._connection_role.name}]:send_msg ({self._connection_state.name})"
             f" {repr(msg.msg_type)}\n\t {msg_raw.decode()}\n"
         )
 
-        self.socket_writer.write(encoded_msg)
-        await self.socket_writer.drain()
+        self._socket_writer.write(encoded_msg)
+        await self._socket_writer.drain()
 
-        self.journaler.persist_msg(encoded_msg, self.session, MessageDirection.OUTBOUND)
+        self._journaler.persist_msg(
+            encoded_msg, self._session, MessageDirection.OUTBOUND
+        )
+
+    async def send_test_req(self):
+        """
+        Sends TestRequest(35=1) and sets TestReqID for expected response from peer
+
+        Raises:
+            FIXConnectionError: if another TestRequest() is pending
+
+        """
+        if self._test_req_id is not None:
+            raise FIXConnectionError("Another test request already pending")
+
+        self._test_req_id = int(time.time())
+        test_msg = FIXMessage(FMsg.TESTREQUEST, {FTag.TestReqID: self._test_req_id})
+        await self.send_msg(test_msg)
 
     async def socket_read_task(self):
         """
@@ -263,30 +317,30 @@ class AsyncFIXConnection:
         """
         while True:
             try:
-                if not self.socket_reader:
+                if not self._socket_reader:
                     # Socket was not connected, just wait
                     await asyncio.sleep(1)
                     continue
 
-                msg = await self.socket_reader.read(4096)
+                msg = await self._socket_reader.read(4096)
                 if not msg:
                     raise ConnectionError
 
-                self.msg_buffer = self.msg_buffer + msg
+                self._msg_buffer = self._msg_buffer + msg
                 while True:
                     if (
-                        self.connection_state
+                        self._connection_state
                         <= ConnectionState.DISCONNECTED_BROKEN_CONN
                     ):
                         break
 
-                    (decoded_msg, parsed_length, raw_msg) = self.codec.decode(
-                        self.msg_buffer
+                    (decoded_msg, parsed_length, raw_msg) = self._codec.decode(
+                        self._msg_buffer
                     )
                     # self.log.debug(decoded_msg)
 
                     if parsed_length > 0:
-                        self.msg_buffer = self.msg_buffer[parsed_length:]
+                        self._msg_buffer = self._msg_buffer[parsed_length:]
 
                     if decoded_msg is None:
                         break
@@ -302,31 +356,26 @@ class AsyncFIXConnection:
                 self.log.exception("handle_read exception")
                 # raise
 
-    async def send_test_req(self):
-        if self.test_req_id is not None:
-            raise FIXConnectionError("Another test request already pending")
-
-        self.test_req_id = int(time.time())
-        test_msg = FIXMessage(FMsg.TESTREQUEST, {FTag.TestReqID: self.test_req_id})
-        await self.send_msg(test_msg)
-
     async def heartbeat_timer_task(self):
         """
         Heartbeat watcher task
         """
         while True:
             try:
-                if not self.socket_writer or not self.socket_reader:
+                if not self._socket_writer or not self._socket_reader:
                     # Socket was not connected, just wait
                     await asyncio.sleep(1)
                     continue
 
-                if self.connection_state == ConnectionState.ACTIVE:
-                    if time.time() - self.message_last_time > self.heartbeat_period - 1:
+                if self._connection_state == ConnectionState.ACTIVE:
+                    if (
+                        time.time() - self._message_last_time
+                        > self._heartbeat_period - 1
+                    ):
                         await self.send_msg(self.protocol.heartbeat())
-                        self.message_last_time = time.time()
+                        self._message_last_time = time.time()
 
-                if time.time() - self.message_last_time > self.heartbeat_period * 2:
+                if time.time() - self._message_last_time > self._heartbeat_period * 2:
                     # Dead socket probably
                     await self.disconnect(ConnectionState.DISCONNECTED_BROKEN_CONN)
 
@@ -398,7 +447,7 @@ class AsyncFIXConnection:
         """
         pass
 
-    def should_replay(self, historical_replay_msg: FIXMessage):
+    def should_replay(self, historical_replay_msg: FIXMessage) -> bool:
         """
         (AppLevel) Checks if historical_replay_msg from Journaler should be replayed
 
@@ -425,11 +474,11 @@ class AsyncFIXConnection:
 
         """
         self.log.debug(
-            f"[{self.connection_role.name}] NewState: {connection_state.name}"
+            f"[{self._connection_role.name}] NewState: {connection_state.name}"
         )
-        self.connection_state = connection_state
+        self._connection_state = connection_state
         if connection_state == ConnectionState.ACTIVE:
-            self.connection_was_active = True
+            self._connection_was_active = True
         self.on_state_change(connection_state)
 
     def _validate_intergity(self, msg: FIXMessage) -> bool:
@@ -453,7 +502,7 @@ class AsyncFIXConnection:
             # this will drop connection without a message
             return True
 
-        if not self.session.validate_comp_ids(
+        if not self._session.validate_comp_ids(
             msg[FTag.SenderCompID], msg[FTag.TargetCompID]
         ):
             # Sender/Target are reversed here
@@ -464,9 +513,9 @@ class AsyncFIXConnection:
             return "MsgSeqNum(34) tag is missing"
 
         msg_seq_num = int(msg[FTag.MsgSeqNum])
-        if msg_seq_num < self.session.next_num_in:
+        if msg_seq_num < self._session.next_num_in:
             return (
-                f"MsgSeqNum is too low, expected {self.session.next_num_in}, got"
+                f"MsgSeqNum is too low, expected {self._session.next_num_in}, got"
                 f" {msg_seq_num}"
             )
 
@@ -479,29 +528,29 @@ class AsyncFIXConnection:
         """
         assert logon_msg.msg_type == FMsg.LOGON
         assert (
-            self.connection_role == ConnectionRole.ACCEPTOR
-            or self.connection_role == ConnectionRole.INITIATOR
+            self._connection_role == ConnectionRole.ACCEPTOR
+            or self._connection_role == ConnectionRole.INITIATOR
         )
 
         msg_seq_num = int(logon_msg[FTag.MsgSeqNum])
 
-        if self.connection_role == ConnectionRole.ACCEPTOR:
-            assert self.connection_state == ConnectionState.LOGON_INITIAL_RECV
-            if msg_seq_num >= self.session.next_num_in:
+        if self._connection_role == ConnectionRole.ACCEPTOR:
+            assert self._connection_state == ConnectionState.LOGON_INITIAL_RECV
+            if msg_seq_num >= self._session.next_num_in:
                 msg_logon = FIXMessage(FMsg.LOGON)
                 msg_logon.set(FTag.EncryptMethod, logon_msg[FTag.EncryptMethod])
                 msg_logon.set(FTag.HeartBtInt, logon_msg[FTag.HeartBtInt])
                 await self.send_msg(msg_logon)
 
-        if msg_seq_num == self.session.next_num_in:
+        if msg_seq_num == self._session.next_num_in:
             self._state_set(ConnectionState.ACTIVE)
             # FIX: maybe delete!?
-            if not self.test_req_id:
+            if not self._test_req_id:
                 await self.send_test_req()
         else:
             self._state_set(ConnectionState.RECV_SEQNUM_TOO_HIGH)
 
-        await self.on_logon(self.connection_state == ConnectionState.ACTIVE)
+        await self.on_logon(self._connection_state == ConnectionState.ACTIVE)
 
     async def _check_seqnum_gaps(self, msg_seq_num: int) -> bool:
         """
@@ -514,11 +563,11 @@ class AsyncFIXConnection:
             True - no gap, MsgSeqNum is correct
             False - there is a gap, ResendRequest() sent
         """
-        if msg_seq_num > self.session.next_num_in:
-            if self.connection_state != ConnectionState.RESENDREQ_AWAITING:
+        if msg_seq_num > self._session.next_num_in:
+            if self._connection_state != ConnectionState.RESENDREQ_AWAITING:
                 resend_req = FIXMessage(
                     FMsg.RESENDREQUEST,
-                    {FTag.BeginSeqNo: self.session.next_num_in, FTag.EndSeqNo: "0"},
+                    {FTag.BeginSeqNo: self._session.next_num_in, FTag.EndSeqNo: "0"},
                 )
                 self._max_seq_num_resend = msg_seq_num
                 await self.send_msg(resend_req)
@@ -536,7 +585,7 @@ class AsyncFIXConnection:
         """
         assert logout_msg.msg_type == FMsg.LOGOUT
 
-        if self.connection_was_active:
+        if self._connection_was_active:
             dstate = ConnectionState.DISCONNECTED_WCONN_TODAY
         else:
             dstate = ConnectionState.DISCONNECTED_BROKEN_CONN
@@ -553,11 +602,11 @@ class AsyncFIXConnection:
             msg: ResendRequest(35=2) FIXMessage
 
         """
-        if self.connection_state != ConnectionState.RESENDREQ_AWAITING:
+        if self._connection_state != ConnectionState.RESENDREQ_AWAITING:
             self._state_set(ConnectionState.RESENDREQ_HANDLING)
 
         assert resend_msg.msg_type == FMsg.RESENDREQUEST
-        assert self.connection_state in {
+        assert self._connection_state in {
             ConnectionState.RESENDREQ_HANDLING,
             ConnectionState.RESENDREQ_AWAITING,
         }
@@ -567,8 +616,8 @@ class AsyncFIXConnection:
         if int(end_seq_no) == 0:
             end_seq_no = sys.maxsize
         self.log.info("Received resent request from %s to %s", begin_seq_no, end_seq_no)
-        journal_replay_msgs = self.journaler.recover_messages(
-            self.session, MessageDirection.OUTBOUND, begin_seq_no, end_seq_no
+        journal_replay_msgs = self._journaler.recover_messages(
+            self._session, MessageDirection.OUTBOUND, begin_seq_no, end_seq_no
         )
         gap_fill_begin = int(begin_seq_no)
         gap_fill_end = int(begin_seq_no)
@@ -583,7 +632,7 @@ class AsyncFIXConnection:
         }
 
         for enc_msg in journal_replay_msgs:
-            replay_msg, _, _ = self.codec.decode(enc_msg, silent=False)
+            replay_msg, _, _ = self._codec.decode(enc_msg, silent=False)
             msg_seq_num = int(replay_msg[FTag.MsgSeqNum])
 
             is_sess_msg = replay_msg[FTag.MsgType] in noreply_msgs
@@ -615,21 +664,21 @@ class AsyncFIXConnection:
 
         if gap_fill_end < gap_fill_begin:
             self.log.warning(
-                f"Journal MsgSeqNum not reflecting last {self.session.next_num_out=},"
+                f"Journal MsgSeqNum not reflecting last {self._session.next_num_out=},"
                 " forcing reset."
             )
 
-        assert gap_fill_end <= self.session.next_num_out, "Unexpected end for gap"
+        assert gap_fill_end <= self._session.next_num_out, "Unexpected end for gap"
 
         # Remainder not available in some reason
-        if gap_fill_begin < self.session.next_num_out:
+        if gap_fill_begin < self._session.next_num_out:
             gap_fill_msg = FIXMessage(FMsg.SEQUENCERESET)
             gap_fill_msg[FTag.GapFillFlag] = "Y"
             gap_fill_msg[FTag.MsgSeqNum] = gap_fill_begin
-            gap_fill_msg[FTag.NewSeqNo] = self.session.next_num_out
+            gap_fill_msg[FTag.NewSeqNo] = self._session.next_num_out
             await self.send_msg(gap_fill_msg)
 
-        if self.connection_state != ConnectionState.RESENDREQ_AWAITING:
+        if self._connection_state != ConnectionState.RESENDREQ_AWAITING:
             self._state_set(ConnectionState.ACTIVE)
 
     async def _process_seqreset(self, seqreset_msg: FIXMessage):
@@ -643,7 +692,7 @@ class AsyncFIXConnection:
         assert seqreset_msg.msg_type == FMsg.SEQUENCERESET
 
         if seqreset_msg.get(FTag.GapFillFlag, None) == "Y":
-            if self.connection_state != ConnectionState.RESENDREQ_AWAITING:
+            if self._connection_state != ConnectionState.RESENDREQ_AWAITING:
                 self.log.warning(
                     "Getting SEQUENCERESET(GapFillFlag=Y) while not filling gaps"
                 )
@@ -658,13 +707,13 @@ class AsyncFIXConnection:
             msg: incoming message
             raw_msg: encoded message for journal
         """
-        msg_sec_no = self.session.set_next_num_in(msg)
+        msg_sec_no = self._session.set_next_num_in(msg)
 
         if msg_sec_no <= 0:
             self.log.warning(f"Trying to finalize invalid {msg=}")
             return
 
-        if self.connection_state == ConnectionState.RESENDREQ_AWAITING:
+        if self._connection_state == ConnectionState.RESENDREQ_AWAITING:
             assert self._max_seq_num_resend > 0
 
             if msg_sec_no >= self._max_seq_num_resend:
@@ -672,9 +721,9 @@ class AsyncFIXConnection:
                 self._max_seq_num_resend = 0
                 self._state_set(ConnectionState.ACTIVE)
 
-        self.message_last_time = time.time()
+        self._message_last_time = time.time()
 
-        self.journaler.persist_msg(raw_msg, self.session, MessageDirection.INBOUND)
+        self._journaler.persist_msg(raw_msg, self._session, MessageDirection.INBOUND)
 
     async def _process_testrequest(self, testreq_msg: FIXMessage):
         """
@@ -702,7 +751,7 @@ class AsyncFIXConnection:
         """
         assert hbt_msg.msg_type == FMsg.HEARTBEAT
 
-        if self.test_req_id is not None:
+        if self._test_req_id is not None:
             if FTag.TestReqID not in hbt_msg:
                 # Possibly interval Heartbeat, just skip
                 return
@@ -713,13 +762,13 @@ class AsyncFIXConnection:
             except Exception:
                 msg_test_id = 0
 
-            if self.test_req_id != msg_test_id:
+            if self._test_req_id != msg_test_id:
                 await self.disconnect(
                     ConnectionState.DISCONNECTED_BROKEN_CONN,
                     logout_message="Invalid TestRequest(TestReqID) received",
                 )
             else:
-                self.test_req_id = None
+                self._test_req_id = None
 
     async def _process_message(self, msg: FIXMessage, raw_msg: bytes):
         """
@@ -731,8 +780,8 @@ class AsyncFIXConnection:
 
         """
         self.log.debug(
-            f"[{self.connection_role.name}]:process_message"
-            f" ({self.connection_state.name}) {repr(msg.msg_type)}\n\t {msg}\n"
+            f"[{self._connection_role.name}]:process_message"
+            f" ({self._connection_state.name}) {repr(msg.msg_type)}\n\t {msg}\n"
         )
 
         err_msg = self._validate_intergity(msg)
@@ -745,9 +794,9 @@ class AsyncFIXConnection:
             return
         is_valid_msg_num = False
         try:
-            assert self.connection_state >= ConnectionState.NETWORK_CONN_ESTABLISHED
+            assert self._connection_state >= ConnectionState.NETWORK_CONN_ESTABLISHED
 
-            if self.connection_state == ConnectionState.NETWORK_CONN_ESTABLISHED:
+            if self._connection_state == ConnectionState.NETWORK_CONN_ESTABLISHED:
                 # Applicable only for acceptor
                 if msg.msg_type != FMsg.LOGON:
                     # According to FIX session spec, first message must be Logon()
@@ -756,7 +805,7 @@ class AsyncFIXConnection:
                     await self.disconnect(ConnectionState.DISCONNECTED_BROKEN_CONN)
                     return
                 self._state_set(ConnectionState.LOGON_INITIAL_RECV)
-                self.connection_role = ConnectionRole.ACCEPTOR
+                self._connection_role = ConnectionRole.ACCEPTOR
 
             if msg.msg_type == FMsg.LOGON:
                 await self._process_logon(msg)

@@ -32,7 +32,7 @@ class AsyncFIXClient(AsyncFIXConnection):
     async def connect(self):
         assert self.connection_state == ConnectionState.DISCONNECTED
         self.socket_reader, self.socket_writer = await asyncio.open_connection(
-            self.host, self.port
+            self._host, self._port
         )
         self.connection_state = ConnectionState.CONNECTED
         await self.on_connect()
