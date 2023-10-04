@@ -36,6 +36,7 @@ def test_init_order_single_default_short():
     assert o.ord_type == FOrdType.LIMIT
 
     m = o.new_req()
+    assert o.status == FOrdStatus.PENDING_NEW
 
     # Account
     assert m[FTag.Account] == "000000"

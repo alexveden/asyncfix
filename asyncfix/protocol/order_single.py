@@ -34,6 +34,13 @@ class FIXNewOrderSingle:
         self.status: FOrdStatus = FOrdStatus.CREATED
         self.target_price = target_price if target_price is not None else price
 
+    def __repr__(self):
+        return (
+            f"FIXNewOrderSingle({self.status.name}, clord={self.clord_id},"
+            f" ticker={self.ticker}, px={self.price}, qty={self.qty},"
+            f" leavesqty={self.leaves_qty}, cumqty={self.cum_qty})"
+        )
+
     def next_clord(self) -> str:
         """
         New ClOrdID for current order management
@@ -52,6 +59,10 @@ class FIXNewOrderSingle:
         """
         Creates NewOrderSingle message
         """
+        assert (
+            self.status == FOrdStatus.CREATED
+        ), "new_req() must send only just created orders"
+
         o = FIXMessage(FMsg.NEWORDERSINGLE)
         o[FTag.ClOrdID] = self.clord_id
 
@@ -66,6 +77,8 @@ class FIXNewOrderSingle:
 
         # setting price and qty (typically tick size rounding, etc)
         self.set_price_qty(o, self.price, self.qty)
+
+        self.status = FOrdStatus.PENDING_NEW
 
         return o
 
@@ -396,7 +409,7 @@ class FIXNewOrderSingle:
             self.orig_clord_id = None
 
         if new_status:
-            self.status = new_status
+            self.status = FOrdStatus(new_status)
             return True
         else:
             return False
