@@ -338,10 +338,6 @@ class AsyncFIXConnection:
                 self.log.exception("heartbeat_timer() error")
             await asyncio.sleep(1.0)
 
-    async def reset_seq_num(self):
-        # TODO: implement resetting session numbers with SequenceReset(GapFillFlag=N)
-        pass
-
     ####################################################
     #
     #  User Application methods
