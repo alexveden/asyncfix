@@ -10,8 +10,8 @@ def test_init():
     assert s.target_comp_id == "target"
     assert s.sender_comp_id == "sender"
 
-    assert s.next_num_in == 1
-    assert s.next_num_out == 1
+    assert s.next_num_in is None
+    assert s.next_num_out is None
 
 
 def test_hash():
@@ -38,16 +38,9 @@ def test_equality():
 
 def test_repr():
     s1 = FIXSession("1", "target", "sender")
+    s1.next_num_out = 1
+    s1.next_num_in = 1
     assert "FIXSession(key=1, target=target sender=sender InSN=1 OutSN=1)" == repr(s1)
-
-
-def test_reset_msg():
-    s1 = FIXSession("1", "target", "sender")
-    s1.next_num_in = 23
-    s1.next_num_out = 22
-    s1.reset_msgs()
-    assert s1.next_num_out == 1
-    assert s1.next_num_in == 1
 
 
 def test_validate_compid():
@@ -59,7 +52,7 @@ def test_validate_compid():
 
 def test_allocate_next_num_out():
     s1 = FIXSession("1", "target", "sender")
-    assert s1.next_num_out == 1
+    s1.next_num_out = 1
     assert s1.allocate_next_num_out() == "1"
     assert s1.next_num_out == 2
 

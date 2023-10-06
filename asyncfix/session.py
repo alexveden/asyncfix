@@ -4,13 +4,16 @@ from asyncfix import FIXMessage, FMsg, FTag
 class FIXSession:
     def __init__(self, key, target_comp_id, sender_comp_id):
         self.key = key
+        """Session DB ID / key"""
+
         self.sender_comp_id = sender_comp_id
         self.target_comp_id = target_comp_id
 
+        # Note: None is set intentionally, because session typically has to be
+        #   loaded or created by Journaler class, therefore it sets session values
+        #   internally
         self.next_num_out = None
         self.next_num_in = None
-
-        self.reset_msgs()
 
     def __hash__(self):
         return hash((self.target_comp_id, self.sender_comp_id))
@@ -33,10 +36,6 @@ class FIXSession:
             f" target={self.target_comp_id} sender={self.sender_comp_id} InSN={self.next_num_in} OutSN={self.next_num_out})"  # noqa
         )
 
-    def reset_msgs(self):
-        self.next_num_out = 1
-        self.next_num_in = 1
-
     def validate_comp_ids(self, target_comp_id: str, sender_comp_id: str) -> bool:
         return (
             self.sender_comp_id == sender_comp_id
@@ -47,10 +46,6 @@ class FIXSession:
         n = str(self.next_num_out)
         self.next_num_out += 1
         return n
-
-    def reset_seq_num(self):
-        self.next_num_out = 1
-        self.next_num_in = 1
 
     def set_next_num_in(self, msg: FIXMessage) -> int:
         if msg.msg_type == FMsg.SEQUENCERESET:

@@ -55,16 +55,18 @@ class Journaler(object):
             session_id = self.cursor.lastrowid
             self.conn.commit()
             session = FIXSession(session_id, target_comp_id, sender_comp_id)
+            session.next_num_out = 1
+            session.next_num_in = 1
         except sqlite3.IntegrityError:
             self.cursor.execute(
                 "SELECT sessionId, targetCompId, senderCompId, outboundSeqNo, inboundSeqNo"  # noqa
                 " FROM session WHERE targetCompId = ? AND senderCompId = ?",
                 (target_comp_id, sender_comp_id),
             )
-            session_info = next(self.cursor)
-            session = FIXSession(session_info[0], session_info[1], session_info[2])
-            session.next_num_out = session_info[3] + 1
-            session.next_num_in = session_info[4] + 1
+            session_data = next(self.cursor)
+            session = FIXSession(session_data[0], session_data[1], session_data[2])
+            session.next_num_out = session_data[3] + 1
+            session.next_num_in = session_data[4] + 1
             print(f"Journaler: Loaded session: {session}")
         return session
 
@@ -77,10 +79,36 @@ class Journaler(object):
         except Exception:
             raise FIXMessageError(f"tag 34 is not found or invalid, in message: {msg}")
 
-    def set_seq_nums(self, session: FIXSession):
+    def set_seq_num(
+        self,
+        session: FIXSession,
+        next_num_out: int | None = None,
+        next_num_in: int | None = None,
+    ):
+        if next_num_out is not None:
+            assert next_num_out > 0
+            session.next_num_out = next_num_out
+        else:
+            next_num_out = session.next_num_out
+
+        if next_num_in is not None:
+            assert next_num_in > 0
+            session.next_num_in = next_num_in
+        else:
+            next_num_in = session.next_num_in
+
         self.cursor.execute(
-            "UPDATE session SET outboundSeqNo=?, inboundSeqNo=?",
-            (session.next_num_out, session.next_num_in - 1),
+            "UPDATE session SET inboundSeqNo=?, outboundSeqNo=?  WHERE sessionId = ?",
+            (next_num_in - 1, next_num_out - 1, session.key),
+        )
+
+        self.cursor.execute(
+            "DELETE FROM message WHERE session = ? AND seqNo >= ? AND direction = ?",
+            (session.key, next_num_in, MessageDirection.INBOUND.value),
+        )
+        self.cursor.execute(
+            "DELETE FROM message WHERE session = ? AND seqNo >= ? AND direction = ?",
+            (session.key, next_num_out, MessageDirection.OUTBOUND.value),
         )
 
     def persist_msg(self, msg: bytes, session: FIXSession, direction: MessageDirection):
@@ -92,9 +120,15 @@ class Journaler(object):
                 (seq_no, session.key, direction.value, msg),
             )
             if direction == MessageDirection.OUTBOUND:
-                self.cursor.execute("UPDATE session SET outboundSeqNo=?", (seq_no,))
+                self.cursor.execute(
+                    "UPDATE session SET outboundSeqNo=? WHERE sessionId = ?",
+                    (seq_no, session.key),
+                )
             elif direction == MessageDirection.INBOUND:
-                self.cursor.execute("UPDATE session SET inboundSeqNo=?", (seq_no,))
+                self.cursor.execute(
+                    "UPDATE session SET inboundSeqNo=? WHERE sessionId = ?",
+                    (seq_no, session.key),
+                )
 
             self.conn.commit()
         except sqlite3.IntegrityError as e:

@@ -183,12 +183,24 @@ def test_get_all_msg():
     assert all[0] == (78, enc_msg_out, MessageDirection.OUTBOUND.value, 1)
 
 
-def test_set_seqnum():
+def test_persist_tofile():
     enc_msg = b"8=FIX.4.4\x019=75\x0135=D\x0149=sender\x0156=target\x0134=073\x0152=20230919-07:13:26.808\x0144=123.45\x0138\x0155=VOD.L\x0110=100\x01"  # noqa
 
-    assert Journaler.find_seq_no(enc_msg) == 73
+    j = Journaler("test.store")
+    assert os.path.exists("test.store")
+    os.unlink("test.store")
 
-    j = Journaler()
+
+def test_seq_set():
+    enc_messages = [
+        b"8=FIX.4.4\x019=75\x0135=D\x0149=sender\x0156=target\x0134=073\x0152=20230919-07:13:26.808\x0144=123.45\x0138\x0155=VOD.L\x0110=100\x01",  # noqa
+        b"8=FIX.4.4\x019=75\x0135=D\x0149=sender\x0156=target\x0134=074\x0152=20230919-07:13:26.808\x0144=123.45\x0138\x0155=VOD.L\x0110=100\x01",  # noqa
+        b"8=FIX.4.4\x019=75\x0135=D\x0149=sender\x0156=target\x0134=075\x0152=20230919-07:13:26.808\x0144=123.45\x0138\x0155=VOD.L\x0110=100\x01",  # noqa
+        b"8=FIX.4.4\x019=75\x0135=D\x0149=sender\x0156=target\x0134=076\x0152=20230919-07:13:26.808\x0144=123.45\x0138\x0155=VOD.L\x0110=100\x01",  # noqa
+    ]
+    assert Journaler.find_seq_no(enc_messages[0]) == 73
+
+    j = Journaler("test.store")
 
     s1 = j.create_or_load("test_target", "test_sender")
 
@@ -196,28 +208,44 @@ def test_set_seqnum():
     assert s1.next_num_out == 1
 
     # persist and reload rewrites session seq num
-    j.persist_msg(enc_msg, s1, MessageDirection.INBOUND)
+    j.persist_msg(enc_messages[0], s1, MessageDirection.INBOUND)
+    j.persist_msg(enc_messages[1], s1, MessageDirection.INBOUND)
+    j.persist_msg(enc_messages[2], s1, MessageDirection.OUTBOUND)
+    j.persist_msg(enc_messages[3], s1, MessageDirection.OUTBOUND)
+
+    with pytest.raises(DuplicateSeqNoError, match="UNIQUE constraint failed"):
+        j.persist_msg(enc_messages[0], s1, MessageDirection.INBOUND)
+
+    s1 = j.create_or_load("test_target", "test_sender")
+    assert s1.next_num_in == 75
+    assert s1.next_num_out == 77
+
+    j.set_seq_num(s1, next_num_out=76, next_num_in=74)
+    assert s1.next_num_in == 74
+    assert s1.next_num_out == 76
 
     s2 = j.create_or_load("test_target", "test_sender")
-
     assert s2.next_num_in == 74
-    assert s2.next_num_out == 1
+    assert s2.next_num_out == 76
 
-    j.persist_msg(enc_msg, s1, MessageDirection.OUTBOUND)
+    with pytest.raises(DuplicateSeqNoError, match="UNIQUE constraint failed"):
+        j.persist_msg(enc_messages[0], s1, MessageDirection.INBOUND)
+    with pytest.raises(DuplicateSeqNoError, match="UNIQUE constraint failed"):
+        j.persist_msg(enc_messages[2], s1, MessageDirection.OUTBOUND)
 
-    s1.reset_seq_num()
+    j.persist_msg(enc_messages[1], s1, MessageDirection.INBOUND)
+    j.persist_msg(enc_messages[3], s1, MessageDirection.OUTBOUND)
 
-    j.set_seq_nums(s1)
+    j.set_seq_num(s2)
+    assert s2.next_num_in == 74
+    assert s2.next_num_out == 76
 
-    s2 = j.create_or_load("test_target", "test_sender")
+    with pytest.raises(DuplicateSeqNoError, match="UNIQUE constraint failed"):
+        j.persist_msg(enc_messages[0], s1, MessageDirection.INBOUND)
+    with pytest.raises(DuplicateSeqNoError, match="UNIQUE constraint failed"):
+        j.persist_msg(enc_messages[2], s1, MessageDirection.OUTBOUND)
 
-    assert s2.next_num_in == 1
-    assert s2.next_num_in == 1
+    j.persist_msg(enc_messages[1], s1, MessageDirection.INBOUND)
+    j.persist_msg(enc_messages[3], s1, MessageDirection.OUTBOUND)
 
-
-def test_persist_tofile():
-    enc_msg = b"8=FIX.4.4\x019=75\x0135=D\x0149=sender\x0156=target\x0134=073\x0152=20230919-07:13:26.808\x0144=123.45\x0138\x0155=VOD.L\x0110=100\x01"  # noqa
-
-    j = Journaler("test.store")
-    assert os.path.exists("test.store")
     os.unlink("test.store")

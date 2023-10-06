@@ -1008,6 +1008,8 @@ def test_schema_validation_header(fix_simple_xml):
 
     codec = Codec(FIXProtocol44())
     session = FIXSession("1", "TARG", "SEND")
+    session.next_num_in = 1
+    session.next_num_out = 1
     enc_m = codec.encode(m, session)
 
     dec_m, _, _ = codec.decode(enc_m.encode(), silent=False)

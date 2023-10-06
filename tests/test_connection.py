@@ -439,13 +439,21 @@ async def test_sequence_reset_request__no_gap(fix_connection):
 
     assert ft.conn_accept._connection_state == ConnectionState.ACTIVE
     assert ft.conn_init._connection_state == ConnectionState.ACTIVE
+    assert ft.conn_init._session.next_num_out == 2
 
     seqreset_msg = FIXMessage(
         FMsg.SEQUENCERESET,
         {FTag.NewSeqNo: 10, FTag.MsgSeqNum: conn._session.next_num_out},
     )
     await conn.send_msg(seqreset_msg)
-    await ft.process_msg_acceptor()
+    with patch.object(ft.conn_accept._journaler, "set_seq_num") as mock_set_seq_num:
+        await ft.process_msg_acceptor()
+        assert mock_set_seq_num.call_count == 2
+        assert mock_set_seq_num.call_args_list[0][0] == (ft.conn_accept._session,)
+        assert mock_set_seq_num.call_args_list[0][1] == {"next_num_in": 2}
+
+        assert mock_set_seq_num.call_args_list[1][0] == (ft.conn_accept._session,)
+        assert mock_set_seq_num.call_args_list[1][1] == {"next_num_in": 10}
 
     assert ft.conn_accept._session.next_num_in == 10
 

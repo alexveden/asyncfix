@@ -725,6 +725,17 @@ class AsyncFIXConnection:
         else:
             self.log.info(f"SequenceReset received from peer: {seqreset_msg}")
 
+        # Cleanup journal of past messages if session was reset to avoid SQL dup errors
+        #   Sometimes we might have outdated seq nums in journal
+        self._journaler.set_seq_num(
+            self._session, next_num_in=int(seqreset_msg[FTag.MsgSeqNum])
+        )
+
+        # Set journal at new NewSeqNo
+        self._journaler.set_seq_num(
+            self._session, next_num_in=int(seqreset_msg[FTag.NewSeqNo])
+        )
+
     async def _finalize_message(self, msg: FIXMessage, raw_msg: bytes):
         """
         Final message processing (MsgSeqNum checks / journaling)
