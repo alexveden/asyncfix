@@ -295,6 +295,45 @@ async def test_connection_validation_seqnum_toolow(fix_connection):
 
 
 @pytest.mark.asyncio
+async def test_connection_validation_seqnum_toolow__possdup__in_active(fix_connection):
+    conn: AsyncFIXConnection = fix_connection
+    ft = FIXTester(schema=None, connection=conn)
+
+    conn._session.next_num_out = 20
+    conn._connection_state = ConnectionState.ACTIVE
+
+    msg = FIXMessage(FMsg.NEWS, {FTag.PossDupFlag: "Y", FTag.MsgSeqNum: 19})
+    await conn.send_msg(msg)
+    msg_out = ft.initiator_sent[-1]
+    ft.set_next_num(num_in=21)
+
+    assert conn._connection_state == ConnectionState.ACTIVE
+    assert msg_out[FTag.PossDupFlag] == "Y"
+    assert (
+        ft.conn_accept._validate_integrity(msg_out)
+        == "MsgSeqNum is too low, expected 21, got 19"
+    )
+
+
+@pytest.mark.asyncio
+async def test_connection_validation_seqnum_toolow_poss_dup_flag(fix_connection):
+    conn: AsyncFIXConnection = fix_connection
+    ft = FIXTester(schema=None, connection=conn)
+
+    conn._session.next_num_out = 20
+    conn._connection_state = ConnectionState.RESENDREQ_AWAITING
+
+    msg = FIXMessage(FMsg.NEWS, {FTag.PossDupFlag: "Y", FTag.MsgSeqNum: 19})
+    await conn.send_msg(msg)
+    msg_out = ft.initiator_sent[-1]
+    ft.set_next_num(num_in=21)
+
+    ft.conn_accept._connection_state = ConnectionState.RESENDREQ_AWAITING
+    assert msg_out[FTag.PossDupFlag] == "Y"
+    assert ft.conn_accept._validate_integrity(msg_out) is None
+
+
+@pytest.mark.asyncio
 async def test_connection_validation_beginstring(fix_connection):
     conn: AsyncFIXConnection = fix_connection
     ft = FIXTester(schema=FIX_SCHEMA, connection=conn)

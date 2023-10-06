@@ -548,14 +548,18 @@ class AsyncFIXConnection:
             return "MsgSeqNum(34) tag is missing"
 
         msg_seq_num = int(msg[FTag.MsgSeqNum])
-        if (
-            msg.msg_type != FMsg.SEQUENCERESET
-            and msg_seq_num < self._session.next_num_in
-        ):
-            return (
-                f"MsgSeqNum is too low, expected {self._session.next_num_in}, got"
-                f" {msg_seq_num}"
-            )
+        if msg_seq_num < self._session.next_num_in:
+            _is_err = True
+            if msg.msg_type == FMsg.SEQUENCERESET:
+                _is_err = False
+            if self._connection_state == ConnectionState.RESENDREQ_AWAITING:
+                _is_err = False
+
+            if _is_err:
+                return (
+                    f"MsgSeqNum is too low, expected {self._session.next_num_in}, got"
+                    f" {msg_seq_num}"
+                )
 
         # All good
         return None
