@@ -415,6 +415,12 @@ class AsyncFIXConnection:
             except Exception:
                 self.log.exception("heartbeat_timer() error")
 
+    async def reset_seq_num(self):
+        self.log.info("Resetting connection sequence and journal")
+        self._journaler.set_seq_num(self._session, next_num_in=1, next_num_out=1)
+        assert self._session.next_num_in == 1
+        assert self._session.next_num_out == 1
+
     ####################################################
     #
     #  User Application methods
@@ -457,7 +463,7 @@ class AsyncFIXConnection:
         """
         pass
 
-    async def on_logout(self):
+    async def on_logout(self, msg: FIXMessage):
         """
         (AppEvent) Logout(35=5) received from peer
 
@@ -542,7 +548,10 @@ class AsyncFIXConnection:
             return "MsgSeqNum(34) tag is missing"
 
         msg_seq_num = int(msg[FTag.MsgSeqNum])
-        if msg_seq_num < self._session.next_num_in:
+        if (
+            msg.msg_type != FMsg.SEQUENCERESET
+            and msg_seq_num < self._session.next_num_in
+        ):
             return (
                 f"MsgSeqNum is too low, expected {self._session.next_num_in}, got"
                 f" {msg_seq_num}"
@@ -616,7 +625,7 @@ class AsyncFIXConnection:
         else:
             dstate = ConnectionState.DISCONNECTED_BROKEN_CONN
 
-        await self.on_logout()
+        await self.on_logout(logout_msg)
 
         await self.disconnect(dstate)
 
@@ -846,6 +855,14 @@ class AsyncFIXConnection:
 
             if msg.msg_type == FMsg.LOGON:
                 await self._process_logon(msg)
+            elif msg.msg_type == FMsg.SEQUENCERESET:
+                await self._process_seqreset(msg)
+            elif msg.msg_type == FMsg.LOGOUT:
+                await self._process_logout(msg)
+
+            if self._connection_state <= ConnectionState.DISCONNECTED_BROKEN_CONN:
+                # Got logout probably
+                return
 
             msg_seq_num = int(msg[FTag.MsgSeqNum])
             is_valid_msg_num = await self._check_seqnum_gaps(msg_seq_num)
@@ -853,15 +870,13 @@ class AsyncFIXConnection:
             if msg.msg_type == FMsg.RESENDREQUEST:
                 await self._process_resend(msg)
             elif msg.msg_type == FMsg.SEQUENCERESET:
-                await self._process_seqreset(msg)
+                pass
             elif msg.msg_type == FMsg.LOGON:
                 pass  # already processed
             elif msg.msg_type == FMsg.TESTREQUEST:
                 await self._process_testrequest(msg)
             elif msg.msg_type == FMsg.HEARTBEAT:
                 await self._process_heartbeat(msg)
-            elif msg.msg_type == FMsg.LOGOUT:
-                await self._process_logout(msg)
             else:
                 if is_valid_msg_num:
                     await self.on_message(msg)

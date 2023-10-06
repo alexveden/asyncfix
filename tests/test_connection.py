@@ -429,6 +429,37 @@ async def test_connection__process_resend_req_synth(fix_connection):
 
 
 @pytest.mark.asyncio
+async def test_sequence_reset_request__incoming_seq_num_toolow_ignored(fix_connection):
+    conn: AsyncFIXConnection = fix_connection
+    ft = FIXTester(schema=FIX_SCHEMA, connection=conn)
+
+    msg = ft.msg_logon()
+    await conn.send_msg(msg)
+    await ft.process_msg_acceptor()
+
+    assert ft.conn_accept._connection_state == ConnectionState.ACTIVE
+    assert ft.conn_init._connection_state == ConnectionState.ACTIVE
+    assert ft.conn_init._session.next_num_out == 2
+    ft.conn_accept._session.next_num_in = 20
+
+    seqreset_msg = FIXMessage(
+        FMsg.SEQUENCERESET,
+        {FTag.NewSeqNo: 10, FTag.MsgSeqNum: conn._session.next_num_out},
+    )
+    await conn.send_msg(seqreset_msg)
+    with patch.object(ft.conn_accept._journaler, "set_seq_num") as mock_set_seq_num:
+        await ft.process_msg_acceptor()
+        assert mock_set_seq_num.call_count == 2
+        assert mock_set_seq_num.call_args_list[0][0] == (ft.conn_accept._session,)
+        assert mock_set_seq_num.call_args_list[0][1] == {"next_num_in": 2}
+
+        assert mock_set_seq_num.call_args_list[1][0] == (ft.conn_accept._session,)
+        assert mock_set_seq_num.call_args_list[1][1] == {"next_num_in": 10}
+
+    assert ft.conn_accept._session.next_num_in == 10
+
+
+@pytest.mark.asyncio
 async def test_sequence_reset_request__no_gap(fix_connection):
     conn: AsyncFIXConnection = fix_connection
     ft = FIXTester(schema=FIX_SCHEMA, connection=conn)
@@ -1413,3 +1444,25 @@ async def test_process_logout(fix_connection):
 
         assert mock_on_logout.called
         assert mock_disconnect.called
+
+
+@pytest.mark.asyncio
+async def test_reset_seqnum(fix_connection):
+    conn: AsyncFIXConnection = fix_connection
+    ft = FIXTester(schema=FIX_SCHEMA, connection=conn)
+    conn._session.next_num_in = 3
+    conn._session.next_num_out = 5
+
+    with patch.object(conn._journaler, "set_seq_num") as mock_set_seq_num:
+
+        def _side_reset(session, next_num_in, next_num_out):
+            assert next_num_in == 1
+            assert next_num_out == 1
+            session.next_num_in = next_num_in
+            session.next_num_out = next_num_out
+
+        mock_set_seq_num.side_effect = _side_reset
+        await conn.reset_seq_num()
+        assert conn._session.next_num_in == 1
+        assert conn._session.next_num_in == 1
+        assert mock_set_seq_num.call_count == 1

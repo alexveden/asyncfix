@@ -51,7 +51,7 @@ class Client(AsyncFIXClient):
         """
         self.log.info("on_logon")
 
-    async def on_logout(self):
+    async def on_logout(self, msg: FIXMessage):
         """
         (AppEvent) Logout(35=5) received from peer
 
