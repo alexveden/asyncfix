@@ -2,7 +2,7 @@ import os
 import time
 import unittest
 import xml.etree.ElementTree as ET
-from math import nan
+from math import isnan, nan
 
 import pytest
 
@@ -35,14 +35,16 @@ def test_init_order_single_default_short():
     assert o.target_price == 100
     assert o.ord_type == FOrdType.LIMIT
 
+    assert o.clord_id == "clordTest"
     m = o.new_req()
+    assert o.clord_id == "clordTest--1"
     assert o.status == FOrdStatus.PENDING_NEW
 
     # Account
     assert m[FTag.Account] == "000000"
 
     # Tag 11: ClOrdID
-    assert m[FTag.ClOrdID] == "clordTest"
+    assert m[FTag.ClOrdID] == "clordTest--1"
 
     # Tag 38: Order Qty
     assert m[FTag.OrderQty] == "20"
@@ -79,6 +81,7 @@ def test_init_order_single_long():
     assert o.qty == 20
     assert o.leaves_qty == 0
     assert o.cum_qty == 0
+    assert isnan(o.avg_px)
     assert o.clord_id == "clordTest"
     assert o.orig_clord_id is None
     assert o.side == FOrdSide.BUY
@@ -91,7 +94,7 @@ def test_init_order_single_long():
     assert m[1] == "000000"
 
     # Tag 11: ClOrdID
-    assert m[11] == "clordTest"
+    assert m[11] == "clordTest--1"
 
     # Tag 38: Order Qty
     assert m[38] == "20"
@@ -110,6 +113,26 @@ def test_init_order_single_long():
 
     # Overall message is valid!
     assert FIX_SCHEMA.validate(m)
+
+
+def test_init_order_single__clord_root():
+    o = FIXNewOrderSingle(
+        "clordTest",
+        "US.F.TICKER",
+        side=FOrdSide.BUY,
+        price=200.0,
+        qty=20,
+        target_price=220,
+        ord_type=FOrdType.MARKET,
+    )
+    assert o.clord_id == "clordTest"
+    assert o.clord_id_root == "clordTest"
+
+    o.clord_id = o.clord_next()
+    assert o.clord_id == "clordTest--1"
+    assert o.clord_id_root == "clordTest"
+    assert FIXNewOrderSingle.clord_root("my--test--order--1") == "my--test--order"
+    assert FIXNewOrderSingle.clord_root("my--test--order") == "my--test--order"
 
 
 def test_simple_execution_report_state_created__2__pending_new():
@@ -448,10 +471,12 @@ def test_exec_sequence__vanilla_fill():
     assert not o.can_replace()
     assert o.is_finished() == 0
 
+    assert isnan(o.avg_px)
     msg = ft.fix_exec_report_msg(
         o, o.clord_id, FExecType.PENDING_NEW, FOrdStatus.PENDING_NEW
     )
     assert o.process_execution_report(msg) == 1
+    assert o.avg_px == 0
     assert o.order_id is not None
     assert o.status == FOrdStatus.PENDING_NEW, f"o.status={chr(o.status)}"
     assert not o.can_cancel()
@@ -479,9 +504,11 @@ def test_exec_sequence__vanilla_fill():
         cum_qty=2,
         leaves_qty=8,
         last_qty=2,
+        avg_price=120,
     )
     assert o.process_execution_report(msg) == 1
     assert o.status == FOrdStatus.PARTIALLY_FILLED, f"o.status={chr(o.status)}"
+    assert o.avg_px == 120
     assert o.qty == 10
     assert o.cum_qty == 2
     assert o.leaves_qty == 8
@@ -688,7 +715,7 @@ def test_cancel_req():
     FIX_SCHEMA.validate(m)
 
     # Tag 11: ClOrdID
-    assert m[11] == "clordTest-1"
+    assert m[11] == "clordTest--1"
 
     # Tag 41: OrigClOrdID
     assert m[41] == o.clord_id
@@ -1190,7 +1217,7 @@ def test_replace_req():
     FIX_SCHEMA.validate(m)
 
     # Tag 11: ClOrdID
-    assert m[11] == "clordTest-1"
+    assert m[11] == "clordTest--1"
 
     # Tag 41: OrigClOrdID
     assert m[41] == old_clord

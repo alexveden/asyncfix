@@ -251,6 +251,7 @@ class FIXTester:
         price: float = nan,
         order_qty: float = nan,
         orig_clord_id: str = None,
+        avg_price: float = 0.0,
     ) -> FIXMessage:
         assert order.clord_id in self.registered_orders, "Unregistered order!"
 
@@ -324,7 +325,7 @@ class FIXTester:
         order.set_instrument(m)
 
         order.set_price_qty(m, price, order_qty)
-        m[FTag.AvgPx] = price
+        m[FTag.AvgPx] = avg_price
 
         order.set_account(m)
 

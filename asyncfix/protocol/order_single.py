@@ -1,3 +1,4 @@
+import re
 from datetime import datetime
 from math import isfinite, nan
 
@@ -5,6 +6,8 @@ from asyncfix import FIXMessage, FMsg, FTag
 from asyncfix.errors import FIXError
 
 from .common import FExecType, FOrdSide, FOrdStatus, FOrdType
+
+RE_CLORD_ROOT = re.compile(r"^(.+)--(\d+)$", re.MULTILINE)
 
 
 class FIXNewOrderSingle:
@@ -19,6 +22,8 @@ class FIXNewOrderSingle:
         account: str | dict = "000000",
         target_price: float | None = None,
     ):
+        assert clord_id, "empty clord_id"
+
         self.clord_id = clord_id
         self.orig_clord_id = None
         self.order_id = None
@@ -28,6 +33,7 @@ class FIXNewOrderSingle:
         self.qty = qty
         self.leaves_qty = 0.0
         self.cum_qty = 0.0
+        self.avg_px = nan
         self.ord_type = ord_type
         self.account = account
         self.clord_id_cnt = 0
@@ -41,12 +47,24 @@ class FIXNewOrderSingle:
             f" leavesqty={self.leaves_qty}, cumqty={self.cum_qty})"
         )
 
-    def next_clord(self) -> str:
+    def clord_next(self) -> str:
         """
         New ClOrdID for current order management
         """
         self.clord_id_cnt += 1
-        return f"{self.clord_id}-{self.clord_id_cnt}"
+        return f"{self.clord_id}--{self.clord_id_cnt}"
+
+    @staticmethod
+    def clord_root(clord_id: str) -> str:
+        match = RE_CLORD_ROOT.match(clord_id)
+        if match:
+            return match[1]
+        else:
+            return clord_id
+
+    @property
+    def clord_id_root(self) -> str:
+        return self.clord_root(self.clord_id)
 
     @staticmethod
     def current_datetime():
@@ -64,6 +82,7 @@ class FIXNewOrderSingle:
         ), "new_req() must send only just created orders"
 
         o = FIXMessage(FMsg.NEWORDERSINGLE)
+        self.clord_id = self.clord_next()
         o[FTag.ClOrdID] = self.clord_id
 
         # setting instrument identification fields (may vary for different FIX brokers)
@@ -95,7 +114,7 @@ class FIXNewOrderSingle:
 
         assert not self.orig_clord_id
         self.orig_clord_id = self.clord_id
-        self.clord_id = self.next_clord()
+        self.clord_id = self.clord_next()
 
         cxl_req_msg = FIXMessage(FMsg.ORDERCANCELREQUEST)
         cxl_req_msg[11] = self.clord_id
@@ -125,9 +144,9 @@ class FIXNewOrderSingle:
         if not self.can_replace():
             raise FIXError("Order cannot be replaced")
 
-        if not isfinite(price) or price == self.price:
+        if price is None or not isfinite(price) or price == self.price:
             price = self.price
-        if not isfinite(qty) or qty == self.qty or qty == 0:
+        if qty is None or not isfinite(qty) or qty == self.qty or qty == 0:
             qty = self.qty
 
         if price == self.price and qty == self.qty:
@@ -135,7 +154,7 @@ class FIXNewOrderSingle:
 
         assert not self.orig_clord_id
         self.orig_clord_id = self.clord_id
-        self.clord_id = self.next_clord()
+        self.clord_id = self.clord_next()
 
         m = FIXMessage(FMsg.ORDERCANCELREPLACEREQUEST)
         m[FTag.ClOrdID] = self.clord_id
@@ -392,6 +411,7 @@ class FIXNewOrderSingle:
         self.order_id = m[FTag.OrderID]
         self.leaves_qty = leaves_qty
         self.cum_qty = cum_qty
+        self.avg_px = float(m[FTag.AvgPx])
 
         if exec_type == FExecType.REPLACED:
             # Order has been successfully replaced

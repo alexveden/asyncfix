@@ -858,13 +858,13 @@ async def test_connection__process_resend__ignores_high_seq_num_msg(fix_connecti
         (app_msg,) = mock_on_message.call_args_list[0][0]
         assert app_msg.query(35, FTag.ClOrdID, FTag.PossDupFlag) == {
             FTag.MsgType: FMsg.NEWORDERSINGLE,
-            FTag.ClOrdID: "test",
+            FTag.ClOrdID: "test--1",
             FTag.PossDupFlag: "Y",
         }
         (app_msg,) = mock_on_message.call_args_list[1][0]
         assert app_msg.query(35, FTag.ClOrdID, FTag.PossDupFlag) == {
             FTag.MsgType: FMsg.NEWORDERSINGLE,
-            FTag.ClOrdID: "test2",
+            FTag.ClOrdID: "test2--1",
             FTag.PossDupFlag: "Y",
         }
 
