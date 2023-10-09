@@ -1505,3 +1505,48 @@ async def test_reset_seqnum(fix_connection):
         assert conn._session.next_num_in == 1
         assert conn._session.next_num_in == 1
         assert mock_set_seq_num.call_count == 1
+
+
+@pytest.mark.asyncio
+async def test_connection__process_resend_req__dupe_journal_seqnum(fix_connection):
+    conn: AsyncFIXConnection = fix_connection
+    ft = FIXTester(schema=FIX_SCHEMA, connection=conn)
+
+    with patch.object(conn._journaler, "recover_messages") as mock__recover_msg:
+        msgs = [
+            FIXMessage(FMsg.LOGON),
+            FIXMessage(FMsg.HEARTBEAT),
+            FIXNewOrderSingle("test", "ticker", "1", 10, 10).new_req(),
+            FIXMessage(FMsg.HEARTBEAT),
+            FIXMessage(FMsg.TESTREQUEST),
+            FIXMessage(FMsg.RESENDREQUEST),
+            FIXMessage(FMsg.SEQUENCERESET, {FTag.NewSeqNo: 800}),
+            FIXNewOrderSingle("test", "ticker", "1", 10, 10).new_req(),
+            FIXMessage(FMsg.TESTREQUEST),
+        ]
+        seq_res = msgs[6]
+        assert seq_res.msg_type == FMsg.SEQUENCERESET
+        seq_res[34] = conn._session.next_num_out + 5
+        assert seq_res[34] == "6"
+        enc_msg = [conn._codec.encode(m, conn._session).encode() for m in msgs]
+        mock__recover_msg.return_value = enc_msg
+
+        conn._session.next_num_out = 20
+
+        resend_req = ft.msg_resend_request(1, end_seq_no=0)
+        conn._connection_state = ConnectionState.RESENDREQ_HANDLING
+        await conn._process_resend(resend_req)
+        conn._connection_state = ConnectionState.ACTIVE
+
+        assert len(ft.initiator_sent) == 5
+        assert conn._session.next_num_out == 20
+
+        # Requested once again
+        ft.reset_messages()
+        resend_req = ft.msg_resend_request(1, end_seq_no=0)
+        conn._connection_state = ConnectionState.RESENDREQ_HANDLING
+        await conn._process_resend(resend_req)
+        conn._connection_state = ConnectionState.ACTIVE
+
+        assert len(ft.initiator_sent) == 5
+        assert conn._session.next_num_out == 20

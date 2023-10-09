@@ -650,14 +650,19 @@ class AsyncFIXConnection:
             ConnectionState.RESENDREQ_AWAITING,
         }
 
-        begin_seq_no = resend_msg[FTag.BeginSeqNo]
-        end_seq_no = resend_msg[FTag.EndSeqNo]
-        if int(end_seq_no) == 0:
+        begin_seq_no = int(resend_msg[FTag.BeginSeqNo])
+        end_seq_no = int(resend_msg[FTag.EndSeqNo])
+        if end_seq_no == 0:
             end_seq_no = sys.maxsize
         self.log.info("Received resent request from %s to %s", begin_seq_no, end_seq_no)
         journal_replay_msgs = self._journaler.recover_messages(
             self._session, MessageDirection.OUTBOUND, begin_seq_no, end_seq_no
         )
+
+        # Remember next_num_out
+        current_next_num_out = self._session.next_num_out
+
+        self._journaler.set_seq_num(self._session, next_num_out=begin_seq_no)
         gap_fill_begin = int(begin_seq_no)
         gap_fill_end = int(begin_seq_no)
 
@@ -703,19 +708,21 @@ class AsyncFIXConnection:
 
         if gap_fill_end < gap_fill_begin:
             self.log.warning(
-                f"Journal MsgSeqNum not reflecting last {self._session.next_num_out=},"
-                " forcing reset."
+                "Journal MsgSeqNum not reflecting last"
+                f" next_num_out={current_next_num_out}, forcing reset."
             )
 
-        assert gap_fill_end <= self._session.next_num_out, "Unexpected end for gap"
+        assert gap_fill_end <= current_next_num_out, "Unexpected end for gap"
 
         # Remainder not available in some reason
-        if gap_fill_begin < self._session.next_num_out:
+        if gap_fill_begin < current_next_num_out:
             gap_fill_msg = FIXMessage(FMsg.SEQUENCERESET)
             gap_fill_msg[FTag.GapFillFlag] = "Y"
             gap_fill_msg[FTag.MsgSeqNum] = gap_fill_begin
-            gap_fill_msg[FTag.NewSeqNo] = self._session.next_num_out
+            gap_fill_msg[FTag.NewSeqNo] = current_next_num_out
             await self.send_msg(gap_fill_msg)
+
+        self._journaler.set_seq_num(self._session, next_num_out=current_next_num_out)
 
         if self._connection_state != ConnectionState.RESENDREQ_AWAITING:
             await self._state_set(ConnectionState.ACTIVE)
