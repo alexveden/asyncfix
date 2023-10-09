@@ -67,7 +67,7 @@ class Journaler(object):
             session = FIXSession(session_data[0], session_data[1], session_data[2])
             session.next_num_out = session_data[3] + 1
             session.next_num_in = session_data[4] + 1
-            print(f"Journaler: Loaded session: {session}")
+            # print(f"Journaler: Loaded session: {session}")
         return session
 
     @staticmethod

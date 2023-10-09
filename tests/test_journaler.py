@@ -1,4 +1,5 @@
 import os
+import time
 
 import pytest
 
@@ -249,3 +250,21 @@ def test_seq_set():
     j.persist_msg(enc_messages[3], s1, MessageDirection.OUTBOUND)
 
     os.unlink("test.store")
+
+
+def test_perf():
+    msg_tpl = b"8=FIX.4.4\x019=75\x0135=D\x0149=sender\x0156=target\x0134=076\x0152=20230919-07:13:26.808\x0144=123.45\x0138\x0155=VOD.L\x0110=100\x01"  # noqa
+
+    j = Journaler("test.store")
+
+    s1 = j.create_or_load("test_target", "test_sender")
+
+    # persist and reload rewrites session seq num
+    t_begin = time.time()
+    n_msgs = 10
+    for i in range(1, n_msgs):
+        _m = msg_tpl.replace(b"34=076", f"34={i}".encode())
+        j.persist_msg(_m, s1, MessageDirection.INBOUND)
+    t_end = time.time()
+    os.unlink("test.store")
+    # assert False, (t_end-t_begin) / n_msgs
