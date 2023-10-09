@@ -709,16 +709,21 @@ def test_cancel_req():
     o = FIXNewOrderSingle(
         "clordTest", "US.F.TICKER", side=FOrdSide.SELL, price=100.0, qty=20
     )
+    new_req = o.new_req()
     o.status = FOrdStatus.NEW
 
     m = o.cancel_req()
     FIX_SCHEMA.validate(m)
 
+    assert not o.can_cancel()
+
     # Tag 11: ClOrdID
-    assert m[11] == "clordTest--1"
+    assert o.clord_id == 'clordTest--2'
+    assert m[11] == "clordTest--2"
 
     # Tag 41: OrigClOrdID
-    assert m[41] == o.clord_id
+    assert m[41] == o.orig_clord_id
+    assert m[41] == "clordTest--1"
 
     # Tag 38: Order Qty
     assert m[38] == "20"
@@ -1210,17 +1215,21 @@ def test_replace_req():
     o = FIXNewOrderSingle(
         "clordTest", "US.F.TICKER", side=FOrdSide.SELL, price=100.0, qty=20
     )
+    o.new_req()
     o.status = FOrdStatus.NEW
 
     old_clord = o.clord_id
+    assert o.can_replace()
     m = o.replace_req(200, 30)
+    assert not o.can_replace()
+    assert not o.can_cancel()
     FIX_SCHEMA.validate(m)
 
     # Tag 11: ClOrdID
-    assert m[11] == "clordTest--1"
+    assert m[11] == "clordTest--2"
 
     # Tag 41: OrigClOrdID
-    assert m[41] == old_clord
+    assert m[41] == "clordTest--1"
 
     # Tag 38: Order Qty
     assert m[38] == "30"
@@ -1321,7 +1330,7 @@ def test_replace_req__zero_filled__increased_qty():
     assert o.qty == 10
 
     with pytest.raises(FIXError, match="Order cannot be replaced"):
-        cxl_req = ft.fix_rep_request(o, 300, 11)
+        o.replace_req(300, 11)
 
     msg = ft.fix_exec_report_msg(
         o,

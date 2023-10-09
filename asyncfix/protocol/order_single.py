@@ -52,7 +52,7 @@ class FIXNewOrderSingle:
         New ClOrdID for current order management
         """
         self.clord_id_cnt += 1
-        return f"{self.clord_id}--{self.clord_id_cnt}"
+        return f"{self.clord_id_root}--{self.clord_id_cnt}"
 
     @staticmethod
     def clord_root(clord_id: str) -> str:
@@ -119,10 +119,12 @@ class FIXNewOrderSingle:
         cxl_req_msg = FIXMessage(FMsg.ORDERCANCELREQUEST)
         cxl_req_msg[11] = self.clord_id
         cxl_req_msg[38] = self.qty
-        cxl_req_msg[41] = self.clord_id
+        cxl_req_msg[41] = self.orig_clord_id
         self.set_instrument(cxl_req_msg)
         cxl_req_msg[FTag.Side] = self.side
         cxl_req_msg[FTag.TransactTime] = self.current_datetime()
+
+        self.status = FOrdStatus.PENDING_CANCEL
 
         return cxl_req_msg
 
@@ -164,6 +166,8 @@ class FIXNewOrderSingle:
         self.set_price_qty(m, price, qty)
         m[FTag.Side] = self.side
         m[FTag.TransactTime] = self.current_datetime()
+
+        self.status = FOrdStatus.PENDING_REPLACE
 
         return m
 
