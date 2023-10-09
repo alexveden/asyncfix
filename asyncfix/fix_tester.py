@@ -191,22 +191,20 @@ class FIXTester:
         return True
 
     def fix_cxl_request(self, o: FIXNewOrderSingle) -> FIXMessage:
+        assert o.can_cancel()  # new assert 2023-09-23
         m = o.cancel_req()
         if self.schema:
             self.schema.validate(m)
-        assert o.can_cancel()  # new assert 2023-09-23
-        o.status = FOrdStatus.PENDING_CANCEL
         self.registered_orders[o.clord_id] = o
         return m
 
     def fix_rep_request(
         self, o: FIXNewOrderSingle, price: float = nan, qty: float = nan
     ) -> FIXMessage:
+        assert o.can_replace()
         m = o.replace_req(price, qty)
         if self.schema:
             self.schema.validate(m)
-        assert o.can_replace()
-        o.status = FOrdStatus.PENDING_REPLACE
         self.registered_orders[o.clord_id] = o
         return m
 
