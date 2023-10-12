@@ -19,7 +19,6 @@ def test_init():
         777,
         heartbeat_period=12,
         logger=log,
-        start_tasks=False,
     )
 
     assert isinstance(client.protocol, FIXProtocol44)
@@ -46,17 +45,18 @@ async def test_connect():
         777,
         heartbeat_period=12,
         logger=log,
-        start_tasks=False,
     )
 
     assert client.connection_state == ConnectionState.DISCONNECTED_NOCONN_TODAY
     with (
         patch("asyncio.open_connection") as mock_open_connection,
+        patch("asyncfix.connection.AsyncFIXConnection.connect") as mock_base_connect,
         patch.object(client, "on_connect") as mock_on_connect,
     ):
         mock_open_connection.return_value = ("r", "w")
 
         await client.connect()
+        assert mock_base_connect.await_count == 1
         assert mock_open_connection.await_count == 1
         assert mock_open_connection.call_args[0] == ("local", 777)
         assert mock_open_connection.call_args[1] == {}
@@ -85,12 +85,12 @@ async def test_connect_exception():
         777,
         heartbeat_period=12,
         logger=log,
-        start_tasks=False,
     )
 
     assert client.connection_state == ConnectionState.DISCONNECTED_NOCONN_TODAY
     with (
         patch("asyncio.open_connection") as mock_open_connection,
+        patch("asyncfix.connection.AsyncFIXConnection.connect") as mock_base_connect,
         patch.object(client, "on_connect") as mock_on_connect,
     ):
         mock_open_connection.side_effect = ValueError

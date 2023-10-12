@@ -41,7 +41,6 @@ class FIXTester:
                 host="localhost",
                 port="64444",
                 heartbeat_period=30,
-                start_tasks=False,
                 logger=self.conn_init.log,
             )
             self.conn_accept._connection_state = (

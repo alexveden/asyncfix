@@ -132,7 +132,6 @@ class AsyncFIXConnection:
         port: int,
         heartbeat_period: int = 30,
         logger: logging.Logger | None = None,
-        start_tasks: bool = True,
     ):
         """
         AsyncFIX bidirectional connection
@@ -174,10 +173,8 @@ class AsyncFIXConnection:
         self._socket_writer: asyncio.StreamWriter = None
         self._host = host
         self._port = int(port)
-
-        if start_tasks:
-            asyncio.create_task(self.socket_read_task())
-            asyncio.create_task(self.heartbeat_timer_task())
+        self._aio_task_socket_read = None
+        self._aio_task_heartbeat = None
 
     @property
     def connection_state(self) -> ConnectionState:
@@ -208,7 +205,10 @@ class AsyncFIXConnection:
             NotImplementedError:
 
         """
-        raise NotImplementedError("connect() must be implemented in app class")
+        if not self._aio_task_socket_read:
+            self._aio_task_socket_read = asyncio.create_task(self.socket_read_task())
+        if not self._aio_task_heartbeat:
+            self._aio_task_heartbeat = asyncio.create_task(self.heartbeat_timer_task())
 
     async def disconnect(
         self,

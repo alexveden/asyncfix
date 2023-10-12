@@ -20,7 +20,6 @@ def test_init():
         777,
         heartbeat_period=12,
         logger=log,
-        start_tasks=False,
     )
 
     assert isinstance(server.protocol, FIXProtocol44)
@@ -47,18 +46,20 @@ async def test_connect():
         777,
         heartbeat_period=12,
         logger=log,
-        start_tasks=False,
     )
 
     assert server.connection_state == ConnectionState.DISCONNECTED_NOCONN_TODAY
     with (
         patch("asyncio.start_server") as mock_start_server,
+        patch("asyncfix.connection.AsyncFIXConnection.connect") as mock_base_connect,
         patch.object(server, "on_connect") as mock_on_connect,
     ):
         mock_srv = AsyncMock()
         mock_start_server.return_value = mock_srv
 
         await server.connect()
+
+        assert mock_base_connect.await_count == 1
         assert not mock_on_connect.called
         assert server.connection_state == ConnectionState.DISCONNECTED_NOCONN_TODAY
 

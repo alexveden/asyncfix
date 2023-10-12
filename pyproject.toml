@@ -1,6 +1,6 @@
 [project]
 name = "asyncfix"
-version = "0.8.2"
+version = "0.8.3"
 description = "AsyncIO FIX Protocol client for Python"
 readme = "README.md"
 authors = [{ name = "Alex Veden", email = "i@alexveden.com" }]

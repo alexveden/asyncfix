@@ -44,7 +44,6 @@ async def fix_connection_socket():
         host="localhost",
         port="64444",
         heartbeat_period=30,
-        start_tasks=False,
         logger=log,
     )
     connection._connection_state = ConnectionState.NETWORK_CONN_ESTABLISHED
@@ -72,7 +71,6 @@ async def fix_connection():
         host="localhost",
         port="64444",
         heartbeat_period=30,
-        start_tasks=False,
         logger=log,
     )
     connection._connection_state = ConnectionState.NETWORK_CONN_ESTABLISHED
@@ -888,7 +886,6 @@ async def test_connection_init_launch_tasks(fix_connection):
             host="localhost",
             port="64444",
             heartbeat_period=33,
-            start_tasks=True,
         )
 
         assert connection._journaler is journaler_mock
@@ -910,7 +907,13 @@ async def test_connection_init_launch_tasks(fix_connection):
         assert not connection._msg_buffer
         assert connection._test_req_id is None
 
-        assert mock_create_task.call_count == 2
+        assert mock_create_task.call_count == 0
+
+        assert connection._aio_task_heartbeat is None
+        assert connection._aio_task_socket_read is None
+        await connection.connect()
+        assert connection._aio_task_heartbeat is not None
+        assert connection._aio_task_socket_read is not None
         assert t1.called
         assert t2.called
 
@@ -918,15 +921,19 @@ async def test_connection_init_launch_tasks(fix_connection):
         await mock_create_task.call_args_list[0][0][0]
         await mock_create_task.call_args_list[1][0][0]
 
+        # Next connect doesn't create tasks again
+        t1.reset_mock()
+        t2.reset_mock()
+        await connection.connect()
+        assert not t1.called
+        assert not t2.called
+        assert connection._aio_task_heartbeat is not None
+        assert connection._aio_task_socket_read is not None
+
 
 @pytest.mark.asyncio
 async def test_connect_raises(fix_connection):
     conn: AsyncFIXConnection = fix_connection
-
-    with pytest.raises(
-        NotImplementedError, match=r"connect\(\) must be implemented in app class"
-    ):
-        await conn.connect()
 
     with pytest.raises(
         NotImplementedError, match=r"on_connect\(\) must be implemented in app class"

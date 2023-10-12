@@ -22,7 +22,6 @@ class AsyncFIXDummyServer(AsyncFIXConnection):
         port: int,
         heartbeat_period: int = 30,
         logger: logging.Logger | None = None,
-        start_tasks: bool = True,
     ):
         super().__init__(
             protocol=protocol,
@@ -33,7 +32,6 @@ class AsyncFIXDummyServer(AsyncFIXConnection):
             port=port,
             heartbeat_period=heartbeat_period,
             logger=logger,
-            start_tasks=start_tasks,
         )
         self._connection_role = ConnectionRole.ACCEPTOR
 
@@ -47,6 +45,9 @@ class AsyncFIXDummyServer(AsyncFIXConnection):
         """
         if self._socket_reader:
             raise FIXConnectionError("Server already working")
+
+        # this must be called in order to launch socket_reader/heartbeat tasks
+        await super().connect()
 
         server = await asyncio.start_server(self._handle_accept, self._host, self._port)
         async with server:

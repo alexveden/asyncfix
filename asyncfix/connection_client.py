@@ -18,7 +18,6 @@ class AsyncFIXClient(AsyncFIXConnection):
         port: int,
         heartbeat_period: int = 30,
         logger: logging.Logger | None = None,
-        start_tasks: bool = True,
     ):
         super().__init__(
             protocol=protocol,
@@ -29,13 +28,15 @@ class AsyncFIXClient(AsyncFIXConnection):
             port=port,
             heartbeat_period=heartbeat_period,
             logger=logger,
-            start_tasks=start_tasks,
         )
         self._connection_role = ConnectionRole.INITIATOR
 
     async def connect(self):
         if self._socket_reader:
             raise FIXConnectionError("Socket already connected")
+
+        # this must be called in order to launch socket_reader/heartbeat tasks
+        await super().connect()
 
         try:
             self._socket_reader, self._socket_writer = await asyncio.open_connection(
