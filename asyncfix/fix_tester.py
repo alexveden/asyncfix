@@ -1,3 +1,4 @@
+"""FIX Protocol Unit Tester."""
 from math import isnan, nan
 from unittest.mock import AsyncMock, MagicMock
 
@@ -10,24 +11,42 @@ from asyncfix.protocol.order_single import FIXNewOrderSingle
 
 
 class FIXTester:
+    """FIX protocol tester.
+
+    Attributes:
+        registered_orders: registered orders (sent via FIXTester)
+        schema: fix schema for validation (optional)
+        conn_init: fix connection initiator
+        conn_accept: fix virtual acceptor (simulated by FIXTester)
+        initiator_sent: messages sent by initiator
+        acceptor_rcv_que: raw messages received by (simulated acceptor)
+        acceptor_sent: FIXMessages sent by simulated acceptor
+    """
+
     def __init__(
         self,
         schema: FIXSchema | None = None,
         connection: AsyncFIXConnection | None = None,
     ):
+        """Initialize FIXTester.
+
+        Args:
+            schema: (optional) FIXSchema for validating incoming/outgoing messages
+            connection: (optional) fix initiator connection
+        """
         self.registered_orders = {}
         self.schema = schema
-        self.order_id = 0
-        self.exec_id = 10000
+        self._order_id = 0
+        self._exec_id = 10000
         self.conn_init = connection
         self.conn_accept = None
         self.initiator_sent: list[FIXMessage] = []
-        """list of fix messages sent by self.connection.send_msg()"""
+        """List of fix messages sent by self.connection.send_msg()."""
 
         self.acceptor_rcv_que: list[tuple(FIXMessage, bytes)] = []
 
         self.acceptor_sent: list[FIXMessage] = []
-        """list of fix messages sent by FIXTester.reply()"""
+        """List of fix messages sent by FIXTester.reply()."""
 
         if connection:
             assert isinstance(connection, AsyncFIXConnection)
@@ -68,6 +87,12 @@ class FIXTester:
             self.conn_accept._socket_writer.wait_closed = AsyncMock()
 
     def set_next_num(self, num_in=None, num_out=None):
+        """Set expected session seq nums for simulated acceptor.
+
+        Args:
+            num_in: next num in expected by simulated acceptor
+            num_out: next num out sent by simulated acceptor
+        """
         if num_in is not None:
             assert isinstance(num_in, int)
             assert num_in > 0
@@ -78,6 +103,7 @@ class FIXTester:
             self.conn_accept._session.next_num_out = num_out
 
     def reset_messages(self):
+        """Reset messages queues of initiator and acceptor."""
         self.initiator_sent.clear()
         self.acceptor_rcv_que.clear()
         self.acceptor_sent.clear()
@@ -87,15 +113,14 @@ class FIXTester:
         tags: tuple[FTag | str | int] | None = None,
         index: int = -1,
     ) -> dict[FTag | str, str]:
-        """
-        Query message sent from FIXTester to initiator
+        """Query message sent from FIXTester to initiator.
+
         Args:
-            tags:
-            index:
+            tags: tuple of tag numbers
+            index: index of self.acceptor_sent list, default -1
 
         Returns:
-
-
+            dict {FTag.MsgSeqNum: "34", "12382": "some value"}
         """
         return self.acceptor_sent[index].query(*tags)
 
@@ -104,16 +129,14 @@ class FIXTester:
         tags: tuple[FTag | str | int] | None = None,
         index: int = -1,
     ) -> dict[FTag | str, str]:
-        """
-        Query message sent from initiator to FixTester
+        """Query message sent from initiator to FixTester.
 
         Args:
-            tags:
-            index:
+            tags: tuple of tag numbers
+            index: index of self.initiator_sent list, default -1
 
         Returns:
-
-
+            dict {FTag.MsgSeqNum: "34", "12382": "some value"}
         """
         return self.initiator_sent[index].query(*tags)
 
@@ -140,12 +163,10 @@ class FIXTester:
             self._socket_drain_in_coro = None
 
     async def process_msg_acceptor(self, index=None):
-        """
-        Processes all messages qued by initiator.send_msg() or single if `index` given
+        """Processes messages queued by initiator.send_msg().
 
         Args:
             index: None - processes all messages in que, number - only one at that index
-
         """
         assert self.acceptor_rcv_que, "No messages in self.acceptor_rcv_que"
 
@@ -156,6 +177,11 @@ class FIXTester:
                 break
 
     async def reply(self, msg: FIXMessage):
+        """Manually reply to the initiator with arbitrary FIXMessage.
+
+        Args:
+            msg: arbitrary FIXMessage
+        """
         if self.schema:
             self.schema.validate(msg)
 
@@ -177,19 +203,25 @@ class FIXTester:
 
         return decoded_msg
 
-    def next_order_id(self) -> int:
-        self.order_id += 1
-        return self.order_id
+    def _next_order_id(self) -> int:
+        self._order_id += 1
+        return self._order_id
 
-    def next_exec_id(self) -> int:
-        self.exec_id += 1
-        return self.exec_id
+    def _next_exec_id(self) -> int:
+        self._exec_id += 1
+        return self._exec_id
 
     def order_register_single(self, o: FIXNewOrderSingle):
+        """Registers FIXNewOrderSingle."""
         self.registered_orders[o.clord_id] = o
         return True
 
     def fix_cxl_request(self, o: FIXNewOrderSingle) -> FIXMessage:
+        """Generates FIXNewOrderSingle cancel request + optional validation.
+
+        Returns:
+            cancel FIXMessage
+        """
         assert o.can_cancel()  # new assert 2023-09-23
         m = o.cancel_req()
         if self.schema:
@@ -198,8 +230,21 @@ class FIXTester:
         return m
 
     def fix_rep_request(
-        self, o: FIXNewOrderSingle, price: float = nan, qty: float = nan
+        self,
+        o: FIXNewOrderSingle,
+        price: float = nan,
+        qty: float = nan,
     ) -> FIXMessage:
+        """Generates FIXNewOrderSingle replace request + optional validating.
+
+        Args:
+            o: FIXNewOrderSingle
+            price: new price, nan - to skip
+            qty: new quantity, nan - to skip
+
+        Returns:
+            replace FIXMessage
+        """
         assert o.can_replace()
         m = o.replace_req(price, qty)
         if self.schema:
@@ -212,6 +257,15 @@ class FIXTester:
         cxl_req: FIXMessage,
         ord_status: FOrdStatus,
     ) -> FIXMessage:
+        """Generates synthetic ORDERCANCELREJECT message.
+
+        Args:
+            cxl_req: cancel / replace request FIXMessage (from initiator)
+            ord_status: new order status generated by this reply
+
+        Returns:
+            ORDERCANCELREJECT FIXMessage
+        """
         clord_id = cxl_req[FTag.ClOrdID]
         orig_clord_id = cxl_req[FTag.OrigClOrdID]
 
@@ -250,6 +304,24 @@ class FIXTester:
         orig_clord_id: str = None,
         avg_price: float = 0.0,
     ) -> FIXMessage:
+        """Generates synthetic EXECUTIONREPORT.
+
+        Args:
+            order: FIXNewOrderSingle to report
+            clord_id: report ClOrdID tag
+            exec_type: report ExecType
+            ord_status: report FOrdStatus
+            cum_qty: filled qty
+            leaves_qty: remaining qty
+            last_qty: last trade qty
+            price: (ONLY IN REPLACE) price of replaced order
+            order_qty: (ONLY IN REPLACE) qty of replaced order
+            orig_clord_id: report OrigClOrdID
+            avg_price: average fill price
+
+        Returns:
+            EXECUTIONREPORT FIXMessage
+        """
         assert order.clord_id in self.registered_orders, "Unregistered order!"
 
         m = FIXMessage(FMsg.EXECUTIONREPORT)
@@ -257,12 +329,12 @@ class FIXTester:
         m[FTag.ClOrdID] = clord_id
 
         if order.order_id is None:
-            order_id = self.next_order_id()
+            order_id = self._next_order_id()
         else:
             order_id = order.order_id
 
         m[FTag.OrderID] = order_id
-        m[FTag.ExecID] = self.next_exec_id()
+        m[FTag.ExecID] = self._next_exec_id()
 
         if orig_clord_id:
             m[FTag.OrigClOrdID] = orig_clord_id
@@ -348,7 +420,15 @@ class FIXTester:
             self.schema.validate(m)
         return m
 
-    def msg_logon(self, tags: dict | None = None):
+    def msg_logon(self, tags: dict | None = None) -> FIXMessage:
+        """Generates message LOGON + schema validation.
+
+        Args:
+            tags: extra tags
+
+        Returns:
+            FIXMessage
+        """
         msg = FIXMessage(FMsg.LOGON, tags)
         if FTag.EncryptMethod not in msg:
             msg.set(FTag.EncryptMethod, 0)
@@ -361,6 +441,7 @@ class FIXTester:
         return msg
 
     def msg_logout(self) -> FIXMessage:
+        """Generates message LOGOUT + schema validation."""
         msg = FIXMessage(FMsg.LOGOUT)
 
         if self.schema:
@@ -369,6 +450,11 @@ class FIXTester:
         return msg
 
     def msg_heartbeat(self, test_req_id=None) -> FIXMessage:
+        """Generates message HEARTBEAT + schema validation.
+
+        Args:
+            test_req_id: if Heartbeat in reply to TESTREQUEST
+        """
         msg = FIXMessage(FMsg.HEARTBEAT)
         if test_req_id is not None:
             msg[FTag.TestReqID] = test_req_id
@@ -379,6 +465,11 @@ class FIXTester:
         return msg
 
     def msg_test_request(self, test_req_id) -> FIXMessage:
+        """Generates message TESTREQUEST + schema validation.
+
+        Args:
+            test_req_id: unique test request id
+        """
         msg = FIXMessage(FMsg.TESTREQUEST)
         msg[FTag.TestReqID] = test_req_id
 
@@ -388,8 +479,18 @@ class FIXTester:
         return msg
 
     def msg_sequence_reset(
-        self, msg_seq_num: int, new_seq_no: int, is_gap_fill: bool = False
+        self,
+        msg_seq_num: int,
+        new_seq_no: int,
+        is_gap_fill: bool = False,
     ) -> FIXMessage:
+        """Generates message SEQUENCERESET + schema validation.
+
+        Args:
+            msg_seq_num: FTag.MsgSeqNum value
+            new_seq_no: FTag.NewSeqNo value
+            is_gap_fill: FTag.GapFillFlag "Y"/"N"
+        """
         msg = FIXMessage(FMsg.SEQUENCERESET)
         msg.set(FTag.MsgSeqNum, msg_seq_num)
         msg.set(FTag.GapFillFlag, "Y" if is_gap_fill else "N")
@@ -399,6 +500,12 @@ class FIXTester:
         return msg
 
     def msg_resend_request(self, begin_seq_no, end_seq_no="0") -> FIXMessage:
+        """Generates message RESENDREQUEST + schema validation.
+
+        Args:
+            begin_seq_no: seq no to start with
+            end_seq_no: end seq no, "0" - means all
+        """
         msg = FIXMessage(FMsg.RESENDREQUEST)
         msg.set(FTag.BeginSeqNo, str(begin_seq_no))
         msg.set(FTag.EndSeqNo, str(end_seq_no))
