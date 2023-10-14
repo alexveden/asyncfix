@@ -1,3 +1,4 @@
+"""Generic SQLite Journaler."""
 import sqlite3
 
 from asyncfix.errors import DuplicateSeqNoError, FIXMessageError
@@ -6,7 +7,14 @@ from asyncfix.session import FIXSession
 
 
 class Journaler(object):
+    """Tracks FIX message history."""
+
     def __init__(self, filename=None):
+        """Initialize SQLite Journaler.
+
+        Args:
+            filename: path to file, or None - to make in-memory journal
+        """
         if filename is None:
             self.conn = sqlite3.connect(":memory:")
         else:
@@ -33,6 +41,7 @@ class Journaler(object):
         )
 
     def sessions(self) -> dict[tuple[str, str], FIXSession]:
+        """Loads all available sessions from journal."""
         sessions = {}
         self.cursor.execute(
             "SELECT sessionId, targetCompId, senderCompId, outboundSeqNo, inboundSeqNo"
@@ -47,6 +56,15 @@ class Journaler(object):
         return sessions
 
     def create_or_load(self, target_comp_id, sender_comp_id) -> FIXSession:
+        """Creates or loads new session with unique target_comp_id/sender_comp_id.
+
+        Args:
+            target_comp_id: session targetCompId
+            sender_comp_id: session senderCompId
+
+        Returns:
+            FIXSession
+        """
         try:
             self.cursor.execute(
                 "INSERT INTO session(targetCompId, senderCompId) VALUES(?, ?)",
@@ -72,6 +90,17 @@ class Journaler(object):
 
     @staticmethod
     def find_seq_no(msg: bytes) -> int:
+        """Finds 34=<seqno> in serialized message.
+
+        Args:
+            msg: encoded fix message
+
+        Returns:
+            seq no value
+
+        Raises:
+            FIXMessageError: if not found or malformed message
+        """
         try:
             i_start = msg.index(b"\x0134=")
             i_end = msg.index(b"\x01", i_start + 1)
@@ -85,6 +114,13 @@ class Journaler(object):
         next_num_out: int | None = None,
         next_num_in: int | None = None,
     ):
+        """Sets journal and session seq num.
+
+        Args:
+            session: target session
+            next_num_out: new expected num out (optional)
+            next_num_in: new expected num in (optional)
+        """
         if next_num_out is not None:
             assert next_num_out > 0
             session.next_num_out = next_num_out
@@ -111,7 +147,22 @@ class Journaler(object):
             (session.key, next_num_out, MessageDirection.OUTBOUND.value),
         )
 
-    def persist_msg(self, msg: bytes, session: FIXSession, direction: MessageDirection):
+    def persist_msg(
+        self,
+        msg: bytes,
+        session: FIXSession,
+        direction: MessageDirection,
+    ):
+        """Commits encoded fix message into DB.
+
+        Args:
+            msg: encoded fix message
+            session: target session
+            direction: message direction
+
+        Raises:
+            DuplicateSeqNoError: (critical) when DB already have such message seq_no
+        """
         assert isinstance(msg, bytes), "expected encoded message"
         seq_no = self.find_seq_no(msg)
         try:
@@ -135,8 +186,21 @@ class Journaler(object):
             raise DuplicateSeqNoError("%s is a duplicate, error %s" % (seq_no, repr(e)))
 
     def recover_msg(
-        self, session: FIXSession, direction: MessageDirection, seq_no: int
+        self,
+        session: FIXSession,
+        direction: MessageDirection,
+        seq_no: int,
     ) -> bytes:
+        """Loads specific message from DB by seq no.
+
+        Args:
+            session: target session
+            direction: message direction
+            seq_no: target seq_no
+
+        Returns:
+            encoded message (bytes)
+        """
         msgs = self.recover_messages(session, direction, seq_no, seq_no)
         if msgs:
             return msgs[0]
@@ -144,8 +208,23 @@ class Journaler(object):
             return None
 
     def recover_messages(
-        self, session: FIXSession, direction: MessageDirection, start_seq_no, end_seq_no
+        self,
+        session: FIXSession,
+        direction: MessageDirection,
+        start_seq_no: int | str,
+        end_seq_no: int | str,
     ) -> list[bytes]:
+        """Loads messages with seq no range from DB.
+
+        Args:
+            session: target session
+            direction: message direction
+            start_seq_no: seq no from
+            end_seq_no: seq no to
+
+        Returns:
+            list of encoded FIX messages
+        """
         self.cursor.execute(
             "SELECT msg FROM message WHERE session = ? AND direction = ? AND seqNo >= ?"
             " AND seqNo <= ? ORDER BY seqNo",
@@ -162,6 +241,15 @@ class Journaler(object):
         sessions: list[FIXSession] | None = None,
         direction: MessageDirection | None = None,
     ):
+        """Get all messages from the Journaler DB.
+
+        Args:
+            sessions: session filter (optional)
+            direction: direction filter (optional)
+
+        Returns:
+            list of tuples [(seq_no, enc_msg, direction, session_key), ...]
+        """
         sql = "SELECT seqNo, msg, direction, session FROM message"
         clauses = []
         args = []
