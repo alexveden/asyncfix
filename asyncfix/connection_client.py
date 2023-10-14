@@ -1,3 +1,4 @@
+"""FIX Initiator (client) connection."""
 import asyncio
 import logging
 
@@ -8,6 +9,7 @@ from asyncfix.protocol import FIXProtocolBase
 
 
 class AsyncFIXClient(AsyncFIXConnection):
+    """Generic FIX client."""
     def __init__(
         self,
         protocol: FIXProtocolBase,
@@ -19,6 +21,18 @@ class AsyncFIXClient(AsyncFIXConnection):
         heartbeat_period: int = 30,
         logger: logging.Logger | None = None,
     ):
+        """Initialization.
+
+        Args:
+            protocol: FIX protocol used in codec
+            sender_comp_id: client sender_comp_id tag
+            target_comp_id: client target_comp_id tag
+            journaler: message journaler
+            host: fix host
+            port: fix port
+            heartbeat_period: heartbeat_period in seconds
+            logger: custom logger instance
+        """
         super().__init__(
             protocol=protocol,
             sender_comp_id=sender_comp_id,
@@ -32,6 +46,11 @@ class AsyncFIXClient(AsyncFIXConnection):
         self._connection_role = ConnectionRole.INITIATOR
 
     async def connect(self):
+        """Connects to the FIX server and initializes session.
+
+        Raises:
+            FIXConnectionError: if already connected
+        """
         if self._socket_reader:
             raise FIXConnectionError("Socket already connected")
 

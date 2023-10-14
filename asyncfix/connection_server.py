@@ -1,3 +1,4 @@
+"""Dummy FIX server module."""
 import asyncio
 import logging
 
@@ -8,9 +9,7 @@ from asyncfix.protocol import FIXProtocolBase
 
 
 class AsyncFIXDummyServer(AsyncFIXConnection):
-    """
-    Simple server which supports only single connection (just for testing)
-    """
+    """Simple server which supports only single connection (just for testing)."""
 
     def __init__(
         self,
@@ -23,6 +22,18 @@ class AsyncFIXDummyServer(AsyncFIXConnection):
         heartbeat_period: int = 30,
         logger: logging.Logger | None = None,
     ):
+        """Initialization.
+
+        Args:
+            protocol: FIX protocol used in codec
+            sender_comp_id: server sender_comp_id tag
+            target_comp_id: server target_comp_id tag
+            journaler: message journaler
+            host: fix host to listen
+            port: fix port to bind
+            heartbeat_period: heartbeat_period in seconds
+            logger: custom logger instance
+        """
         super().__init__(
             protocol=protocol,
             sender_comp_id=sender_comp_id,
@@ -36,12 +47,10 @@ class AsyncFIXDummyServer(AsyncFIXConnection):
         self._connection_role = ConnectionRole.ACCEPTOR
 
     async def connect(self):
-        """
-        Starts the server and infinitely runs it
+        """Starts the server and infinitely runs it.
 
         Raises:
             FIXConnectionError: when already connected
-
         """
         if self._socket_reader:
             raise FIXConnectionError("Server already working")
@@ -54,8 +63,11 @@ class AsyncFIXDummyServer(AsyncFIXConnection):
             await server.serve_forever()
 
     async def _handle_accept(
-        self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter
+        self,
+        reader: asyncio.StreamReader,
+        writer: asyncio.StreamWriter,
     ):
+        """Executed when new client connection established."""
         if self._socket_writer:
             self.log.info("Multiple connections are not allowed for dummy server")
 
