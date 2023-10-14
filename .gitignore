@@ -63,3 +63,4 @@ target/
 *.ipynb
 *.pyx
 tmux_run.sh
+site/

@@ -38,4 +38,7 @@ docs:
     --src-base-url="https://github.com/alexveden/asyncfix/blob/main/" \
     asyncfix
 	
+	# Finishing and pushing to GH
+ 	mkdocs gh-deploy
+	
 
