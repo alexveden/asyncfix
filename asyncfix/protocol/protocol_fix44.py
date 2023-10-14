@@ -1,8 +1,10 @@
+"""FIX Protocol 4.4 module."""
 from asyncfix import FMsg, FTag
 from asyncfix.protocol.protocol_base import FIXProtocolBase
 
 
 class FIXProtocol44(FIXProtocolBase):
+    """FIXProtocol 4.4 protocol definition class."""
     beginstring = "FIX.4.4"
 
     session_message_types = {
