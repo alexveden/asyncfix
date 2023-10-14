@@ -25,12 +25,17 @@ pypi:
 	twine upload dist/* --verbose
 
 docs:
+	# format docs
+	pydocstringformatter asyncfix/
+
+	# Check validity of docs
+	pydocstyle --convention=google ./asyncfix/
+
+	# Builds markdown docs 
 	lazydocs \
     --output-path="./docs/reference" \
     --overview-file="README.md" \
     --src-base-url="https://github.com/alexveden/asyncfix/blob/main/" \
     asyncfix
 	
-	# Check validity of docs
-	pydocstyle --convention=google ./asyncfix/
 
