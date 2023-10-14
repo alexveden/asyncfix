@@ -29,22 +29,15 @@ class Server(AsyncFIXDummyServer):
         self.clord_id = 0
 
     async def on_connect(self):
-        """
-        (AppEvent) Underlying socket connected
-
-        """
+        """(AppEvent) Underlying socket connected."""
         self.log.info("on_connect")
 
     async def on_disconnect(self):
-        """
-        (AppEvent) Underlying socket disconnected
-
-        """
+        """(AppEvent) Underlying socket disconnected."""
         self.log.info("on_disconnect")
 
     async def on_logon(self, is_healthy: bool):
-        """
-        (AppEvent) Logon(35=A) received from peer
+        """(AppEvent) Logon(35=A) received from peer.
 
         Args:
             is_healthy: True - if connection_state is ACTIVE
@@ -52,30 +45,25 @@ class Server(AsyncFIXDummyServer):
         self.log.info("on_logon")
 
     async def on_logout(self, msg: FIXMessage):
-        """
-        (AppEvent) Logout(35=5) received from peer
+        """(AppEvent) Logout(35=5) received from peer.
 
         Args:
             msg:
-
         """
         self.log.info("on_logout")
 
     async def should_replay(self, historical_replay_msg: FIXMessage) -> bool:
-        """
-        (AppLevel) Checks if historical_replay_msg from Journaler should be replayed
+        """(AppLevel) Checks if historical_replay_msg from Journaler should be replayed.
 
         Args:
             historical_replay_msg: message from Journaler log
 
         Returns: True - replay, False - msg skipped (replaced by SequenceReset(35=4))
-
         """
         return True
 
     async def on_state_change(self, connection_state: ConnectionState):
-        """
-        (AppEvent) On ConnectionState change
+        """(AppEvent) On ConnectionState change.
 
         Args:
             connection_state: new connection state
@@ -83,14 +71,12 @@ class Server(AsyncFIXDummyServer):
         self.log.info("on_state_change")
 
     async def on_message(self, msg: FIXMessage):
-        """
-        (AppEvent) Business message was received
+        """(AppEvent) Business message was received.
 
         Typically excludes session messages
 
         Args:
             msg:
-
         """
         if msg.msg_type == FMsg.NEWORDERSINGLE:
             await self.on_new_order(msg)
@@ -98,12 +84,10 @@ class Server(AsyncFIXDummyServer):
             self.log.debug(f"on_message: app msg skipped: {msg}")
 
     async def on_new_order(self, msg: FIXMessage):
-        """
-        Reply execution report on incoming order request
+        """Reply execution report on incoming order request.
 
         Args:
             msg:
-
         """
         try:
             msg = FIXMessage(

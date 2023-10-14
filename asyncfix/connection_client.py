@@ -10,6 +10,7 @@ from asyncfix.protocol import FIXProtocolBase
 
 class AsyncFIXClient(AsyncFIXConnection):
     """Generic FIX client."""
+
     def __init__(
         self,
         protocol: FIXProtocolBase,

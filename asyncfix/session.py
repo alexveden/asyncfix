@@ -12,6 +12,7 @@ class FIXSession:
         next_num_out: next expected seq num out
         next_num_in: next expected seq num in
     """
+
     def __init__(self, key, target_comp_id: str, sender_comp_id: str):
         """Initialize session.
 

@@ -718,7 +718,7 @@ def test_cancel_req():
     assert not o.can_cancel()
 
     # Tag 11: ClOrdID
-    assert o.clord_id == 'clordTest--2'
+    assert o.clord_id == "clordTest--2"
     assert m[11] == "clordTest--2"
 
     # Tag 41: OrigClOrdID

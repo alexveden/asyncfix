@@ -27,3 +27,10 @@ repos:
       language: system
       pass_filenames: false
       always_run: true
+
+- repo: https://github.com/DanielNoord/pydocstringformatter
+  rev: v0.7.3
+  hooks:
+    - id: pydocstringformatter
+      exclude: tests/.*
+      args: [--max-line-length=88, --no-split-summary-body, --linewrap-full-docstring]

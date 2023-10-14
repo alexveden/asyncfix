@@ -15,6 +15,7 @@ class _StrEnum(enum.Enum):
 
 class FOrdSide(_StrEnum):
     """FIX Order Side."""
+
     BUY = "1"
     SELL = "2"
     BUY_MINUS = "3"
@@ -35,6 +36,7 @@ class FOrdSide(_StrEnum):
 
 class FOrdType(_StrEnum):
     """FIX Order Type."""
+
     MARKET = "1"
     LIMIT = "2"
     STOP = "3"
@@ -56,6 +58,7 @@ class FOrdType(_StrEnum):
 
 class FOrdStatus(_StrEnum):
     """FIX Order Status."""
+
     CREATED = "Z"  # IMPORTANT: this one is for internal use, non FIX!
     NEW = "0"
     PARTIALLY_FILLED = "1"
@@ -75,6 +78,7 @@ class FOrdStatus(_StrEnum):
 
 class FExecType(_StrEnum):
     """FIX execution report ExecType."""
+
     NEW = "0"
     DONE_FOR_DAY = "3"
     CANCELED = "4"

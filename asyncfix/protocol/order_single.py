@@ -30,6 +30,7 @@ class FIXNewOrderSingle:
         status: current order status
         target_price: order target execution price
     """
+
     def __init__(
         self,
         clord_id: str,

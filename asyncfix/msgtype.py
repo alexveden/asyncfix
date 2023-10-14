@@ -12,6 +12,7 @@ class _MsgTypeEnumMeta(enum.EnumMeta):
 
 class FMsg(enum.Enum, metaclass=_MsgTypeEnumMeta):
     """FIXMessage type enum."""
+
     def __str__(self):
         """To string."""
         return str(self.value)

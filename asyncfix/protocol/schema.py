@@ -16,6 +16,7 @@ from asyncfix.message import FIXContainer
 @dataclasses.dataclass
 class SchemaField:
     """FIX Field schema."""
+
     tag: str
     name: str
     ftype: str
@@ -221,6 +222,7 @@ class SchemaSet:
         members: members
         required: required flag
     """
+
     def __init__(self, name: str, field: SchemaField | None = None):
         """Initialize.
 
@@ -353,6 +355,7 @@ class SchemaGroup(SchemaSet):
     Attributes:
         field_required:
     """
+
     def __init__(self, field: SchemaField, required: bool):
         """Initialize.
 
@@ -430,6 +433,7 @@ class SchemaGroup(SchemaSet):
 
 class SchemaComponent(SchemaSet):
     """SchemaComponent container."""
+
     def __init__(self, name: str):
         """Initialize.
 
@@ -441,6 +445,7 @@ class SchemaComponent(SchemaSet):
 
 class SchemaHeader(SchemaSet):
     """SchemaHeader container."""
+
     def __init__(self):
         """Initialize header."""
         super().__init__(name="Header")
@@ -453,6 +458,7 @@ class SchemaMessage(SchemaSet):
         msg_type: msg_type value
         msg_cat: message category
     """
+
     def __init__(self, name: str, msg_type: str, msg_cat: str):
         """Initialize.
 
@@ -474,6 +480,7 @@ class SchemaMessage(SchemaSet):
 
 class FIXSchema:
     """FIX schema validator."""
+
     def __init__(self, xml_or_path: ET.ElementTree | str):
         """Initialize.
 
