@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="../../img/favicon.ico" />
+    <title>Message - AsyncFIX Documentation</title>
+    <link rel="stylesheet" href="../../css/theme.css" />
+    <link rel="stylesheet" href="../../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Message";
+        var mkdocs_page_input_path = "reference/message.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="../.." class="icon icon-home"> AsyncFIX Documentation
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../..">Home</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../">API Reference</a>
+                </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../..">AsyncFIX Documentation</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../.." class="icon icon-home" aria-label="Docs"></a></li>
+      <li class="breadcrumb-item active">Message</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <!-- markdownlint-disable -->
+
+<p><a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/message.py#L0"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h1 id="module-message"><kbd>module</kbd> <code>message</code></h1>
+<p>FIX message and containers module. </p>
+<hr />
+<p><a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/message.py#L24"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h2 id="class-messagedirection"><kbd>class</kbd> <code>MessageDirection</code></h2>
+<p>Direction of the message INBOUND/OUTBOUND. </p>
+<hr />
+<p><a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/message.py#L47"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h2 id="class-fixcontainer"><kbd>class</kbd> <code>FIXContainer</code></h2>
+<p>Generic FIX container. </p>
+<p><strong>Attributes:</strong></p>
+<ul>
+<li><b><code>tags</code></b>:  fix tags of the container </li>
+</ul>
+<p><a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/message.py#L54"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-__init__"><kbd>method</kbd> <code>__init__</code></h3>
+<pre><code class="language-python">__init__(
+    tags: 'dict[str | int, [str, float, int, list[dict | FIXContainer]]]' = None
+)
+</code></pre>
+<p>Initialize. </p>
+<p><strong>Examples:</strong>
+  m = FIXContainer({  1: "account",  FTag.ClOrdID: 'my-clord',  FTag.NoAllocs: [{312: 'grp1'}, {312: 'grp2'}],  }) </p>
+<p><strong>Args:</strong></p>
+<ul>
+<li><b><code>tags</code></b>:  add tags at initialization time (all keys / values converted to str!) </li>
+</ul>
+<hr />
+<p><a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/message.py#L159"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-add_group"><kbd>method</kbd> <code>add_group</code></h3>
+<pre><code class="language-python">add_group(tag: 'str | int', group: 'FIXContainer | dict', index: 'int' = -1)
+</code></pre>
+<p>Add repeating group item to fix message. </p>
+<p><strong>Args:</strong></p>
+<ul>
+<li><b><code>tag</code></b>:  tag of repeating group, typically contains <code>No</code>, e.g. FTag.NoAllocs </li>
+<li><b><code>group</code></b>:  group item (another FIXContainer) or dict[tag: value] </li>
+<li><b><code>index</code></b>:  where to insert new value, default: append </li>
+</ul>
+<p><strong>Raises:</strong></p>
+<ul>
+<li><b><code>FIXMessageError</code></b>:  incorrect group type/value </li>
+</ul>
+<hr />
+<p><a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/message.py#L110"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-get"><kbd>method</kbd> <code>get</code></h3>
+<pre><code class="language-python">get(
+    tag: 'str | int | FTag',
+    default=&lt;class 'asyncfix.errors.TagNotFoundError'&gt;
+) → str
+</code></pre>
+<p>Get tag value. </p>
+<p><strong>Args:</strong></p>
+<ul>
+<li><b><code>tag</code></b>:  tag to get </li>
+<li><b><code>default</code></b>:  default value or raises TagNotFoundError </li>
+</ul>
+<p><strong>Returns:</strong>
+ string value of the tag </p>
+<p><strong>Raises:</strong></p>
+<ul>
+<li><b><code>FIXMessageError</code></b>:  trying to get FIX message group by tag, use get_group() </li>
+<li><b><code>RepeatingTagError</code></b>:  tag was repeated in decoded message, probably msg group </li>
+<li><b><code>TagNotFoundError</code></b>:  tag was not found in message </li>
+</ul>
+<hr />
+<p><a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/message.py#L263"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-get_group_by_index"><kbd>method</kbd> <code>get_group_by_index</code></h3>
+<pre><code class="language-python">get_group_by_index(tag: 'str | int', index: 'int') → FIXContainer
+</code></pre>
+<p>Get repeating group item by index. </p>
+<p><strong>Args:</strong></p>
+<ul>
+<li><b><code>tag</code></b>:  repeating group tag </li>
+<li><b><code>index</code></b>:  repeating group item index </li>
+</ul>
+<p><strong>Returns:</strong>
+ FIXContainer </p>
+<p><strong>Raises:</strong></p>
+<ul>
+<li><b><code>TagNotFoundError</code></b>:  tag not found </li>
+</ul>
+<hr />
+<p><a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/message.py#L238"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-get_group_by_tag"><kbd>method</kbd> <code>get_group_by_tag</code></h3>
+<pre><code class="language-python">get_group_by_tag(
+    tag: 'str | int',
+    gtag: 'str | int',
+    gvalue: 'str'
+) → FIXContainer
+</code></pre>
+<p>Get repeating group item by internal group tag value. </p>
+<p><strong>Args:</strong></p>
+<ul>
+<li><b><code>tag</code></b>:  repeating group tag </li>
+<li><b><code>gtag</code></b>:  inside group tag to filter by </li>
+<li><b><code>gvalue</code></b>:  expected group tag value </li>
+</ul>
+<p><strong>Returns:</strong>
+ FIXContainer of repeating group item </p>
+<p><strong>Raises:</strong></p>
+<ul>
+<li><b><code>TagNotFoundError</code></b>:  tag not found </li>
+</ul>
+<hr />
+<p><a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/message.py#L214"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-get_group_list"><kbd>method</kbd> <code>get_group_list</code></h3>
+<pre><code class="language-python">get_group_list(tag: 'str | int') → list[FIXContainer]
+</code></pre>
+<p>Get all repeating groups of a tag. </p>
+<p><strong>Args:</strong></p>
+<ul>
+<li><b><code>tag</code></b>:  target tag </li>
+</ul>
+<p><strong>Returns:</strong>
+ list of repeating FIXContainers </p>
+<p><strong>Raises:</strong></p>
+<ul>
+<li><b><code>UnmappedRepeatedGrpError</code></b>:  repeating group is not handled by protocol class </li>
+<li><b><code>TagNotFoundError</code></b>:  tag not found </li>
+</ul>
+<hr />
+<p><a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/message.py#L139"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-is_group"><kbd>method</kbd> <code>is_group</code></h3>
+<pre><code class="language-python">is_group(tag: 'str | int') → bool | None
+</code></pre>
+<p>Check if tag is repeating group. </p>
+<p><strong>Args:</strong></p>
+<ul>
+<li><b><code>tag</code></b>:  tag to check </li>
+</ul>
+<p><strong>Returns:</strong>
+ None - if not found True - if repeating group False - simple tag </p>
+<hr />
+<p><a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/message.py#L307"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-items"><kbd>method</kbd> <code>items</code></h3>
+<pre><code class="language-python">items()
+</code></pre>
+<p>All tags items iterator. </p>
+<hr />
+<p><a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/message.py#L285"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-query"><kbd>method</kbd> <code>query</code></h3>
+<pre><code class="language-python">query(*tags: 'tuple[FTag | str | int]') → dict[FTag | str, str]
+</code></pre>
+<p>Request multiple tags from FIXMessage as dictionary. </p>
+<p><strong>Args:</strong></p>
+<ul>
+<li><b><code>*tags</code></b>:  tags var arguments </li>
+</ul>
+<p><strong>Returns:</strong></p>
+<ul>
+<li><b><code>dict {tag</code></b>:  value, ...} </li>
+</ul>
+<hr />
+<p><a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/message.py#L79"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-set"><kbd>method</kbd> <code>set</code></h3>
+<pre><code class="language-python">set(tag: 'str | int', value, replace: 'bool' = False)
+</code></pre>
+<p>Set tag value. </p>
+<p><strong>Args:</strong></p>
+<ul>
+<li><b><code>tag</code></b>:  tag to set </li>
+<li><b><code>value</code></b>:  value to set (converted to str!) </li>
+<li><b><code>replace</code></b>:  set True - to intentionally rewrite existing tag </li>
+</ul>
+<p><strong>Raises:</strong></p>
+<ul>
+<li><b><code>DuplicatedTagError</code></b>:  when trying to set existing tag </li>
+<li><b><code>FIXMessageError</code></b>:  tag value is not convertible to int </li>
+</ul>
+<hr />
+<p><a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/message.py#L185"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-set_group"><kbd>method</kbd> <code>set_group</code></h3>
+<pre><code class="language-python">set_group(tag: 'str | int', groups: 'list[dict, FIXContainer]')
+</code></pre>
+<p>Set repeating groups of the message. </p>
+<p><strong>Args:</strong></p>
+<ul>
+<li><b><code>tag</code></b>:  tag of repeating group, typically contains <code>No</code>, e.g. FTag.NoAllocs </li>
+<li><b><code>groups</code></b>:  group items list of  (another FIXContainer) or dict[tag: value] </li>
+</ul>
+<p><strong>Raises:</strong></p>
+<ul>
+<li><b><code>DuplicatedTagError</code></b>:  group with the same tag already exists </li>
+<li><b><code>FIXMessageError</code></b>:  incorrect group type/value </li>
+</ul>
+<hr />
+<p><a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/message.py#L390"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h2 id="class-fixmessage"><kbd>class</kbd> <code>FIXMessage</code></h2>
+<p>Generic FIXMessage. </p>
+<p><a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/message.py#L393"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-__init___1"><kbd>method</kbd> <code>__init__</code></h3>
+<pre><code class="language-python">__init__(
+    msg_type: 'str | FMsg',
+    tags: 'dict[str | int, [str, float, int]]' = None
+)
+</code></pre>
+<p>Initialize. </p>
+<p><strong>Args:</strong></p>
+<ul>
+<li><b><code>msg_type</code></b>:  message type, must comply with FIXTag=35 </li>
+<li><b><code>tags</code></b>:  initial tags values </li>
+</ul>
+<hr />
+<h4 id="property-msg_type"><kbd>property</kbd> msg_type</h4>
+<p>Message type. </p>
+<hr />
+<p><a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/message.py#L159"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-add_group_1"><kbd>method</kbd> <code>add_group</code></h3>
+<pre><code class="language-python">add_group(tag: 'str | int', group: 'FIXContainer | dict', index: 'int' = -1)
+</code></pre>
+<p>Add repeating group item to fix message. </p>
+<p><strong>Args:</strong></p>
+<ul>
+<li><b><code>tag</code></b>:  tag of repeating group, typically contains <code>No</code>, e.g. FTag.NoAllocs </li>
+<li><b><code>group</code></b>:  group item (another FIXContainer) or dict[tag: value] </li>
+<li><b><code>index</code></b>:  where to insert new value, default: append </li>
+</ul>
+<p><strong>Raises:</strong></p>
+<ul>
+<li><b><code>FIXMessageError</code></b>:  incorrect group type/value </li>
+</ul>
+<hr />
+<p><a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/message.py#L110"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-get_1"><kbd>method</kbd> <code>get</code></h3>
+<pre><code class="language-python">get(
+    tag: 'str | int | FTag',
+    default=&lt;class 'asyncfix.errors.TagNotFoundError'&gt;
+) → str
+</code></pre>
+<p>Get tag value. </p>
+<p><strong>Args:</strong></p>
+<ul>
+<li><b><code>tag</code></b>:  tag to get </li>
+<li><b><code>default</code></b>:  default value or raises TagNotFoundError </li>
+</ul>
+<p><strong>Returns:</strong>
+ string value of the tag </p>
+<p><strong>Raises:</strong></p>
+<ul>
+<li><b><code>FIXMessageError</code></b>:  trying to get FIX message group by tag, use get_group() </li>
+<li><b><code>RepeatingTagError</code></b>:  tag was repeated in decoded message, probably msg group </li>
+<li><b><code>TagNotFoundError</code></b>:  tag was not found in message </li>
+</ul>
+<hr />
+<p><a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/message.py#L263"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-get_group_by_index_1"><kbd>method</kbd> <code>get_group_by_index</code></h3>
+<pre><code class="language-python">get_group_by_index(tag: 'str | int', index: 'int') → FIXContainer
+</code></pre>
+<p>Get repeating group item by index. </p>
+<p><strong>Args:</strong></p>
+<ul>
+<li><b><code>tag</code></b>:  repeating group tag </li>
+<li><b><code>index</code></b>:  repeating group item index </li>
+</ul>
+<p><strong>Returns:</strong>
+ FIXContainer </p>
+<p><strong>Raises:</strong></p>
+<ul>
+<li><b><code>TagNotFoundError</code></b>:  tag not found </li>
+</ul>
+<hr />
+<p><a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/message.py#L238"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-get_group_by_tag_1"><kbd>method</kbd> <code>get_group_by_tag</code></h3>
+<pre><code class="language-python">get_group_by_tag(
+    tag: 'str | int',
+    gtag: 'str | int',
+    gvalue: 'str'
+) → FIXContainer
+</code></pre>
+<p>Get repeating group item by internal group tag value. </p>
+<p><strong>Args:</strong></p>
+<ul>
+<li><b><code>tag</code></b>:  repeating group tag </li>
+<li><b><code>gtag</code></b>:  inside group tag to filter by </li>
+<li><b><code>gvalue</code></b>:  expected group tag value </li>
+</ul>
+<p><strong>Returns:</strong>
+ FIXContainer of repeating group item </p>
+<p><strong>Raises:</strong></p>
+<ul>
+<li><b><code>TagNotFoundError</code></b>:  tag not found </li>
+</ul>
+<hr />
+<p><a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/message.py#L214"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-get_group_list_1"><kbd>method</kbd> <code>get_group_list</code></h3>
+<pre><code class="language-python">get_group_list(tag: 'str | int') → list[FIXContainer]
+</code></pre>
+<p>Get all repeating groups of a tag. </p>
+<p><strong>Args:</strong></p>
+<ul>
+<li><b><code>tag</code></b>:  target tag </li>
+</ul>
+<p><strong>Returns:</strong>
+ list of repeating FIXContainers </p>
+<p><strong>Raises:</strong></p>
+<ul>
+<li><b><code>UnmappedRepeatedGrpError</code></b>:  repeating group is not handled by protocol class </li>
+<li><b><code>TagNotFoundError</code></b>:  tag not found </li>
+</ul>
+<hr />
+<p><a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/message.py#L139"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-is_group_1"><kbd>method</kbd> <code>is_group</code></h3>
+<pre><code class="language-python">is_group(tag: 'str | int') → bool | None
+</code></pre>
+<p>Check if tag is repeating group. </p>
+<p><strong>Args:</strong></p>
+<ul>
+<li><b><code>tag</code></b>:  tag to check </li>
+</ul>
+<p><strong>Returns:</strong>
+ None - if not found True - if repeating group False - simple tag </p>
+<hr />
+<p><a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/message.py#L307"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-items_1"><kbd>method</kbd> <code>items</code></h3>
+<pre><code class="language-python">items()
+</code></pre>
+<p>All tags items iterator. </p>
+<hr />
+<p><a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/message.py#L285"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-query_1"><kbd>method</kbd> <code>query</code></h3>
+<pre><code class="language-python">query(*tags: 'tuple[FTag | str | int]') → dict[FTag | str, str]
+</code></pre>
+<p>Request multiple tags from FIXMessage as dictionary. </p>
+<p><strong>Args:</strong></p>
+<ul>
+<li><b><code>*tags</code></b>:  tags var arguments </li>
+</ul>
+<p><strong>Returns:</strong></p>
+<ul>
+<li><b><code>dict {tag</code></b>:  value, ...} </li>
+</ul>
+<hr />
+<p><a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/message.py#L79"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-set_1"><kbd>method</kbd> <code>set</code></h3>
+<pre><code class="language-python">set(tag: 'str | int', value, replace: 'bool' = False)
+</code></pre>
+<p>Set tag value. </p>
+<p><strong>Args:</strong></p>
+<ul>
+<li><b><code>tag</code></b>:  tag to set </li>
+<li><b><code>value</code></b>:  value to set (converted to str!) </li>
+<li><b><code>replace</code></b>:  set True - to intentionally rewrite existing tag </li>
+</ul>
+<p><strong>Raises:</strong></p>
+<ul>
+<li><b><code>DuplicatedTagError</code></b>:  when trying to set existing tag </li>
+<li><b><code>FIXMessageError</code></b>:  tag value is not convertible to int </li>
+</ul>
+<hr />
+<p><a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/message.py#L185"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-set_group_1"><kbd>method</kbd> <code>set_group</code></h3>
+<pre><code class="language-python">set_group(tag: 'str | int', groups: 'list[dict, FIXContainer]')
+</code></pre>
+<p>Set repeating groups of the message. </p>
+<p><strong>Args:</strong></p>
+<ul>
+<li><b><code>tag</code></b>:  tag of repeating group, typically contains <code>No</code>, e.g. FTag.NoAllocs </li>
+<li><b><code>groups</code></b>:  group items list of  (another FIXContainer) or dict[tag: value] </li>
+</ul>
+<p><strong>Raises:</strong></p>
+<ul>
+<li><b><code>DuplicatedTagError</code></b>:  group with the same tag already exists </li>
+<li><b><code>FIXMessageError</code></b>:  incorrect group type/value </li>
+</ul>
+<hr />
+<p><em>This file was automatically generated via <a href="https://github.com/ml-tooling/lazydocs">lazydocs</a>.</em></p>
+              
+            </div>
+          </div><footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+    
+  </span>
+</div>
+    <script src="../../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "../..";</script>
+    <script src="../../js/theme_extra.js"></script>
+    <script src="../../js/theme.js"></script>
+      <script src="../../search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

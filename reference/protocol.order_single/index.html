@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="../../img/favicon.ico" />
+    <title>Protocol.order single - AsyncFIX Documentation</title>
+    <link rel="stylesheet" href="../../css/theme.css" />
+    <link rel="stylesheet" href="../../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Protocol.order single";
+        var mkdocs_page_input_path = "reference/protocol.order_single.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="../.." class="icon icon-home"> AsyncFIX Documentation
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../..">Home</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../">API Reference</a>
+                </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../..">AsyncFIX Documentation</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../.." class="icon icon-home" aria-label="Docs"></a></li>
+      <li class="breadcrumb-item active">Protocol.order single</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <!-- markdownlint-disable -->
+
+<p><a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/order_single.py#L0"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h1 id="module-protocolorder_single"><kbd>module</kbd> <code>protocol.order_single</code></h1>
+<p>Generic FIX Order single module. </p>
+<h2 id="global-variables"><strong>Global Variables</strong></h2>
+<ul>
+<li><strong>nan</strong></li>
+</ul>
+<hr />
+<p><a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/order_single.py#L14"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h2 id="class-fixnewordersingle"><kbd>class</kbd> <code>FIXNewOrderSingle</code></h2>
+<p>Generic FIXNewOrderSingle wrapper. </p>
+<p><strong>Attributes:</strong></p>
+<ul>
+<li><b><code>clord_id</code></b>:  current order ClOrdID </li>
+<li><b><code>orig_clord_id</code></b>:  order OrigClOrdID (when canceling / replacing) </li>
+<li><b><code>order_id</code></b>:  executed order id </li>
+<li><b><code>ticker</code></b>:  user order ticker </li>
+<li><b><code>side</code></b>:  order side </li>
+<li><b><code>price</code></b>:  order price </li>
+<li><b><code>qty</code></b>:  order quantity </li>
+<li><b><code>leaves_qty</code></b>:  order remaining qty </li>
+<li><b><code>cum_qty</code></b>:  order filled qty </li>
+<li><b><code>avg_px</code></b>:  average fill price </li>
+<li><b><code>ord_type</code></b>:  order type </li>
+<li><b><code>account</code></b>:  order account </li>
+<li><b><code>status</code></b>:  current order status </li>
+<li><b><code>target_price</code></b>:  order target execution price </li>
+</ul>
+<p><a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/order_single.py#L34"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-__init__"><kbd>method</kbd> <code>__init__</code></h3>
+<pre><code class="language-python">__init__(
+    clord_id: str,
+    cl_ticker: str,
+    side: FOrdSide | str,
+    price: float,
+    qty: float,
+    ord_type: FOrdType | str = &lt;FOrdType.LIMIT: '2'&gt;,
+    account: str | dict = '000000',
+    target_price: float | None = None
+)
+</code></pre>
+<p>Initialize order. </p>
+<p><strong>Args:</strong></p>
+<ul>
+<li><b><code>clord_id</code></b>:  root ClOrdID </li>
+<li><b><code>cl_ticker</code></b>:  client ticker (can by any accepted by user's OMS) </li>
+<li><b><code>side</code></b>:  order side </li>
+<li><b><code>price</code></b>:  order initial price (current price, changes if replaced) </li>
+<li><b><code>qty</code></b>:  order quantity </li>
+<li><b><code>ord_type</code></b>:  order type </li>
+<li><b><code>account</code></b>:  order account (optional) </li>
+<li><b><code>target_price</code></b>:  order initial target execution price (useful for slippage) </li>
+</ul>
+<hr />
+<h4 id="property-clord_id_root"><kbd>property</kbd> clord_id_root</h4>
+<p>Current order ClOrdID root. </p>
+<hr />
+<p><a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/order_single.py#L474"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-can_cancel"><kbd>method</kbd> <code>can_cancel</code></h3>
+<pre><code class="language-python">can_cancel() → bool
+</code></pre>
+<p>Check if order can be canceled from its current state. </p>
+<hr />
+<p><a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/order_single.py#L487"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-can_replace"><kbd>method</kbd> <code>can_replace</code></h3>
+<pre><code class="language-python">can_replace() → bool
+</code></pre>
+<p>Check if order can be replaced from its current state. </p>
+<hr />
+<p><a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/order_single.py#L140"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-cancel_req"><kbd>method</kbd> <code>cancel_req</code></h3>
+<pre><code class="language-python">cancel_req() → FIXMessage
+</code></pre>
+<p>Creates order cancel request. </p>
+<p><strong>Raises:</strong></p>
+<ul>
+<li><b><code>FIXError</code></b>:  if order can't be canceled </li>
+</ul>
+<hr />
+<p><a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/order_single.py#L240"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-change_status"><kbd>method</kbd> <code>change_status</code></h3>
+<pre><code class="language-python">change_status(
+    status: FOrdStatus,
+    fix_msg_type: FMsg,
+    msg_exec_type: FExecType,
+    msg_status: FOrdStatus,
+    raise_on_err: bool = True
+) → FOrdStatus | None
+</code></pre>
+<p>FIX Order State transition algo. </p>
+<p>:param status: current order status :param fix_msg_type: incoming/or requesting order type,  these are supported:  '8' - execution report,  '9' - Order Cancel reject,  'F' - Order cancel request (if possible to cancel current order)  'G' -  Order replace request (if possible to replace current order) :param msg_exec_type: (only for execution report), for other should be 0 :param msg_status: new fix msg order status, or required status :return: FOrdStatus if state transition is possible,  None - if transition is valid, but need to wait for a good state  raises FIXError - when transition is invalid </p>
+<hr />
+<p><a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/order_single.py#L83"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-clord_next"><kbd>method</kbd> <code>clord_next</code></h3>
+<pre><code class="language-python">clord_next() → str
+</code></pre>
+<p>New ClOrdID for current order management. </p>
+<hr />
+<p><a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/order_single.py#L88"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-clord_root"><kbd>method</kbd> <code>clord_root</code></h3>
+<pre><code class="language-python">clord_root(clord_id: str) → str
+</code></pre>
+<p>Order ClOrdID root, as given at initialization. </p>
+<p><strong>Args:</strong></p>
+<ul>
+<li><b><code>clord_id</code></b>:  current order one of the clord_next() </li>
+</ul>
+<p><strong>Returns:</strong>
+ string </p>
+<hr />
+<p><a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/order_single.py#L109"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-current_datetime"><kbd>method</kbd> <code>current_datetime</code></h3>
+<pre><code class="language-python">current_datetime()
+</code></pre>
+<p>Date for TransactTime field. </p>
+<hr />
+<p><a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/order_single.py#L465"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-is_finished"><kbd>method</kbd> <code>is_finished</code></h3>
+<pre><code class="language-python">is_finished() → bool
+</code></pre>
+<p>Check if order is in terminal state (no subsequent changes expected). </p>
+<hr />
+<p><a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/order_single.py#L114"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-new_req"><kbd>method</kbd> <code>new_req</code></h3>
+<pre><code class="language-python">new_req() → FIXMessage
+</code></pre>
+<p>Creates NewOrderSingle message. </p>
+<hr />
+<p><a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/order_single.py#L394"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-process_cancel_rej_report"><kbd>method</kbd> <code>process_cancel_rej_report</code></h3>
+<pre><code class="language-python">process_cancel_rej_report(m: FIXMessage) → bool
+</code></pre>
+<p>Processes incoming cancel reject report message. </p>
+<hr />
+<p><a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/order_single.py#L416"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-process_execution_report"><kbd>method</kbd> <code>process_execution_report</code></h3>
+<pre><code class="language-python">process_execution_report(m: FIXMessage) → bool
+</code></pre>
+<p>Processes incoming execution report for an order. </p>
+<p><strong>Raises:</strong></p>
+<ul>
+<li><b><code>FIXError</code></b>:  if ClOrdID mismatch </li>
+</ul>
+<hr />
+<p><a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/order_single.py#L165"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-replace_req"><kbd>method</kbd> <code>replace_req</code></h3>
+<pre><code class="language-python">replace_req(price: float = nan, qty: float = nan) → FIXMessage
+</code></pre>
+<p>Creates order replace request. </p>
+<p><strong>Args:</strong></p>
+<ul>
+<li><b><code>price</code></b>:  alternative price </li>
+<li><b><code>qty</code></b>:  alternative qty </li>
+</ul>
+<p><strong>Returns:</strong>
+ message </p>
+<p><strong>Raises:</strong></p>
+<ul>
+<li><b><code>FIXError</code></b>:  if order can't be replaced or price/qty unchanged </li>
+</ul>
+<hr />
+<p><a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/order_single.py#L216"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-set_account"><kbd>method</kbd> <code>set_account</code></h3>
+<pre><code class="language-python">set_account(ord_msg: FIXMessage)
+</code></pre>
+<p>Set account definition (override this in child). </p>
+<p><strong>Args:</strong></p>
+<ul>
+<li><b><code>ord_msg</code></b>:  new or replaced order </li>
+</ul>
+<hr />
+<p><a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/order_single.py#L206"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-set_instrument"><kbd>method</kbd> <code>set_instrument</code></h3>
+<pre><code class="language-python">set_instrument(ord_msg: FIXMessage)
+</code></pre>
+<p>Set order instrument definition (override this in child). </p>
+<p><strong>Args:</strong></p>
+<ul>
+<li><b><code>ord_msg</code></b>:  new or replaced order </li>
+</ul>
+<hr />
+<p><a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/order_single.py#L226"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-set_price_qty"><kbd>method</kbd> <code>set_price_qty</code></h3>
+<pre><code class="language-python">set_price_qty(ord_msg: FIXMessage, price: float, qty: float)
+</code></pre>
+<p>Set order price and qty definition (override this in child). </p>
+<p>This method handles custom price/qty rounding/decimal formatting, or maybe conditional presence of two fields based on order type </p>
+<p><strong>Args:</strong></p>
+<ul>
+<li><b><code>ord_msg</code></b>:  new or replaced order </li>
+<li><b><code>price</code></b>:  new order price (unformatted / unrounded) </li>
+<li><b><code>qty</code></b>:  new order qty (unformatted / unrounded) </li>
+</ul>
+<hr />
+<p><em>This file was automatically generated via <a href="https://github.com/ml-tooling/lazydocs">lazydocs</a>.</em></p>
+              
+            </div>
+          </div><footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+    
+  </span>
+</div>
+    <script src="../../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "../..";</script>
+    <script src="../../js/theme_extra.js"></script>
+    <script src="../../js/theme.js"></script>
+      <script src="../../search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

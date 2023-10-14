@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="../../img/favicon.ico" />
+    <title>Connection - AsyncFIX Documentation</title>
+    <link rel="stylesheet" href="../../css/theme.css" />
+    <link rel="stylesheet" href="../../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Connection";
+        var mkdocs_page_input_path = "reference/connection.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="../.." class="icon icon-home"> AsyncFIX Documentation
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../..">Home</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../">API Reference</a>
+                </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../..">AsyncFIX Documentation</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../.." class="icon icon-home" aria-label="Docs"></a></li>
+      <li class="breadcrumb-item active">Connection</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <!-- markdownlint-disable -->
+
+<p><a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/connection.py#L0"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h1 id="module-connection"><kbd>module</kbd> <code>connection</code></h1>
+<p>Abstract connection module. </p>
+<hr />
+<p><a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/connection.py#L18"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h2 id="class-connectionstate"><kbd>class</kbd> <code>ConnectionState</code></h2>
+<p>Connection status enum. </p>
+<hr />
+<p><a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/connection.py#L91"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h2 id="class-connectionrole"><kbd>class</kbd> <code>ConnectionRole</code></h2>
+<p>Role of the connection INITIATOR / ACCEPTOR. </p>
+<hr />
+<p><a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/connection.py#L99"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h2 id="class-asyncfixconnection"><kbd>class</kbd> <code>AsyncFIXConnection</code></h2>
+<p>AsyncFIX bidirectional connection. </p>
+<p><strong>Attributes:</strong></p>
+<ul>
+<li><b><code>connection_state</code></b>:  Current connection_state </li>
+<li><b><code>connection_role</code></b>:  Current connection_role ACCEPTOR | INITIATOR </li>
+<li><b><code>log</code></b>:  logger </li>
+</ul>
+<p><a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/connection.py#L108"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-__init__"><kbd>method</kbd> <code>__init__</code></h3>
+<pre><code class="language-python">__init__(
+    protocol: FIXProtocolBase,
+    sender_comp_id: str,
+    target_comp_id: str,
+    journaler: Journaler,
+    host: str,
+    port: int,
+    heartbeat_period: int = 30,
+    logger: Logger | None = None
+)
+</code></pre>
+<p>AsyncFIX bidirectional connection. </p>
+<p><strong>Args:</strong></p>
+<ul>
+<li><b><code>protocol</code></b>:  FIX protocol </li>
+<li><b><code>sender_comp_id</code></b>:  initiator SenderCompID </li>
+<li><b><code>target_comp_id</code></b>:  acceptor TargetCompID </li>
+<li><b><code>journaler</code></b>:  fix messages journaling engine </li>
+<li><b><code>host</code></b>:  endpoint host </li>
+<li><b><code>port</code></b>:  endpoint port </li>
+<li><b><code>heartbeat_period</code></b>:  heartbeat interval in seconds </li>
+<li><b><code>logger</code></b>:  logger instance (by default logging.getLogger()) </li>
+<li><b><code>start_tasks</code></b>:  True - starts socket/heartbeat asyncio tasks, False - no tasks  (this is useful in debugging / testing) </li>
+</ul>
+<hr />
+<h4 id="property-connection_role"><kbd>property</kbd> connection_role</h4>
+<p>Current connection role. </p>
+<hr />
+<h4 id="property-connection_state"><kbd>property</kbd> connection_state</h4>
+<p>Current connection state. </p>
+<hr />
+<h4 id="property-heartbeat_period"><kbd>property</kbd> heartbeat_period</h4>
+<p>Current connection heartbeat period in seconds. </p>
+<hr />
+<h4 id="property-protocol"><kbd>property</kbd> protocol</h4>
+<p>Underlying FIXProtocolBase of a connection. </p>
+<hr />
+<p><a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/connection.py#L181"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-connect"><kbd>method</kbd> <code>connect</code></h3>
+<pre><code class="language-python">connect()
+</code></pre>
+<p>Transport initialization method. </p>
+<hr />
+<p><a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/connection.py#L188"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-disconnect"><kbd>method</kbd> <code>disconnect</code></h3>
+<pre><code class="language-python">disconnect(disconn_state: ConnectionState, logout_message: str = None)
+</code></pre>
+<p>Disconnect session and closes the socket. </p>
+<p><strong>Args:</strong></p>
+<ul>
+<li><b><code>disconn_state</code></b>:  connection state after disconnection </li>
+<li><b><code>logout_message</code></b>:  if not None, sends Logout() message to peer with  (58=logout_message) </li>
+</ul>
+<hr />
+<p><a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/connection.py#L345"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-heartbeat_timer_task"><kbd>method</kbd> <code>heartbeat_timer_task</code></h3>
+<pre><code class="language-python">heartbeat_timer_task()
+</code></pre>
+<p>Heartbeat watcher task. </p>
+<hr />
+<p><a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/connection.py#L407"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-on_connect"><kbd>method</kbd> <code>on_connect</code></h3>
+<pre><code class="language-python">on_connect()
+</code></pre>
+<p>(AppEvent) Underlying socket connected. </p>
+<hr />
+<p><a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/connection.py#L412"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-on_disconnect"><kbd>method</kbd> <code>on_disconnect</code></h3>
+<pre><code class="language-python">on_disconnect()
+</code></pre>
+<p>(AppEvent) Underlying socket disconnected. </p>
+<hr />
+<p><a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/connection.py#L416"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-on_logon"><kbd>method</kbd> <code>on_logon</code></h3>
+<pre><code class="language-python">on_logon(is_healthy: bool)
+</code></pre>
+<p>(AppEvent) Logon(35=A) received from peer. </p>
+<p><strong>Args:</strong></p>
+<ul>
+<li><b><code>is_healthy</code></b>:  True - if connection_state is ACTIVE </li>
+</ul>
+<hr />
+<p><a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/connection.py#L424"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-on_logout"><kbd>method</kbd> <code>on_logout</code></h3>
+<pre><code class="language-python">on_logout(msg: FIXMessage)
+</code></pre>
+<p>(AppEvent) Logout(35=5) received from peer. </p>
+<p><strong>Args:</strong></p>
+<ul>
+<li><b><code>msg</code></b>:  Logout(35=5) FIXMessage </li>
+</ul>
+<hr />
+<p><a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/connection.py#L397"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-on_message"><kbd>method</kbd> <code>on_message</code></h3>
+<pre><code class="language-python">on_message(msg: FIXMessage)
+</code></pre>
+<p>(AppEvent) Business message was received. </p>
+<p>Typically excludes session messages </p>
+<p><strong>Args:</strong></p>
+<ul>
+<li><b><code>msg</code></b>:  generic incoming FIXMessage </li>
+</ul>
+<hr />
+<p><a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/connection.py#L432"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-on_state_change"><kbd>method</kbd> <code>on_state_change</code></h3>
+<pre><code class="language-python">on_state_change(connection_state: ConnectionState)
+</code></pre>
+<p>(AppEvent) On ConnectionState change. </p>
+<p><strong>Args:</strong></p>
+<ul>
+<li><b><code>connection_state</code></b>:  new connection state </li>
+</ul>
+<hr />
+<p><a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/connection.py#L384"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-reset_seq_num"><kbd>method</kbd> <code>reset_seq_num</code></h3>
+<pre><code class="language-python">reset_seq_num()
+</code></pre>
+<p>Resets session and journal seq nums to 1. </p>
+<hr />
+<p><a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/connection.py#L222"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-send_msg"><kbd>method</kbd> <code>send_msg</code></h3>
+<pre><code class="language-python">send_msg(msg: FIXMessage)
+</code></pre>
+<p>Sends message to the peer. </p>
+<p><strong>Args:</strong></p>
+<ul>
+<li><b><code>msg</code></b>:  fix message </li>
+</ul>
+<p><strong>Raises:</strong></p>
+<ul>
+<li><b><code>FIXConnectionError</code></b>:  raised if connection state does not allow sending </li>
+</ul>
+<hr />
+<p><a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/connection.py#L277"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-send_test_req"><kbd>method</kbd> <code>send_test_req</code></h3>
+<pre><code class="language-python">send_test_req()
+</code></pre>
+<p>Sends TestRequest(35=1) and sets TestReqID for expected response from peer. </p>
+<p><strong>Raises:</strong></p>
+<ul>
+<li><b><code>FIXConnectionError</code></b>:  if another TestRequest() is pending </li>
+</ul>
+<hr />
+<p><a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/connection.py#L440"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-should_replay"><kbd>method</kbd> <code>should_replay</code></h3>
+<pre><code class="language-python">should_replay(historical_replay_msg: FIXMessage) → bool
+</code></pre>
+<p>(AppLevel) Checks if historical_replay_msg from Journaler should be replayed. </p>
+<p><strong>Args:</strong></p>
+<ul>
+<li><b><code>historical_replay_msg</code></b>:  message from Journaler log </li>
+</ul>
+<p>Returns: True - replay, False - msg skipped (replaced by SequenceReset(35=4)) </p>
+<hr />
+<p><a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/connection.py#L290"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a></p>
+<h3 id="method-socket_read_task"><kbd>method</kbd> <code>socket_read_task</code></h3>
+<pre><code class="language-python">socket_read_task()
+</code></pre>
+<p>Main socket reader task (decode raw messages and calls _process_message). </p>
+<hr />
+<p><em>This file was automatically generated via <a href="https://github.com/ml-tooling/lazydocs">lazydocs</a>.</em></p>
+              
+            </div>
+          </div><footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+    
+  </span>
+</div>
+    <script src="../../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "../..";</script>
+    <script src="../../js/theme_extra.js"></script>
+    <script src="../../js/theme.js"></script>
+      <script src="../../search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="../img/favicon.ico" />
+    <title>API Reference - AsyncFIX Documentation</title>
+    <link rel="stylesheet" href="../css/theme.css" />
+    <link rel="stylesheet" href="../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "API Reference";
+        var mkdocs_page_input_path = "reference/README.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href=".." class="icon icon-home"> AsyncFIX Documentation
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="..">Home</a>
+                </li>
+              </ul>
+              <ul class="current">
+                <li class="toctree-l1 current"><a class="reference internal current" href="./">API Reference</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#modules">Modules</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#classes">Classes</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#functions">Functions</a>
+    </li>
+    </ul>
+                </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="..">AsyncFIX Documentation</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href=".." class="icon icon-home" aria-label="Docs"></a></li>
+      <li class="breadcrumb-item active">API Reference</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <!-- markdownlint-disable -->
+
+<h1 id="api-overview">API Overview</h1>
+<h2 id="modules">Modules</h2>
+<ul>
+<li><a href="codec/#module-codec"><code>codec</code></a>: FIX Message encoding / decoding module.</li>
+<li><a href="connection/#module-connection"><code>connection</code></a>: Abstract connection module.</li>
+<li><a href="connection_client/#module-connection_client"><code>connection_client</code></a>: FIX Initiator (client) connection.</li>
+<li><a href="connection_server/#module-connection_server"><code>connection_server</code></a>: Dummy FIX server module.</li>
+<li><a href="errors/#module-errors"><code>errors</code></a>: AsyncFIX errors module.</li>
+<li><a href="fix_tester/#module-fix_tester"><code>fix_tester</code></a>: FIX Protocol Unit Tester.</li>
+<li><a href="fixtags/#module-fixtags"><code>fixtags</code></a>: FIX Tags collection module.</li>
+<li><a href="journaler/#module-journaler"><code>journaler</code></a>: Generic SQLite Journaler.</li>
+<li><a href="message/#module-message"><code>message</code></a>: FIX message and containers module.</li>
+<li><a href="msgtype/#module-msgtype"><code>msgtype</code></a>: Message type module.</li>
+<li><a href="protocol/#module-protocol"><code>protocol</code></a>: AsyncFIX protocol package.</li>
+<li><a href="protocol.common/#module-protocolcommon"><code>protocol.common</code></a>: Common FIX protocol enums.</li>
+<li><a href="protocol.order_single/#module-protocolorder_single"><code>protocol.order_single</code></a>: Generic FIX Order single module.</li>
+<li><a href="protocol.protocol_base/#module-protocolprotocol_base"><code>protocol.protocol_base</code></a>: Base FIX protocol.</li>
+<li><a href="protocol.protocol_fix44/#module-protocolprotocol_fix44"><code>protocol.protocol_fix44</code></a>: FIX Protocol 4.4 module.</li>
+<li><a href="protocol.schema/#module-protocolschema"><code>protocol.schema</code></a>: FIX Schema validation module.</li>
+<li><a href="session/#module-session"><code>session</code></a>: FIXSession module.</li>
+</ul>
+<h2 id="classes">Classes</h2>
+<ul>
+<li><a href="codec/#class-codec"><code>codec.Codec</code></a>: Encoding / decoding engine.</li>
+<li><a href="connection/#class-asyncfixconnection"><code>connection.AsyncFIXConnection</code></a>: AsyncFIX bidirectional connection.</li>
+<li><a href="connection/#class-connectionrole"><code>connection.ConnectionRole</code></a>: Role of the connection INITIATOR / ACCEPTOR.</li>
+<li><a href="connection/#class-connectionstate"><code>connection.ConnectionState</code></a>: Connection status enum.</li>
+<li><a href="connection_client/#class-asyncfixclient"><code>connection_client.AsyncFIXClient</code></a>: Generic FIX client.</li>
+<li><a href="connection_server/#class-asyncfixdummyserver"><code>connection_server.AsyncFIXDummyServer</code></a>: Simple server which supports only single connection (just for testing).</li>
+<li><a href="errors/#class-duplicateseqnoerror"><code>errors.DuplicateSeqNoError</code></a>: Journaler duplicated seq no written (critical error).</li>
+<li><a href="errors/#class-duplicatedtagerror"><code>errors.DuplicatedTagError</code></a>: Trying to set tag which is already exist.</li>
+<li><a href="errors/#class-encodingerror"><code>errors.EncodingError</code></a>: Codec encoding/decoding error.</li>
+<li><a href="errors/#class-fixconnectionerror"><code>errors.FIXConnectionError</code></a>: FIX connection or session error.</li>
+<li><a href="errors/#class-fixerror"><code>errors.FIXError</code></a>: Generic AsyncFIX error.</li>
+<li><a href="errors/#class-fixmessageerror"><code>errors.FIXMessageError</code></a>: FIXMessage related error.</li>
+<li><a href="errors/#class-repeatingtagerror"><code>errors.RepeatingTagError</code></a>: Tag was repeated after decoding, indicates mishandled fix group.</li>
+<li><a href="errors/#class-tagnotfounderror"><code>errors.TagNotFoundError</code></a>: Requested Tag not present in message.</li>
+<li><a href="errors/#class-unmappedrepeatedgrperror"><code>errors.UnmappedRepeatedGrpError</code></a>: Repeating group improperly set up by protocol.</li>
+<li><a href="fix_tester/#class-fixtester"><code>fix_tester.FIXTester</code></a>: FIX protocol tester.</li>
+<li><a href="fixtags/#class-ftag"><code>fixtags.FTag</code></a>: All tags enum.</li>
+<li><a href="journaler/#class-journaler"><code>journaler.Journaler</code></a>: Tracks FIX message history.</li>
+<li><a href="message/#class-fixcontainer"><code>message.FIXContainer</code></a>: Generic FIX container.</li>
+<li><a href="message/#class-fixmessage"><code>message.FIXMessage</code></a>: Generic FIXMessage.</li>
+<li><a href="message/#class-messagedirection"><code>message.MessageDirection</code></a>: Direction of the message INBOUND/OUTBOUND.</li>
+<li><a href="msgtype/#class-fmsg"><code>msgtype.FMsg</code></a>: FIXMessage type enum.</li>
+<li><a href="protocol.common/#class-fexectype"><code>common.FExecType</code></a>: FIX execution report ExecType.</li>
+<li><a href="protocol.common/#class-fordside"><code>common.FOrdSide</code></a>: FIX Order Side.</li>
+<li><a href="protocol.common/#class-fordstatus"><code>common.FOrdStatus</code></a>: FIX Order Status.</li>
+<li><a href="protocol.common/#class-fordtype"><code>common.FOrdType</code></a>: FIX Order Type.</li>
+<li><a href="protocol.order_single/#class-fixnewordersingle"><code>order_single.FIXNewOrderSingle</code></a>: Generic FIXNewOrderSingle wrapper.</li>
+<li><a href="protocol.protocol_base/#class-fixprotocolbase"><code>protocol_base.FIXProtocolBase</code></a>: Generic FIX protocol.</li>
+<li><a href="protocol.protocol_fix44/#class-fixprotocol44"><code>protocol_fix44.FIXProtocol44</code></a>: FIXProtocol 4.4 protocol definition class.</li>
+<li><a href="protocol.schema/#class-fixschema"><code>schema.FIXSchema</code></a>: FIX schema validator.</li>
+<li><a href="protocol.schema/#class-schemacomponent"><code>schema.SchemaComponent</code></a>: SchemaComponent container.</li>
+<li><a href="protocol.schema/#class-schemafield"><code>schema.SchemaField</code></a>: FIX Field schema.</li>
+<li><a href="protocol.schema/#class-schemagroup"><code>schema.SchemaGroup</code></a>: SchemaGroup container.</li>
+<li><a href="protocol.schema/#class-schemaheader"><code>schema.SchemaHeader</code></a>: SchemaHeader container.</li>
+<li><a href="protocol.schema/#class-schemamessage"><code>schema.SchemaMessage</code></a>: SchemaMessage container.</li>
+<li><a href="protocol.schema/#class-schemaset"><code>schema.SchemaSet</code></a>: Generic schema set (base for component/group).</li>
+<li><a href="session/#class-fixsession"><code>session.FIXSession</code></a>: Generic FIX Session container.</li>
+</ul>
+<h2 id="functions">Functions</h2>
+<ul>
+<li>No functions</li>
+</ul>
+<hr />
+<p><em>This file was automatically generated via <a href="https://github.com/ml-tooling/lazydocs">lazydocs</a>.</em></p>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href=".." class="btn btn-neutral float-left" title="Home"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+      <span><a href=".." style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+  </span>
+</div>
+    <script src="../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "..";</script>
+    <script src="../js/theme_extra.js"></script>
+    <script src="../js/theme.js"></script>
+      <script src="../search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>
