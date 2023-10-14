@@ -39,6 +39,4 @@ docs:
     asyncfix
 	
 	# Finishing and pushing to GH
- 	mkdocs gh-deploy
-	
-
+	mkdocs gh-deploy

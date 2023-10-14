@@ -15,6 +15,7 @@ AsyncIO FIX protocol library for Python
 - FIX Tester - tool for FIX unit testing (schema validation, order management, protocol
 message exchange)
 - FIX 4.4 protocol implemented
+- 100% unit test code coverage
 
 ## Installation
 ```
@@ -25,6 +26,11 @@ pip install asyncfix
 * [Simple snippets](https://alexveden.github.io/asyncfix/examples/)
 * [Client example](https://github.com/alexveden/asyncfix/tree/main/examples/client_example.py)
 * [Full Documentation](https://alexveden.github.io/asyncfix/)
+
+## Credits
+This project initially intended to be a fork of [AIOPyFIX](https://github.com/maxtwen/AIOPyFix),
+but things went too deep and too far. Hopefully, this project could help. Please, star this repo
+if you are going to use this project.
 
 ## License
 MIT 2023 Aleksandr Vedeneev
