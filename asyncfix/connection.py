@@ -47,22 +47,19 @@ class ConnectionState(IntEnum):
     """Session acceptor Logon respond to peer with Logon message to handshake."""
 
     RESENDREQ_HANDLING = 10            # both
-    """Receive and respond to counterparty’s ResendRequest(35=2) sending requested.
-
+    """Receive and respond to counterparty’s ResendRequest(35=2) sending requested
        messages and/or SequenceReset(35=4) gap fill messages for the range of
        MsgSeqNum(34) requested.
     """
 
     RECV_SEQNUM_TOO_HIGH = 11        # both
-    """Receive too high of MsgSeqNum(34) from counterparty, queue message,.
-
+    """Receive too high of MsgSeqNum(34) from counterparty, queue message,
        and send ResendRequest(35=2).
     """
 
     RESENDREQ_AWAITING = 12          # both
-    """Process requested MsgSeqNum(34) with PossDupFlag(43)=Y resent messages and/or.
-
-       SequenceReset(35=4) gap fill messages from counterparty.
+    """Process requested MsgSeqNum(34) with PossDupFlag(43)=Y resent messages and/or
+    SequenceReset(35=4) gap fill messages from counterparty.
     """
 
     NO_MSG_IN_INTERVAL = 13          # both
@@ -79,9 +76,8 @@ class ConnectionState(IntEnum):
     """Receive Logout(35=5) message from counterparty initiating logout/disconnect."""
 
     INITIATE_LOGOUT = 16             # both
-    """Identify condition or reason to gracefully disconnect (e.g. end of “day”,.
-
-    no response after multiple TestRequest(35=1) messages, too low MsgSeqNum(34))
+    """Identify condition or reason to gracefully disconnect (e.g. end of “day”,
+    no response after multiple TestRequest(35=1) messages, too low MsgSeqNum(34)).
     """
 
     ACTIVE = 17                      # both
