@@ -1,3 +1,4 @@
+"""Generic FIX Order single module."""
 import re
 from datetime import datetime
 from math import isfinite, nan
@@ -11,6 +12,24 @@ RE_CLORD_ROOT = re.compile(r"^(.+)--(\d+)$", re.MULTILINE)
 
 
 class FIXNewOrderSingle:
+    """Generic FIXNewOrderSingle wrapper.
+
+    Attributes:
+        clord_id: current order ClOrdID
+        orig_clord_id: order OrigClOrdID (when canceling / replacing)
+        order_id: executed order id
+        ticker: user order ticker
+        side: order side
+        price: order price
+        qty: order quantity
+        leaves_qty: order remaining qty
+        cum_qty: order filled qty
+        avg_px: average fill price
+        ord_type: order type
+        account: order account
+        status: current order status
+        target_price: order target execution price
+    """
     def __init__(
         self,
         clord_id: str,
@@ -22,6 +41,18 @@ class FIXNewOrderSingle:
         account: str | dict = "000000",
         target_price: float | None = None,
     ):
+        """Initialize order.
+
+        Args:
+            clord_id: root ClOrdID
+            cl_ticker: client ticker (can by any accepted by user's OMS)
+            side: order side
+            price: order initial price (current price, changes if replaced)
+            qty: order quantity
+            ord_type: order type
+            account: order account (optional)
+            target_price: order initial target execution price (useful for slippage)
+        """
         assert clord_id, "empty clord_id"
 
         self.clord_id = clord_id
@@ -36,11 +67,12 @@ class FIXNewOrderSingle:
         self.avg_px = nan
         self.ord_type = ord_type
         self.account = account
-        self.clord_id_cnt = 0
+        self._clord_id_cnt = 0
         self.status: FOrdStatus = FOrdStatus.CREATED
         self.target_price = target_price if target_price is not None else price
 
     def __repr__(self):
+        """Repr."""
         return (
             f"FIXNewOrderSingle({self.status.name}, clord={self.clord_id},"
             f" ticker={self.ticker}, px={self.price}, qty={self.qty},"
@@ -48,14 +80,20 @@ class FIXNewOrderSingle:
         )
 
     def clord_next(self) -> str:
-        """
-        New ClOrdID for current order management
-        """
-        self.clord_id_cnt += 1
-        return f"{self.clord_id_root}--{self.clord_id_cnt}"
+        """New ClOrdID for current order management."""
+        self._clord_id_cnt += 1
+        return f"{self.clord_id_root}--{self._clord_id_cnt}"
 
     @staticmethod
     def clord_root(clord_id: str) -> str:
+        """Order ClOrdID root, as given at initialization.
+
+        Args:
+            clord_id: current order one of the clord_next()
+
+        Returns:
+            string
+        """
         match = RE_CLORD_ROOT.match(clord_id)
         if match:
             return match[1]
@@ -64,19 +102,16 @@ class FIXNewOrderSingle:
 
     @property
     def clord_id_root(self) -> str:
+        """Current order ClOrdID root."""
         return self.clord_root(self.clord_id)
 
     @staticmethod
     def current_datetime():
-        """
-        TransactTime field
-        """
+        """Date for TransactTime field."""
         return datetime.utcnow().strftime("%Y%m%d-%H:%M:%S.%f")[:-3]
 
     def new_req(self) -> FIXMessage:
-        """
-        Creates NewOrderSingle message
-        """
+        """Creates NewOrderSingle message."""
         assert (
             self.status == FOrdStatus.CREATED
         ), "new_req() must send only just created orders"
@@ -102,12 +137,10 @@ class FIXNewOrderSingle:
         return o
 
     def cancel_req(self) -> FIXMessage:
-        """
-        Creates order cancel request
+        """Creates order cancel request.
 
         Raises:
             FIXError: if order can't be canceled
-
         """
         if not self.can_cancel():
             raise FIXError(f"{self} Fix order is not allowed for cancel")
@@ -129,8 +162,7 @@ class FIXNewOrderSingle:
         return cxl_req_msg
 
     def replace_req(self, price: float = nan, qty: float = nan) -> FIXMessage:
-        """
-        Creates order replace request
+        """Creates order replace request.
 
         Args:
             price: alternative price
@@ -141,7 +173,6 @@ class FIXNewOrderSingle:
 
         Raises:
             FIXError: if order can't be replaced or price/qty unchanged
-
         """
         if not self.can_replace():
             raise FIXError("Order cannot be replaced")
@@ -172,39 +203,35 @@ class FIXNewOrderSingle:
         return m
 
     def set_instrument(self, ord_msg: FIXMessage):
-        """
-        Set order instrument definition (override this in child)
+        """Set order instrument definition (override this in child).
 
         Args:
             ord_msg: new or replaced order
-
         """
         # Simply populate symbol, in read life FIX counterparty may require populate
         #  more fields (override this method in child class)
         ord_msg[FTag.Symbol] = self.ticker
 
     def set_account(self, ord_msg: FIXMessage):
-        """
-        Set account definition (override this in child)
+        """Set account definition (override this in child).
 
         Args:
             ord_msg: new or replaced order
-
         """
         # Simplistic account setting (you must override this method in child class)
         assert isinstance(self.account, str), "Account expected a string"
         ord_msg[FTag.Account] = self.account
 
     def set_price_qty(self, ord_msg: FIXMessage, price: float, qty: float):
-        """
-        Set order price and qty definition (override this in child)
+        """Set order price and qty definition (override this in child).
 
         This method handles custom price/qty rounding/decimal formatting, or maybe
         conditional presence of two fields based on order type
 
         Args:
             ord_msg: new or replaced order
-
+            price: new order price (unformatted / unrounded)
+            qty: new order qty (unformatted / unrounded)
         """
         ord_msg[FTag.Price] = price
         ord_msg[FTag.OrderQty] = qty
@@ -217,8 +244,7 @@ class FIXNewOrderSingle:
         msg_status: FOrdStatus,
         raise_on_err: bool = True,
     ) -> FOrdStatus | None:
-        """
-        FIX Order State transition algo
+        """FIX Order State transition algo.
 
         :param status: current order status
         :param fix_msg_type: incoming/or requesting order type,  these are supported:
@@ -365,9 +391,7 @@ class FIXNewOrderSingle:
                 return msg_status
 
     def process_cancel_rej_report(self, m: FIXMessage) -> bool:
-        """
-        Processes incoming cancel reject report message
-        """
+        """Processes incoming cancel reject report message."""
         if m.msg_type != FMsg.ORDERCANCELREJECT:
             raise FIXError("incorrect message type")
 
@@ -389,8 +413,7 @@ class FIXNewOrderSingle:
             return False
 
     def process_execution_report(self, m: FIXMessage) -> bool:
-        """
-        Processes incoming execution report for an order
+        """Processes incoming execution report for an order.
 
         Raises:
             FIXError: if ClOrdID mismatch
@@ -439,9 +462,7 @@ class FIXNewOrderSingle:
             return False
 
     def is_finished(self) -> bool:
-        """
-        Check if order is in terminal state (no subsequent changes expected)
-        """
+        """Check if order is in terminal state (no subsequent changes expected)."""
         return (
             self.status == FOrdStatus.FILLED
             or self.status == FOrdStatus.CANCELED
@@ -450,9 +471,7 @@ class FIXNewOrderSingle:
         )
 
     def can_cancel(self) -> bool:
-        """
-        Check if order can be canceled from its current state
-        """
+        """Check if order can be canceled from its current state."""
         return (
             FIXNewOrderSingle.change_status(
                 self.status,
@@ -465,9 +484,7 @@ class FIXNewOrderSingle:
         )
 
     def can_replace(self) -> bool:
-        """
-        Check if order can be replaced from its current state
-        """
+        """Check if order can be replaced from its current state."""
         return (
             FIXNewOrderSingle.change_status(
                 self.status,
