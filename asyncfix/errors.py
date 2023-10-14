@@ -1,38 +1,37 @@
+"""AsyncFIX errors module."""
+
+
 class FIXError(Exception):
-    pass
+    """Generic AsyncFIX error."""
 
 
 class FIXMessageError(FIXError):
-    pass
+    """FIXMessage related error."""
 
 
 class FIXConnectionError(FIXError):
-    pass
+    """FIX connection or session error."""
 
 
 class DuplicateSeqNoError(FIXError):
-    pass
+    """Journaler duplicated seq no written (critical error)."""
 
 
 class EncodingError(FIXError):
-    pass
-
-
-class DecodingError(FIXError):
-    pass
+    """Codec encoding/decoding error."""
 
 
 class TagNotFoundError(FIXMessageError):
-    pass
+    """Requested Tag not present in message."""
 
 
 class DuplicatedTagError(FIXMessageError):
-    pass
+    """Trying to set tag which is already exist."""
 
 
 class RepeatingTagError(FIXMessageError):
-    pass
+    """Tag was repeated after decoding, indicates mishandled fix group."""
 
 
 class UnmappedRepeatedGrpError(FIXMessageError):
-    pass
+    """Repeating group improperly set up by protocol."""
