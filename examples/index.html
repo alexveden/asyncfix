@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="../img/favicon.ico" />
+    <title>Examples - AsyncFIX Documentation</title>
+    <link rel="stylesheet" href="../css/theme.css" />
+    <link rel="stylesheet" href="../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Examples";
+        var mkdocs_page_input_path = "examples.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href=".." class="icon icon-home"> AsyncFIX Documentation
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="..">Home</a>
+                </li>
+              </ul>
+              <ul class="current">
+                <li class="toctree-l1 current"><a class="reference internal current" href="./">Examples</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#fix-message-management">Fix message management</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#fix-validation-by-schema">FIX Validation by schema</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#order-management-and-testing">Order Management and testing</a>
+    </li>
+    </ul>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../reference/">API Reference</a>
+                </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="..">AsyncFIX Documentation</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href=".." class="icon icon-home" aria-label="Docs"></a></li>
+      <li class="breadcrumb-item active">Examples</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="asyncfix-framework-examples">AsyncFIX Framework Examples</h1>
+<h2 id="fix-message-management">Fix message management</h2>
+<pre><code class="language-python">from asyncfix import FIXMessage, FTag, FMsg
+from asyncfix.protocol import FOrdType
+
+msg = FIXMessage(
+    FMsg.NEWORDERSINGLE,
+    {11: &quot;clordis&quot;, &quot;1&quot;: &quot;account&quot;, FTag.Price: 21.21, FTag.OrderQty: 2},
+)
+
+# duplicate tag setting not allowed, needs replace
+msg.set(FTag.Price, 22.22, replace=True)
+
+# Can set by item
+msg[FTag.Symbol] = 'TEST.SYM'
+
+# Or integer tag
+msg[40] = FOrdType.LIMIT
+
+msg.set_group(
+    FTag.NoAllocs,
+    [{FTag.AllocID: 1, FTag.AllocAvgPx: 1}, {FTag.AllocID: 2, FTag.AllocAvgPx: 2}],
+)
+
+print(msg)
+# &gt; 11=clordis|1=account|44=22.22|38=2|55=TEST.SYM|40=2|78=2=&gt;[70=1|153=1, 70=2|153=2]
+
+print(repr(msg[40]))
+# &gt; '2'
+
+print(msg.get_group_list(FTag.NoAllocs))
+# &gt; [70=1|153=1, 70=2|153=2]
+
+print(msg.query(11, FTag.Price, &quot;40&quot;))
+# &gt; {&lt;FTag.ClOrdID: '11'&gt;: 'clordis', &lt;FTag.Price: '44'&gt;: '22.22', &lt;FTag.OrdType: '40'&gt;: '2'} # noqa
+</code></pre>
+<h2 id="fix-validation-by-schema">FIX Validation by schema</h2>
+<pre><code class="language-python">
+from asyncfix.protocol import FIXSchema
+from asyncfix import FIXMessage, FMsg, FTag
+from asyncfix.errors import FIXMessageError
+import os
+
+schema_file = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), &quot;..&quot;, &quot;tests&quot;, &quot;FIX44.xml&quot;)
+)
+schema = FIXSchema(schema_file)
+
+m = FIXMessage(FMsg.LOGON, {FTag.EncryptMethod: &quot;0&quot;, FTag.HeartBtInt: 20})
+# Passes!
+assert schema.validate(m)
+
+# Bad message
+m = FIXMessage(FMsg.LOGON, {FTag.EncryptMethod: &quot;0&quot;})
+try:
+    schema.validate(m)
+    assert False
+except FIXMessageError as exc:
+    print(f&quot;Message validation failed: `{repr(m)}`: {repr(exc)}&quot;)
+
+</code></pre>
+<h2 id="order-management-and-testing">Order Management and testing</h2>
+<pre><code class="language-python">
+from asyncfix.protocol import (
+    FIXNewOrderSingle,
+    FOrdSide,
+    FOrdStatus,
+    FExecType,
+)
+from asyncfix import FIXTester
+
+order = FIXNewOrderSingle(
+    &quot;clordTest&quot;, &quot;US.F.TICKER&quot;, side=FOrdSide.BUY, price=200.0, qty=10
+)
+
+print(&quot;Send new&quot;)
+print(order.new_req())
+# &gt; 11=clordTest--1|55=US.F.TICKER|1=000000|40=2|54=1|60=20231014-14:22:44.278|44=200.0|38=10
+
+
+o = FIXNewOrderSingle(
+    &quot;clordTest&quot;, &quot;US.F.TICKER&quot;, side=FOrdSide.BUY, price=200.0, qty=10
+)
+
+ft = FIXTester(schema=None)  # Optionally allows schema for validation
+assert ft.order_register_single(o) == 1
+assert o.status == FOrdStatus.CREATED, f&quot;o.status={chr(o.status)}&quot;
+
+exep_rep_msg = ft.fix_exec_report_msg(
+    o, o.clord_id, FExecType.PENDING_NEW, FOrdStatus.PENDING_NEW
+)
+print('FIXTester exec report')
+print(exep_rep_msg)
+# &gt; 11=clordTest|37=1|17=10001|150=A|39=A|54=1|14=0.0|151=0.0|55=US.F.TICKER|44=200.0|38=10|6=0.0|1=000000
+
+
+# Order processes exec report internally and maintains itself
+assert o.process_execution_report(exep_rep_msg) == 1
+
+</code></pre>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href=".." class="btn btn-neutral float-left" title="Home"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../reference/" class="btn btn-neutral float-right" title="API Reference">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+      <span><a href=".." style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../reference/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "..";</script>
+    <script src="../js/theme_extra.js"></script>
+    <script src="../js/theme.js"></script>
+      <script src="../search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

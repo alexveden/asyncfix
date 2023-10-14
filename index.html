@@ -42,11 +42,21 @@
               <ul class="current">
                 <li class="toctree-l1 current"><a class="reference internal current" href=".">Home</a>
     <ul class="current">
-    <li class="toctree-l2"><a class="reference internal" href="#commands">Commands</a>
+    <li class="toctree-l2"><a class="reference internal" href="#highlights">Highlights</a>
     </li>
-    <li class="toctree-l2"><a class="reference internal" href="#project-layout">Project layout</a>
+    <li class="toctree-l2"><a class="reference internal" href="#installation">Installation</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#getting-started">Getting started</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#credits">Credits</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#license">License</a>
     </li>
     </ul>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="examples/">Examples</a>
                 </li>
               </ul>
               <ul>
@@ -76,26 +86,43 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
             <div class="section" itemprop="articleBody">
               
-                <h1 id="welcome-to-mkdocs">Welcome to MkDocs</h1>
-<p>For full documentation visit <a href="https://www.mkdocs.org">mkdocs.org</a>.</p>
-<h2 id="commands">Commands</h2>
+                <h1 id="asyncfix-asyncio-fix-protocol-python-framework">AsyncFIX - AsyncIO FIX Protocol Python Framework</h1>
+<p><img alt="tests" src="https://github.com/alexveden/asyncfix/actions/workflows/build.yml/badge.svg" />
+<img alt="coverage" src="https://github.com/alexveden/asyncfix/blob/main/.github/coverage.svg" />
+<a href="https://github.com/psf/black"><img alt="Code style: black" src="https://img.shields.io/badge/code%20style-black-000000.svg" /></a></p>
+<p>AsyncIO FIX protocol library for Python</p>
+<h2 id="highlights">Highlights</h2>
 <ul>
-<li><code>mkdocs new [dir-name]</code> - Create a new project.</li>
-<li><code>mkdocs serve</code> - Start the live-reloading docs server.</li>
-<li><code>mkdocs build</code> - Build the documentation site.</li>
-<li><code>mkdocs -h</code> - Print help message and exit.</li>
+<li>Pythonic way of dealing with FIX messages</li>
+<li>Schema validation</li>
+<li>Tools for unit testing client apps</li>
+<li>NewOrderSingle container / state management support</li>
+<li>Session management included (FIX journaling, session restoring, heartbeats, resets)</li>
+<li>FIX Tester - tool for FIX unit testing (schema validation, order management, protocol
+message exchange)</li>
+<li>FIX 4.4 protocol implemented</li>
+<li>100% unit test code coverage</li>
 </ul>
-<h2 id="project-layout">Project layout</h2>
-<pre><code>mkdocs.yml    # The configuration file.
-docs/
-    index.md  # The documentation homepage.
-    ...       # Other markdown pages, images and other files.
+<h2 id="installation">Installation</h2>
+<pre><code>pip install asyncfix
 </code></pre>
+<h2 id="getting-started">Getting started</h2>
+<ul>
+<li><a href="https://alexveden.github.io/asyncfix/examples/">Simple snippets</a></li>
+<li><a href="https://github.com/alexveden/asyncfix/tree/main/examples/client_example.py">Client example</a></li>
+<li><a href="https://alexveden.github.io/asyncfix/">Full Documentation</a></li>
+</ul>
+<h2 id="credits">Credits</h2>
+<p>This project initially intended to be a fork of <a href="https://github.com/maxtwen/AIOPyFix">AIOPyFIX</a>,
+but things went too deep and too far. Hopefully, this project could help. Please, star this repo
+if you are going to use this project.</p>
+<h2 id="license">License</h2>
+<p>MIT 2023 Aleksandr Vedeneev</p>
               
             </div>
           </div><footer>
     <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
-        <a href="reference/" class="btn btn-neutral float-right" title="API Reference">Next <span class="icon icon-circle-arrow-right"></span></a>
+        <a href="examples/" class="btn btn-neutral float-right" title="Examples">Next <span class="icon icon-circle-arrow-right"></span></a>
     </div>
 
   <hr/>
@@ -119,7 +146,7 @@ docs/
     
     
     
-      <span><a href="reference/" style="color: #fcfcfc">Next &raquo;</a></span>
+      <span><a href="examples/" style="color: #fcfcfc">Next &raquo;</a></span>
     
   </span>
 </div>
@@ -139,5 +166,5 @@ docs/
 
 <!--
 MkDocs version : 1.5.3
-Build Date UTC : 2023-10-14 13:38:24.343822+00:00
+Build Date UTC : 2023-10-14 14:51:10.786153+00:00
 -->
