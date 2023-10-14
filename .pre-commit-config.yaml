@@ -35,7 +35,6 @@ repos:
       pass_filenames: false
       always_run: true
 
-
 -   repo: https://github.com/pycqa/pydocstyle
     rev: 6.3.0
     hooks:
