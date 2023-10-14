@@ -9,7 +9,7 @@ FIX message and containers module.
 
 ---
 
-<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/message.py#L25"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/message.py#L24"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ## <kbd>class</kbd> `MessageDirection`
 Direction of the message INBOUND/OUTBOUND. 
@@ -20,7 +20,7 @@ Direction of the message INBOUND/OUTBOUND.
 
 ---
 
-<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/message.py#L48"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/message.py#L47"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ## <kbd>class</kbd> `FIXContainer`
 Generic FIX container. 
@@ -31,7 +31,7 @@ Generic FIX container.
  
  - <b>`tags`</b>:  fix tags of the container 
 
-<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/message.py#L55"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/message.py#L54"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `__init__`
 
@@ -59,7 +59,7 @@ Initialize.
 
 ---
 
-<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/message.py#L160"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/message.py#L159"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `add_group`
 
@@ -85,7 +85,7 @@ Add repeating group item to fix message.
 
 ---
 
-<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/message.py#L111"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/message.py#L110"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `get`
 
@@ -120,7 +120,7 @@ Get tag value.
 
 ---
 
-<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/message.py#L264"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/message.py#L263"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `get_group_by_index`
 
@@ -150,7 +150,7 @@ Get repeating group item by index.
 
 ---
 
-<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/message.py#L239"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/message.py#L238"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `get_group_by_tag`
 
@@ -185,7 +185,7 @@ Get repeating group item by internal group tag value.
 
 ---
 
-<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/message.py#L215"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/message.py#L214"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `get_group_list`
 
@@ -215,7 +215,7 @@ Get all repeating groups of a tag.
 
 ---
 
-<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/message.py#L140"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/message.py#L139"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `is_group`
 
@@ -238,7 +238,7 @@ Check if tag is repeating group.
 
 ---
 
-<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/message.py#L308"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/message.py#L307"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `items`
 
@@ -250,7 +250,7 @@ All tags items iterator.
 
 ---
 
-<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/message.py#L286"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/message.py#L285"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `query`
 
@@ -274,7 +274,7 @@ Request multiple tags from FIXMessage as dictionary.
 
 ---
 
-<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/message.py#L80"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/message.py#L79"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `set`
 
@@ -301,7 +301,7 @@ Set tag value.
 
 ---
 
-<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/message.py#L186"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/message.py#L185"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `set_group`
 
@@ -328,7 +328,7 @@ Set repeating groups of the message.
 
 ---
 
-<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/message.py#L391"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/message.py#L390"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ## <kbd>class</kbd> `FIXMessage`
 Generic FIXMessage. 
@@ -364,7 +364,7 @@ Message type.
 
 ---
 
-<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/message.py#L160"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/message.py#L159"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `add_group`
 
@@ -390,7 +390,7 @@ Add repeating group item to fix message.
 
 ---
 
-<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/message.py#L111"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/message.py#L110"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `get`
 
@@ -425,7 +425,7 @@ Get tag value.
 
 ---
 
-<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/message.py#L264"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/message.py#L263"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `get_group_by_index`
 
@@ -455,7 +455,7 @@ Get repeating group item by index.
 
 ---
 
-<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/message.py#L239"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/message.py#L238"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `get_group_by_tag`
 
@@ -490,7 +490,7 @@ Get repeating group item by internal group tag value.
 
 ---
 
-<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/message.py#L215"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/message.py#L214"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `get_group_list`
 
@@ -520,7 +520,7 @@ Get all repeating groups of a tag.
 
 ---
 
-<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/message.py#L140"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/message.py#L139"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `is_group`
 
@@ -543,7 +543,7 @@ Check if tag is repeating group.
 
 ---
 
-<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/message.py#L308"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/message.py#L307"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `items`
 
@@ -555,7 +555,7 @@ All tags items iterator.
 
 ---
 
-<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/message.py#L286"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/message.py#L285"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `query`
 
@@ -579,7 +579,7 @@ Request multiple tags from FIXMessage as dictionary.
 
 ---
 
-<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/message.py#L80"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/message.py#L79"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `set`
 
@@ -606,7 +606,7 @@ Set tag value.
 
 ---
 
-<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/message.py#L186"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/message.py#L185"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `set_group`
 

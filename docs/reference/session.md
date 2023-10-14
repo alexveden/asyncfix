@@ -24,7 +24,7 @@ Generic FIX Session container.
  - <b>`next_num_out`</b>:  next expected seq num out 
  - <b>`next_num_in`</b>:  next expected seq num in 
 
-<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/session.py#L15"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/session.py#L16"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `__init__`
 
@@ -47,7 +47,7 @@ Initialize session.
 
 ---
 
-<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/session.py#L74"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/session.py#L75"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `allocate_next_num_out`
 
@@ -59,7 +59,7 @@ Increments next_num_out counter.
 
 ---
 
-<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/session.py#L80"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/session.py#L81"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `set_next_num_in`
 
@@ -84,7 +84,7 @@ Sets next_num_in based on incoming FIXMessage.
 
 ---
 
-<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/session.py#L59"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/session.py#L60"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `validate_comp_ids`
 

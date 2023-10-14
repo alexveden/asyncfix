@@ -1,3 +1,4 @@
+"""FIX Journaler DB CLI."""
 import argparse
 import logging
 import os
@@ -8,6 +9,7 @@ from asyncfix.message import MessageDirection
 
 
 def main():
+    """Entry point."""
     logging.basicConfig(format="%(asctime)s %(message)s", level=logging.INFO)
 
     parser = argparse.ArgumentParser(

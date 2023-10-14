@@ -28,6 +28,7 @@ dev = [
   'pydocstringformatter',
   'pydocstyle',
   'toml',
+  "mkdocs",
 ]
 
 [project.urls]

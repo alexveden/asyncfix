@@ -36,7 +36,7 @@ __init__(
 
 ---
 
-<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/schema.py#L40"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/schema.py#L41"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `validate_value`
 
@@ -63,7 +63,7 @@ Returns: True - if passed
 
 ---
 
-<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/schema.py#L215"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/schema.py#L216"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ## <kbd>class</kbd> `SchemaSet`
 Generic schema set (base for component/group). 
@@ -77,7 +77,7 @@ Generic schema set (base for component/group).
  - <b>`members`</b>:  members 
  - <b>`required`</b>:  required flag 
 
-<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/schema.py#L224"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/schema.py#L226"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `__init__`
 
@@ -122,7 +122,7 @@ Tag number of SchemaField.
 
 ---
 
-<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/schema.py#L268"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/schema.py#L270"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `add`
 
@@ -147,7 +147,7 @@ Add SchemaSet member.
 
 ---
 
-<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/schema.py#L264"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/schema.py#L266"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `keys`
 
@@ -159,7 +159,7 @@ List of field names.
 
 ---
 
-<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/schema.py#L288"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/schema.py#L290"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `merge`
 
@@ -178,7 +178,7 @@ Merge SchemaSet with another.
 
 ---
 
-<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/schema.py#L350"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/schema.py#L352"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ## <kbd>class</kbd> `SchemaGroup`
 SchemaGroup container. 
@@ -188,7 +188,7 @@ SchemaGroup container.
 **Attributes:**
   field_required: 
 
-<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/schema.py#L356"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/schema.py#L359"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `__init__`
 
@@ -227,7 +227,7 @@ Tag number of SchemaField.
 
 ---
 
-<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/schema.py#L268"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/schema.py#L270"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `add`
 
@@ -252,7 +252,7 @@ Add SchemaSet member.
 
 ---
 
-<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/schema.py#L264"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/schema.py#L266"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `keys`
 
@@ -264,7 +264,7 @@ List of field names.
 
 ---
 
-<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/schema.py#L288"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/schema.py#L290"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `merge`
 
@@ -282,7 +282,7 @@ Merge SchemaSet with another.
 
 ---
 
-<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/schema.py#L366"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/schema.py#L369"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `validate_group`
 
@@ -307,12 +307,12 @@ Validate values of all tags in group.
 
 ---
 
-<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/schema.py#L431"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/schema.py#L434"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ## <kbd>class</kbd> `SchemaComponent`
 SchemaComponent container. 
 
-<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/schema.py#L433"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/schema.py#L437"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `__init__`
 
@@ -350,7 +350,7 @@ Tag number of SchemaField.
 
 ---
 
-<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/schema.py#L268"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/schema.py#L270"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `add`
 
@@ -375,7 +375,7 @@ Add SchemaSet member.
 
 ---
 
-<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/schema.py#L264"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/schema.py#L266"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `keys`
 
@@ -387,7 +387,7 @@ List of field names.
 
 ---
 
-<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/schema.py#L288"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/schema.py#L290"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `merge`
 
@@ -406,12 +406,12 @@ Merge SchemaSet with another.
 
 ---
 
-<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/schema.py#L442"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/schema.py#L446"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ## <kbd>class</kbd> `SchemaHeader`
 SchemaHeader container. 
 
-<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/schema.py#L444"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/schema.py#L449"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `__init__`
 
@@ -443,7 +443,7 @@ Tag number of SchemaField.
 
 ---
 
-<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/schema.py#L268"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/schema.py#L270"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `add`
 
@@ -468,7 +468,7 @@ Add SchemaSet member.
 
 ---
 
-<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/schema.py#L264"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/schema.py#L266"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `keys`
 
@@ -480,7 +480,7 @@ List of field names.
 
 ---
 
-<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/schema.py#L288"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/schema.py#L290"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `merge`
 
@@ -499,7 +499,7 @@ Merge SchemaSet with another.
 
 ---
 
-<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/schema.py#L449"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/schema.py#L454"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ## <kbd>class</kbd> `SchemaMessage`
 SchemaMessage container. 
@@ -511,7 +511,7 @@ SchemaMessage container.
  - <b>`msg_type`</b>:  msg_type value 
  - <b>`msg_cat`</b>:  message category 
 
-<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/schema.py#L456"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/schema.py#L462"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `__init__`
 
@@ -551,7 +551,7 @@ Tag number of SchemaField.
 
 ---
 
-<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/schema.py#L268"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/schema.py#L270"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `add`
 
@@ -576,7 +576,7 @@ Add SchemaSet member.
 
 ---
 
-<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/schema.py#L264"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/schema.py#L266"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `keys`
 
@@ -588,7 +588,7 @@ List of field names.
 
 ---
 
-<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/schema.py#L288"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/schema.py#L290"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `merge`
 
@@ -607,12 +607,12 @@ Merge SchemaSet with another.
 
 ---
 
-<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/schema.py#L475"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/schema.py#L481"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ## <kbd>class</kbd> `FIXSchema`
 FIX schema validator. 
 
-<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/schema.py#L477"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/schema.py#L484"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `__init__`
 
@@ -638,7 +638,7 @@ Initialize.
 
 ---
 
-<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/schema.py#L657"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/schema.py#L664"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `validate`
 

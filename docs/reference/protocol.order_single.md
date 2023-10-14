@@ -36,7 +36,7 @@ Generic FIXNewOrderSingle wrapper.
  - <b>`status`</b>:  current order status 
  - <b>`target_price`</b>:  order target execution price 
 
-<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/order_single.py#L33"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/order_single.py#L34"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `__init__`
 
@@ -79,7 +79,7 @@ Current order ClOrdID root.
 
 ---
 
-<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/order_single.py#L473"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/order_single.py#L474"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `can_cancel`
 
@@ -91,7 +91,7 @@ Check if order can be canceled from its current state.
 
 ---
 
-<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/order_single.py#L486"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/order_single.py#L487"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `can_replace`
 
@@ -103,7 +103,7 @@ Check if order can be replaced from its current state.
 
 ---
 
-<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/order_single.py#L139"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/order_single.py#L140"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `cancel_req`
 
@@ -121,7 +121,7 @@ Creates order cancel request.
 
 ---
 
-<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/order_single.py#L239"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/order_single.py#L240"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `change_status`
 
@@ -141,7 +141,7 @@ FIX Order State transition algo.
 
 ---
 
-<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/order_single.py#L82"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/order_single.py#L83"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `clord_next`
 
@@ -153,7 +153,7 @@ New ClOrdID for current order management.
 
 ---
 
-<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/order_single.py#L87"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/order_single.py#L88"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `clord_root`
 
@@ -176,7 +176,7 @@ Order ClOrdID root, as given at initialization.
 
 ---
 
-<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/order_single.py#L108"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/order_single.py#L109"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `current_datetime`
 
@@ -188,7 +188,7 @@ Date for TransactTime field.
 
 ---
 
-<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/order_single.py#L464"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/order_single.py#L465"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `is_finished`
 
@@ -200,7 +200,7 @@ Check if order is in terminal state (no subsequent changes expected).
 
 ---
 
-<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/order_single.py#L113"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/order_single.py#L114"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `new_req`
 
@@ -212,7 +212,7 @@ Creates NewOrderSingle message.
 
 ---
 
-<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/order_single.py#L393"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/order_single.py#L394"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `process_cancel_rej_report`
 
@@ -224,7 +224,7 @@ Processes incoming cancel reject report message.
 
 ---
 
-<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/order_single.py#L415"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/order_single.py#L416"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `process_execution_report`
 
@@ -242,7 +242,7 @@ Processes incoming execution report for an order.
 
 ---
 
-<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/order_single.py#L164"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/order_single.py#L165"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `replace_req`
 
@@ -272,7 +272,7 @@ Creates order replace request.
 
 ---
 
-<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/order_single.py#L215"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/order_single.py#L216"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `set_account`
 
@@ -290,7 +290,7 @@ Set account definition (override this in child).
 
 ---
 
-<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/order_single.py#L205"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/order_single.py#L206"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `set_instrument`
 
@@ -308,7 +308,7 @@ Set order instrument definition (override this in child).
 
 ---
 
-<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/order_single.py#L225"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/protocol/order_single.py#L226"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `set_price_qty`
 

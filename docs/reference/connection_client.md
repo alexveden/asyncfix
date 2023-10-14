@@ -14,7 +14,7 @@ FIX Initiator (client) connection.
 ## <kbd>class</kbd> `AsyncFIXClient`
 Generic FIX client. 
 
-<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/connection_client.py#L13"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/connection_client.py#L14"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `__init__`
 
@@ -75,7 +75,7 @@ Underlying FIXProtocolBase of a connection.
 
 ---
 
-<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/connection_client.py#L48"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
+<a href="https://github.com/alexveden/asyncfix/blob/main/asyncfix/connection_client.py#L49"><img align="right" style="float:right;" src="https://img.shields.io/badge/-source-cccccc?style=flat-square"></a>
 
 ### <kbd>method</kbd> `connect`
 

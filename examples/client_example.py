@@ -1,3 +1,4 @@
+"""Simple AsyncFIX client example."""
 import asyncio
 import logging
 
@@ -6,7 +7,10 @@ from asyncfix.protocol import FIXNewOrderSingle, FIXProtocol44, FOrdSide, FOrdTy
 
 
 class Client(AsyncFIXClient):
+    """Simple AsyncFIX client."""
+
     def __init__(self):
+        """Initialize."""
         journal = Journaler("client_example.store")
         super().__init__(
             protocol=FIXProtocol44(),
@@ -48,7 +52,7 @@ class Client(AsyncFIXClient):
         """(AppEvent) Logout(35=5) received from peer.
 
         Args:
-            msg:
+            msg: Logout message
         """
         self.log.info("on_logout")
 
@@ -79,7 +83,7 @@ class Client(AsyncFIXClient):
         Typically excludes session messages
 
         Args:
-            msg:
+            msg: generic incoming message
         """
         if msg.msg_type == FMsg.EXECUTIONREPORT:
             await self.on_execution_report(msg)
@@ -127,6 +131,7 @@ class Client(AsyncFIXClient):
 
 
 async def main():
+    """Main function."""
     client = Client()
     await client.connect()
 

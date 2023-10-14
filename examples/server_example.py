@@ -1,3 +1,4 @@
+"""Simple FIX server implementation."""
 import asyncio
 import logging
 
@@ -14,7 +15,10 @@ from asyncfix.protocol import FExecType, FIXNewOrderSingle, FIXProtocol44, FOrdS
 
 
 class Server(AsyncFIXDummyServer):
+    """Dummy server, supports only 1 connection."""
+
     def __init__(self):
+        """Initialize."""
         journal = Journaler("server_example.store")
         super().__init__(
             protocol=FIXProtocol44(),
@@ -48,7 +52,7 @@ class Server(AsyncFIXDummyServer):
         """(AppEvent) Logout(35=5) received from peer.
 
         Args:
-            msg:
+            msg: logout FIXMessage
         """
         self.log.info("on_logout")
 
@@ -76,7 +80,7 @@ class Server(AsyncFIXDummyServer):
         Typically excludes session messages
 
         Args:
-            msg:
+            msg: generic incoming FIXMessage
         """
         if msg.msg_type == FMsg.NEWORDERSINGLE:
             await self.on_new_order(msg)
@@ -87,7 +91,7 @@ class Server(AsyncFIXDummyServer):
         """Reply execution report on incoming order request.
 
         Args:
-            msg:
+            msg: NEWORDERSINGLE FIXMessage
         """
         try:
             msg = FIXMessage(
@@ -120,6 +124,7 @@ class Server(AsyncFIXDummyServer):
 
 
 async def main():
+    """Entry point."""
     server = Server()
 
     # Works forever

@@ -1,4 +1,11 @@
 repos:
+- repo: https://github.com/DanielNoord/pydocstringformatter
+  rev: v0.7.3
+  hooks:
+    - id: pydocstringformatter
+      exclude: tests/.*
+      args: [--max-line-length=88, --no-split-summary-body, --linewrap-full-docstring]
+
 -   repo: https://github.com/pycqa/isort
     rev: 5.12.0
     hooks:
@@ -28,9 +35,10 @@ repos:
       pass_filenames: false
       always_run: true
 
-- repo: https://github.com/DanielNoord/pydocstringformatter
-  rev: v0.7.3
-  hooks:
-    - id: pydocstringformatter
+
+-   repo: https://github.com/pycqa/pydocstyle
+    rev: 6.3.0
+    hooks:
+    - id: pydocstyle
       exclude: tests/.*
-      args: [--max-line-length=88, --no-split-summary-body, --linewrap-full-docstring]
+      args: [--convention=google]
