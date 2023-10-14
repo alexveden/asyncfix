@@ -2,4 +2,6 @@ site_name: AsyncFIX Documentation
 nav:
   - Home: index.md
   - API Reference: reference/README.md
+  - Test: README2.md
+  - Examples: examples.md
 theme: readthedocs

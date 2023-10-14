@@ -22,6 +22,9 @@ pip install asyncfix
 ```
 
 ## Getting started
-Check ![examples](https://github.com/alexveden/asyncfix/tree/main/example) and ![documentation](https://alexveden.github.io/asyncfix/)
+* [Simple snippets](https://alexveden.github.io/asyncfix/examples/)
+* [Client example](https://github.com/alexveden/asyncfix/tree/main/examples/client_example.py)
+* [Full Documentation](https://alexveden.github.io/asyncfix/)
 
-
+## License
+MIT 2023 Aleksandr Vedeneev
