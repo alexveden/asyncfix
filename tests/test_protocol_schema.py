@@ -28,7 +28,7 @@ def fix_simple_xml():
 
 @pytest.fixture
 def fix_circular_invalid_xml():
-    return ET.parse(os.path.join(TEST_DIR, "schema_fix_comp_circular.xml"))
+    return os.path.join(TEST_DIR, "schema_fix_comp_circular.xml")
 
 
 def test_schema_field():
@@ -172,8 +172,8 @@ def test_schema_set__add_group():
 def test_xml_init(fix_simple_xml):
     schema = FIXSchema(fix_simple_xml)
 
-    f = schema.field2tag["AdvSide"]
-    f2 = schema.tag2field["4"]
+    f = schema._field2tag["AdvSide"]
+    f2 = schema._tag2field["4"]
 
     assert f == f2
     assert f.validate_value("B")
@@ -182,18 +182,18 @@ def test_xml_init(fix_simple_xml):
     ):
         assert not f.validate_value("Z")
 
-    assert len(schema.components) == 3
-    assert "ContraGrp" in schema.components
-    assert "ContraGrp2" in schema.components
-    assert "CommissionData" in schema.components
-    c = schema.components["ContraGrp"]
+    assert len(schema._components) == 3
+    assert "ContraGrp" in schema._components
+    assert "ContraGrp2" in schema._components
+    assert "CommissionData" in schema._components
+    c = schema._components["ContraGrp"]
     assert isinstance(c, SchemaComponent)
     assert c.name == "ContraGrp"
     assert c.field is None
 
     # Check messages
-    assert schema.messages
-    m = schema.messages["ExecutionReport"]
+    assert schema._messages
+    m = schema._messages["ExecutionReport"]
     assert isinstance(m, SchemaMessage)
     assert m.msg_type == "8"
     assert m.msg_cat == "app"
@@ -205,8 +205,8 @@ def test_xml_init(fix_simple_xml):
     assert ["PartyID", "PartyRole"] == list(g.members)
 
     # Check header
-    assert len(schema.header.keys()) == 7
-    assert schema.header.keys() == [
+    assert len(schema._header.keys()) == 7
+    assert schema._header.keys() == [
         "BeginString",
         "BodyLength",
         "MsgType",
@@ -215,8 +215,8 @@ def test_xml_init(fix_simple_xml):
         "MsgSeqNum",
         "SendingTime",
     ]
-    field = schema.tag2field["8"]
-    assert field in schema.header
+    field = schema._tag2field["8"]
+    assert field in schema._header
 
 
 def test_xml_circular_init(fix_circular_invalid_xml):
@@ -234,10 +234,10 @@ def test_xml_real_schema():
     tree = ET.parse(os.path.join(TEST_DIR, "FIX44.xml"))
     schema = FIXSchema(tree)
 
-    assert len(schema.messages) == 93
-    assert len(schema.components) == 104
-    assert len(schema.field2tag) == 912
-    assert schema.types == {
+    assert len(schema._messages) == 93
+    assert len(schema._components) == 104
+    assert len(schema._field2tag) == 912
+    assert schema._types == {
         "AMT",
         "BOOLEAN",
         "CHAR",
@@ -263,17 +263,17 @@ def test_xml_real_schema():
         "UTCTIMESTAMP",
     }
 
-    assert "ExecutionReport" in schema.messages
+    assert "ExecutionReport" in schema._messages
 
 
 def test_xml_real_schema_tt():
     tree = ET.parse(os.path.join(TEST_DIR, "TT-FIX44.xml"))
     schema = FIXSchema(tree)
 
-    assert len(schema.messages) == 40
-    assert len(schema.components) == 0
-    assert len(schema.field2tag) == 611
-    assert schema.types == {
+    assert len(schema._messages) == 40
+    assert len(schema._components) == 0
+    assert len(schema._field2tag) == 611
+    assert schema._types == {
         "AMT",
         "BOOLEAN",
         "CHAR",
@@ -297,10 +297,10 @@ def test_xml_real_schema_tt():
         "UTCTIMESTAMP",
     }
 
-    assert "ExecutionReport" in schema.messages
+    assert "ExecutionReport" in schema._messages
 
     # Each message can have different group members of the same group
-    m = schema.messages["MarketDataSnapshot"]
+    m = schema._messages["MarketDataSnapshot"]
     g = m["NoMDEntries"]
     assert isinstance(g, SchemaGroup)
     assert g.keys() == [
@@ -314,7 +314,7 @@ def test_xml_real_schema_tt():
     ]
 
     # Each message can have different group members of the same group
-    m = schema.messages["MarketDataIncrementalRefresh"]
+    m = schema._messages["MarketDataIncrementalRefresh"]
     g = m["NoMDEntries"]
     assert isinstance(g, SchemaGroup)
     assert g.keys() == [
@@ -864,7 +864,7 @@ def test_schema_validation_group(fix_simple_xml):
     assert schema["453"].tag == "453"
     assert schema["NoPartyIDs"].tag == "453"
 
-    m = schema.messages_types[FMsg.EXECUTIONREPORT]
+    m = schema._messages_types[FMsg.EXECUTIONREPORT]
 
     assert m.msg_type == FMsg.EXECUTIONREPORT
     g = m["NoPartyIDs"]
@@ -948,7 +948,7 @@ def test_schema_validation_group(fix_simple_xml):
 
 def test_schema_validation_group_nested(fix_simple_xml):
     schema = FIXSchema(fix_simple_xml)
-    m = schema.messages_types[FMsg.EXECUTIONREPORT]
+    m = schema._messages_types[FMsg.EXECUTIONREPORT]
 
     g = m["NoContraBrokers"]
 

@@ -184,28 +184,6 @@ def testPickle():
     assert msg == msg2
 
 
-def test_dict_contains():
-    msg = FIXMessage(
-        "AB", {11: "clordis", "1": "account", FTag.Price: 21.21, FTag.OrderQty: 2}
-    )
-    assert msg[11] == "clordis"
-    assert msg[FTag.Account] == "account"
-    assert msg[FTag.Price] == "21.21"
-    assert msg[FTag.OrderQty] == "2"
-
-    assert {11: "clordis"} in msg
-    assert {12: "clordis"} not in msg
-    assert {11: "clordis", "2": "account"} not in msg
-    assert {11: "clordis1"} not in msg
-
-    msg.add_group("444", {1: "ok"})
-    with pytest.raises(
-        FIXMessageError,
-        match="__contains__ supports only simple tags, got group at tag=444",
-    ):
-        assert {444: "clordis"} in msg
-
-
 def test_dict_equals():
     msg = FIXMessage(
         "AB", {11: "clordis", "1": "account", FTag.Price: 21.21, FTag.OrderQty: 2}
@@ -217,7 +195,6 @@ def test_dict_equals():
 
     assert msg != "aaldsa"
 
-    assert {11: "clordis", 1: "account", FTag.Price: 21.21, FTag.OrderQty: 2} in msg
     assert {11: "clordis", 1: "account", FTag.Price: 21.21, FTag.OrderQty: 2} == msg
     assert {12: "clordis", 1: "account", FTag.Price: 21.21, FTag.OrderQty: 2} != msg
     assert {11: "clordis1", 1: "account", FTag.Price: 21.21, FTag.OrderQty: 2} != msg

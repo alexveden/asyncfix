@@ -1004,7 +1004,7 @@ async def test_socket_read__valid(fix_connection_socket, fix_msg):
             FTag.Symbol: "VOD.L",
             FTag.Price: "123.45",
             FTag.OrderQty: "9876",
-        } in args[0][0]
+        } == args[0][0].query(FTag.Symbol, FTag.Price, FTag.OrderQty)
 
         assert isinstance(args[0][1], bytes)
         assert args[0][1].startswith(b"8=FIX")
@@ -1038,7 +1038,7 @@ async def test_socket_read__partial(fix_connection_socket, fix_msg):
             FTag.Symbol: "VOD.L",
             FTag.Price: "123.45",
             FTag.OrderQty: "9876",
-        } in args[0][0]
+        } == args[0][0].query(FTag.Symbol, FTag.Price, FTag.OrderQty)
 
         assert isinstance(args[0][1], bytes)
         assert args[0][1].startswith(b"8=FIX")
@@ -1073,7 +1073,7 @@ async def test_socket_read__partial_bad_data(fix_connection_socket, fix_msg):
             FTag.Symbol: "VOD.L",
             FTag.Price: "123.45",
             FTag.OrderQty: "9876",
-        } in args[0][0]
+        } == args[0][0].query(FTag.Symbol, FTag.Price, FTag.OrderQty)
 
         assert isinstance(args[0][1], bytes)
         assert args[0][1].startswith(b"8=FIX")
@@ -1133,7 +1133,7 @@ async def test_socket_read__partial_one_after_another(fix_connection_socket, fix
             FTag.Symbol: "VOD.L",
             FTag.Price: "123.45",
             FTag.OrderQty: "9876",
-        } in args[0][0]
+        } == args[0][0].query(FTag.Symbol, FTag.Price, FTag.OrderQty)
 
         assert isinstance(args[0][1], bytes)
         assert args[0][1].startswith(b"8=FIX")

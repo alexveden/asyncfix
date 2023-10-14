@@ -24,6 +24,10 @@ dev = [
   "black==23.7.0",
   "pre-commit",
   'pytest-asyncio',
+  'lazydocs',
+  'pydocstringformatter',
+  'pydocstyle',
+  'toml',
 ]
 
 [project.urls]
@@ -33,3 +37,15 @@ Homepage = "https://github.com/alexveden/asyncfix"
 [tool.isort]
 profile = "black"
 extend_skip = ["__init__.py"]
+
+[tool.pydocstringformatter]
+write = true
+strip-whitespaces = true
+summary-quotes-same-line = true
+max-line-length = 88
+split-summary-body = false
+linewrap-full-docstring = true
+
+[tool.pydocstyle]
+ignore="D403"
+
