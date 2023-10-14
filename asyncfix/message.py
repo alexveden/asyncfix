@@ -5,8 +5,7 @@ from collections import OrderedDict
 from enum import Enum
 
 from asyncfix import FMsg, FTag
-
-from .errors import (
+from asyncfix.errors import (
     DuplicatedTagError,
     FIXMessageError,
     RepeatingTagError,
@@ -390,6 +389,7 @@ class FIXContainer(object):
 
 class FIXMessage(FIXContainer):
     """Generic FIXMessage."""
+
     def __init__(
         self,
         msg_type: str | FMsg,
