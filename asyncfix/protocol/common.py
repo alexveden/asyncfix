@@ -1,7 +1,8 @@
+"""Common FIX protocol enums."""
 import enum
 
 
-class StrEnum(enum.Enum):
+class _StrEnum(enum.Enum):
     def __str__(self):
         return str(self.value)
 
@@ -12,7 +13,8 @@ class StrEnum(enum.Enum):
         return hash(self.value)
 
 
-class FOrdSide(StrEnum):
+class FOrdSide(_StrEnum):
+    """FIX Order Side."""
     BUY = "1"
     SELL = "2"
     BUY_MINUS = "3"
@@ -31,7 +33,8 @@ class FOrdSide(StrEnum):
     BORROW = "G"
 
 
-class FOrdType(StrEnum):
+class FOrdType(_StrEnum):
+    """FIX Order Type."""
     MARKET = "1"
     LIMIT = "2"
     STOP = "3"
@@ -51,7 +54,8 @@ class FOrdType(StrEnum):
     PEGGED = "P"
 
 
-class FOrdStatus(StrEnum):
+class FOrdStatus(_StrEnum):
+    """FIX Order Status."""
     CREATED = "Z"  # IMPORTANT: this one is for internal use, non FIX!
     NEW = "0"
     PARTIALLY_FILLED = "1"
@@ -69,7 +73,8 @@ class FOrdStatus(StrEnum):
     PENDING_REPLACE = "E"
 
 
-class FExecType(StrEnum):
+class FExecType(_StrEnum):
+    """FIX execution report ExecType."""
     NEW = "0"
     DONE_FOR_DAY = "3"
     CANCELED = "4"
