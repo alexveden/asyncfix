@@ -1,3 +1,4 @@
+"""Abstract connection module."""
 import asyncio
 import logging
 import sys
@@ -15,111 +16,97 @@ from asyncfix.session import FIXSession
 
 # fmt: off
 class ConnectionState(IntEnum):
+    """Connection status enum."""
     UNKNOWN = 0
 
     DISCONNECTED_NOCONN_TODAY = 1    # both
-    """
-    Currently disconnected, have not attempted to establish a connection today
-    """
+    """Currently disconnected, have not attempted to establish a connection today."""
 
     DISCONNECTED_WCONN_TODAY = 2     # both
-    """
-    Currently disconnected, have attempted to establish a connection today
-    """
+    """Currently disconnected, have attempted to establish a connection today."""
 
     DISCONNECTED_BROKEN_CONN = 3    # both
-    """
-    While connected, detect a broken network connection (e.g. TCP socket closed)
-    """
+    """While connected, detect a broken network connection (e.g. TCP socket closed)."""
 
     AWAITING_CONNECTION = 4          # acceptor
-    """
-    Session acceptor Logon awaiting network connection from counterparty.
-    """
+    """Session acceptor Logon awaiting network connection from counterparty."""
 
     INITIATE_CONNECTION = 5          # initiator
-    """
-    Session initiator Logon establishing network connection with counterparty.
-    """
+    """Session initiator Logon establishing network connection with counterparty."""
 
     NETWORK_CONN_ESTABLISHED = 6     # both
-    """
-    Network connection established between both parties.
-    """
+    """Network connection established between both parties."""
 
     LOGON_INITIAL_SENT = 7           # initiator
-    """
-    Session initiator Logon send Logon(35=A) message.
-    """
+    """Session initiator Logon send Logon(35=A) message."""
 
     LOGON_INITIAL_RECV = 8           # acceptor
-    """
-    Session acceptor Logon receive counterparty’s Logon(35=A) message.
-    """
+    """Session acceptor Logon receive counterparty’s Logon(35=A) message."""
 
     LOGON_RESPONSE = 9               # acceptor
-    """
-    Session acceptor Logon respond to peer with Logon message to handshake.
-    """
+    """Session acceptor Logon respond to peer with Logon message to handshake."""
 
     RESENDREQ_HANDLING = 10            # both
-    """Receive and respond to counterparty’s ResendRequest(35=2) sending requested
+    """Receive and respond to counterparty’s ResendRequest(35=2) sending requested.
+
        messages and/or SequenceReset(35=4) gap fill messages for the range of
-       MsgSeqNum(34) requested."""
+       MsgSeqNum(34) requested.
+    """
 
     RECV_SEQNUM_TOO_HIGH = 11        # both
-    """Receive too high of MsgSeqNum(34) from counterparty, queue message,
-       and send ResendRequest(35=2)."""
+    """Receive too high of MsgSeqNum(34) from counterparty, queue message,.
+
+       and send ResendRequest(35=2).
+    """
 
     RESENDREQ_AWAITING = 12          # both
-    """Process requested MsgSeqNum(34) with PossDupFlag(43)=Y resent messages and/or
-       SequenceReset(35=4) gap fill messages from counterparty. """
+    """Process requested MsgSeqNum(34) with PossDupFlag(43)=Y resent messages and/or.
+
+       SequenceReset(35=4) gap fill messages from counterparty.
+    """
 
     NO_MSG_IN_INTERVAL = 13          # both
-    """
-    No inbound messages (non-garbled) received in (HeartBtInt+ reasonable time
-    """
+    """No inbound messages (non-garbled) received in (HeartBtInt+ reasonable time."""
 
     AWAIT_PROC_TEST_REQ = 14         # both
-    """Process inbound messages. Reset heartbeat interval-related timer when ANY
-       inbound message (non-garbled) is received."""
+    """Process inbound messages.
+
+    Reset heartbeat interval-related timer when ANY
+       inbound message (non-garbled) is received.
+    """
 
     RECEIVED_LOGOUT = 15             # both
-    """
-    Receive Logout(35=5) message from counterparty initiating logout/disconnect.
-    """
+    """Receive Logout(35=5) message from counterparty initiating logout/disconnect."""
 
     INITIATE_LOGOUT = 16             # both
-    """	Identify condition or reason to gracefully disconnect (e.g. end of “day”,
-    no response after multiple TestRequest(35=1) messages, too low MsgSeqNum(34))"""
+    """Identify condition or reason to gracefully disconnect (e.g. end of “day”,.
+
+    no response after multiple TestRequest(35=1) messages, too low MsgSeqNum(34))
+    """
 
     ACTIVE = 17                      # both
-    """
-    Network connection established, Logon(35=A) message exchange completed.
-    """
+    """Network connection established, Logon(35=A) message exchange completed."""
 
     WAITING_FOR_LOGON = 18           # initiator
-    """
-    Session initiator waiting for session acceptor to send back a Logon(35=A)
-    """
+    """Session initiator waiting for session acceptor to send back a Logon(35=A)."""
 # fmt: on
 
 
 class ConnectionRole(Enum):
+    """Role of the connection INITIATOR / ACCEPTOR."""
+
     UNKNOWN = 0
     INITIATOR = 1
     ACCEPTOR = 2
 
 
 class AsyncFIXConnection:
-    """
-    AsyncFIX bidirectional connection
+    """AsyncFIX bidirectional connection.
 
     Attributes:
         connection_state: Current connection_state
         connection_role: Current connection_role ACCEPTOR | INITIATOR
         log: logger
-
     """
 
     def __init__(
@@ -132,9 +119,8 @@ class AsyncFIXConnection:
         port: int,
         heartbeat_period: int = 30,
         logger: logging.Logger | None = None,
-    ):
-        """
-        AsyncFIX bidirectional connection
+    ):  # noqa: D403
+        """AsyncFIX bidirectional connection.
 
         Args:
             protocol: FIX protocol
@@ -178,33 +164,26 @@ class AsyncFIXConnection:
 
     @property
     def connection_state(self) -> ConnectionState:
+        """Current connection state."""
         return self._connection_state
 
     @property
     def connection_role(self) -> ConnectionRole:
+        """Current connection role."""
         return self._connection_role
 
     @property
     def heartbeat_period(self) -> int:
+        """Current connection heartbeat period in seconds."""
         return self._heartbeat_period
 
     @property
     def protocol(self) -> FIXProtocolBase:
-        """
-        Underlying FIXProtocolBase of a connection
-
-        Returns:
-        """
+        """Underlying FIXProtocolBase of a connection."""
         return self._codec.protocol
 
     async def connect(self):
-        """
-        Transport initialization method
-
-        Raises:
-            NotImplementedError:
-
-        """
+        """Transport initialization method."""
         if not self._aio_task_socket_read:
             self._aio_task_socket_read = asyncio.create_task(self.socket_read_task())
         if not self._aio_task_heartbeat:
@@ -215,8 +194,7 @@ class AsyncFIXConnection:
         disconn_state: ConnectionState,
         logout_message: str = None,
     ):
-        """
-        Disconnect session and closes the socket
+        """Disconnect session and closes the socket.
 
         Args:
             disconn_state: connection state after disconnection
@@ -246,15 +224,13 @@ class AsyncFIXConnection:
             await self.on_disconnect()
 
     async def send_msg(self, msg: FIXMessage):
-        """
-        Sends message to the peer
+        """Sends message to the peer.
 
         Args:
             msg: fix message
 
         Raises:
             FIXConnectionError: raised if connection state does not allow sending
-
         """
         if self._connection_state < ConnectionState.NETWORK_CONN_ESTABLISHED:
             raise FIXConnectionError(
@@ -303,12 +279,10 @@ class AsyncFIXConnection:
         )
 
     async def send_test_req(self):
-        """
-        Sends TestRequest(35=1) and sets TestReqID for expected response from peer
+        """Sends TestRequest(35=1) and sets TestReqID for expected response from peer.
 
         Raises:
             FIXConnectionError: if another TestRequest() is pending
-
         """
         if self._test_req_id is not None:
             raise FIXConnectionError("Another test request already pending")
@@ -318,9 +292,7 @@ class AsyncFIXConnection:
         await self.send_msg(test_msg)
 
     async def socket_read_task(self):
-        """
-        Main socket reader task (decode raw messages and calls _process_message)
-        """
+        """Main socket reader task (decode raw messages and calls _process_message)."""
         last_connect = time.time()
 
         while True:
@@ -375,9 +347,7 @@ class AsyncFIXConnection:
                 # raise
 
     async def heartbeat_timer_task(self):
-        """
-        Heartbeat watcher task
-        """
+        """Heartbeat watcher task."""
         while True:
             try:
                 if not self._socket_writer or not self._socket_reader:
@@ -416,6 +386,7 @@ class AsyncFIXConnection:
                 self.log.exception("heartbeat_timer() error")
 
     async def reset_seq_num(self):
+        """Resets session and journal seq nums to 1."""
         self.log.info("Resetting connection sequence and journal")
         self._journaler.set_seq_num(self._session, next_num_in=1, next_num_out=1)
         assert self._session.next_num_in == 1
@@ -428,35 +399,26 @@ class AsyncFIXConnection:
     ####################################################
 
     async def on_message(self, msg: FIXMessage):
-        """
-        (AppEvent) Business message was received
+        """(AppEvent) Business message was received.
 
         Typically excludes session messages
 
         Args:
-            msg:
-
+            msg: generic incoming FIXMessage
         """
         raise NotImplementedError("on_message() must be implemented in app class")
 
     async def on_connect(self):
-        """
-        (AppEvent) Underlying socket connected
-
-        """
+        """(AppEvent) Underlying socket connected."""
         raise NotImplementedError("on_connect() must be implemented in app class")
         pass
 
     async def on_disconnect(self):
-        """
-        (AppEvent) Underlying socket disconnected
-
-        """
+        """(AppEvent) Underlying socket disconnected."""
         pass
 
     async def on_logon(self, is_healthy: bool):
-        """
-        (AppEvent) Logon(35=A) received from peer
+        """(AppEvent) Logon(35=A) received from peer.
 
         Args:
             is_healthy: True - if connection_state is ACTIVE
@@ -464,18 +426,15 @@ class AsyncFIXConnection:
         pass
 
     async def on_logout(self, msg: FIXMessage):
-        """
-        (AppEvent) Logout(35=5) received from peer
+        """(AppEvent) Logout(35=5) received from peer.
 
         Args:
-            msg:
-
+            msg: Logout(35=5) FIXMessage
         """
         pass
 
     async def on_state_change(self, connection_state: ConnectionState):
-        """
-        (AppEvent) On ConnectionState change
+        """(AppEvent) On ConnectionState change.
 
         Args:
             connection_state: new connection state
@@ -483,14 +442,12 @@ class AsyncFIXConnection:
         pass
 
     async def should_replay(self, historical_replay_msg: FIXMessage) -> bool:
-        """
-        (AppLevel) Checks if historical_replay_msg from Journaler should be replayed
+        """(AppLevel) Checks if historical_replay_msg from Journaler should be replayed.
 
         Args:
             historical_replay_msg: message from Journaler log
 
         Returns: True - replay, False - msg skipped (replaced by SequenceReset(35=4))
-
         """
         return True
 
@@ -501,12 +458,10 @@ class AsyncFIXConnection:
     ####################################################
 
     async def _state_set(self, connection_state: ConnectionState):
-        """
-        Sets internal connection state
+        """Sets internal connection state.
 
         Args:
-            connection_state:
-
+            connection_state: new connection state
         """
         self.log.debug(
             f"[{self._connection_role.name}] NewState: {connection_state.name}"
@@ -517,8 +472,7 @@ class AsyncFIXConnection:
         await self.on_state_change(connection_state)
 
     def _validate_integrity(self, msg: FIXMessage) -> bool:
-        """
-        Validates incoming message critical integrity
+        """Validates incoming message critical integrity.
 
         Args:
             msg: incoming message
@@ -565,9 +519,7 @@ class AsyncFIXConnection:
         return None
 
     async def _process_logon(self, logon_msg: FIXMessage):
-        """
-        Processes Logon(35=A) message
-        """
+        """Processes Logon(35=A) message."""
         assert logon_msg.msg_type == FMsg.LOGON
         assert (
             self._connection_role == ConnectionRole.ACCEPTOR
@@ -592,8 +544,7 @@ class AsyncFIXConnection:
         await self.on_logon(self._connection_state == ConnectionState.ACTIVE)
 
     async def _check_seqnum_gaps(self, msg_seq_num: int) -> bool:
-        """
-        Validates incoming MsgSeqNum, sends ResendRequest(35=2) if gap
+        """Validates incoming MsgSeqNum, sends ResendRequest(35=2) if gap.
 
         Args:
             msg_seq_num:
@@ -616,11 +567,10 @@ class AsyncFIXConnection:
         return True
 
     async def _process_logout(self, logout_msg: FIXMessage):
-        """
-        Processes incoming Logout(35=5) message
+        """Processes incoming Logout(35=5) message.
 
         Args:
-            msg: Logout(35=5) FIXMessage
+            logout_msg: Logout(35=5) FIXMessage
         """
         assert logout_msg.msg_type == FMsg.LOGOUT
 
@@ -634,12 +584,10 @@ class AsyncFIXConnection:
         await self.disconnect(dstate)
 
     async def _process_resend(self, resend_msg: FIXMessage):
-        """
-        Handles ResendRequest(35=2) - fills message gaps
+        """Handles ResendRequest(35=2) - fills message gaps.
 
         Args:
-            msg: ResendRequest(35=2) FIXMessage
-
+            resend_msg: ResendRequest(35=2) FIXMessage
         """
         if self._connection_state != ConnectionState.RESENDREQ_AWAITING:
             await self._state_set(ConnectionState.RESENDREQ_HANDLING)
@@ -728,12 +676,10 @@ class AsyncFIXConnection:
             await self._state_set(ConnectionState.ACTIVE)
 
     async def _process_seqreset(self, seqreset_msg: FIXMessage):
-        """
-        Handles SequenceReset(35=4) message
+        """Handles SequenceReset(35=4) message.
 
         Args:
-            seqreset_msg:
-
+            seqreset_msg: SequenceReset(35=4) FIXMessage
         """
         assert seqreset_msg.msg_type == FMsg.SEQUENCERESET
 
@@ -757,8 +703,7 @@ class AsyncFIXConnection:
         )
 
     async def _finalize_message(self, msg: FIXMessage, raw_msg: bytes):
-        """
-        Final message processing (MsgSeqNum checks / journaling)
+        """Final message processing (MsgSeqNum checks / journaling).
 
         Args:
             msg: incoming message
@@ -783,14 +728,12 @@ class AsyncFIXConnection:
         self._journaler.persist_msg(raw_msg, self._session, MessageDirection.INBOUND)
 
     async def _process_testrequest(self, testreq_msg: FIXMessage):
-        """
-        Handles TestRequest(35=1)
+        """Handles TestRequest(35=1).
 
         Replies with Heartbeat(35=0) message with TestReqID tag
 
         Args:
             testreq_msg: TestRequest FIXMessage
-
         """
         assert testreq_msg.msg_type == FMsg.TESTREQUEST
         hbt_msg = FIXMessage(
@@ -799,12 +742,10 @@ class AsyncFIXConnection:
         await self.send_msg(hbt_msg)
 
     async def _process_heartbeat(self, hbt_msg: FIXMessage):
-        """
-        Handles Heartbeat(35=0) message (possible response on TestRequest(35=1))
+        """Handles Heartbeat(35=0) message (possible response on TestRequest(35=1)).
 
         Args:
             hbt_msg: Heartbeat(35=0) FIXMessage
-
         """
         assert hbt_msg.msg_type == FMsg.HEARTBEAT
 
@@ -828,13 +769,11 @@ class AsyncFIXConnection:
                 self._test_req_id = None
 
     async def _process_message(self, msg: FIXMessage, raw_msg: bytes):
-        """
-        Main message processing dispatcher
+        """Main message processing dispatcher.
 
         Args:
             msg: incoming decoded message
             raw_msg: incoming raw message (bytes)
-
         """
         self.log.debug(
             f"[{self._connection_role.name}]:process_message"
