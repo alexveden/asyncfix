@@ -1,3 +1,4 @@
+"""FIX Schema validation module."""
 from __future__ import annotations
 
 import dataclasses
@@ -14,15 +15,18 @@ from asyncfix.message import FIXContainer
 
 @dataclasses.dataclass
 class SchemaField:
+    """FIX Field schema."""
     tag: str
     name: str
     ftype: str
     values: dict[str, str] = dataclasses.field(default_factory=dict)
 
     def __hash__(self):
+        """Hash by Field.name."""
         return hash(self.name)
 
     def __eq__(self, o):
+        """Equality by SchemaField.name or tag."""
         if isinstance(o, SchemaField):
             return self.name == o.name
         elif isinstance(o, (str, int)):
@@ -34,6 +38,16 @@ class SchemaField:
             return False
 
     def validate_value(self, value: str) -> bool:
+        """Validate tag value based on schema settings.
+
+        Args:
+            value: tag value
+
+        Returns: True - if passed
+
+        Raises:
+            FIXMessageError: raised if validation failed
+        """
         assert isinstance(value, str), "value must be a string"
         assert value, "empty value"
 
@@ -117,18 +131,18 @@ class SchemaField:
 
     @staticmethod
     def _validate_value_monthyear(value):
-        """
-        Special case for MonthYear type
-            String representing month of a year. An optional day of the month can be
-              appended or an optional week code.
-            Valid formats:
-            YYYYMM
-            YYYYMMDD
-            YYYYMMWW
+        """Special case for MonthYear type.
 
-            Valid values:
-            YYYY = 0000-9999; MM = 01-12; DD = 01-31;
-            WW = w1, w2, w3, w4, w5.
+        String representing month of a year. An optional day of the month can be
+          appended or an optional week code.
+        Valid formats:
+        YYYYMM
+        YYYYMMDD
+        YYYYMMWW.
+
+        Valid values:
+        YYYY = 0000-9999; MM = 01-12; DD = 01-31;
+        WW = w1, w2, w3, w4, w5.
         """
         if "w" in value:
             week = value[-2:]
@@ -190,14 +204,33 @@ class SchemaField:
             return str(exc)
 
     def __str__(self):
+        """As string: name|tag."""
         return f"{self.name}|{self.tag}"
 
     def __repr__(self):
+        """Repr."""
         return f"SchemaField({str(self)}, type={self.ftype})"
 
 
 class SchemaSet:
+    """Generic schema set (base for component/group).
+
+    Attributes:
+        name: schema name
+        field: schema field
+        members: members
+        required: required flag
+    """
     def __init__(self, name: str, field: SchemaField | None = None):
+        """Initialize.
+
+        Args:
+            name: name of abstract set
+            field: field of abstract set
+
+        Raises:
+            ValueError: if not NUMINGROUP type or similar tag name
+        """
         self.name: str = name
         self.field: SchemaField = field  # this is set for groups, with attached field
         if field:
@@ -215,15 +248,33 @@ class SchemaSet:
 
     @property
     def tag(self) -> str:
+        """Tag number of SchemaField.
+
+        Returns:
+            tag
+
+        Raises:
+            ValueError: raised then tag is not single field
+        """
         if self.field:
             return self.field.tag
         else:
             raise ValueError(f"tag property is not supported for {self}")
 
     def keys(self) -> list[str]:
+        """List of field names."""
         return [m.name for m in self.members]
 
     def add(self, field_or_set: SchemaField | SchemaSet, required: bool):
+        """Add SchemaSet member.
+
+        Args:
+            field_or_set: field or SchemaSet
+            required: required tag flag
+
+        Raises:
+            ValueError: unsupported field_or_set value
+        """
         if isinstance(field_or_set, SchemaField):
             assert field_or_set not in self.members
         elif isinstance(field_or_set, SchemaSet):
@@ -235,24 +286,42 @@ class SchemaSet:
         self.required[field_or_set] = required
 
     def merge(self, comp: SchemaSet):
+        """Merge SchemaSet with another.
+
+        Args:
+            comp: SchemaSet
+        """
         assert isinstance(comp, SchemaSet)
 
         for field, required in comp.members.items():
             self.add(field, comp.required[field])
 
     def __hash__(self):
+        """Hash by field.name."""
         if self.field:
             return hash(self.field)
         else:
             return hash(self.name)
 
     def __eq__(self, o):
+        """Equality."""
         if self.field:
             return self.field == o
         else:
             return self.name == o
 
     def __contains__(self, item: str | SchemaField) -> bool:
+        """Check if SchemaSet contains field or name.
+
+        Args:
+            item: SchemaField or name (str)
+
+        Returns:
+            boolean
+
+        Raises:
+            FIXMessageError: incorrect item value
+        """
         try:
             int(str(item))
             raise FIXMessageError("item looks like tag, use name or SchemaField")
@@ -260,6 +329,17 @@ class SchemaSet:
             return item in self.members
 
     def __getitem__(self, item: str | SchemaField) -> SchemaField | SchemaSet:
+        """Get field item by SchemaField or name.
+
+        Args:
+            item: SchemaField or name (str)
+
+        Returns:
+            SchemaField | SchemaSet
+
+        Raises:
+            FIXMessageError: incorrect item value
+        """
         try:
             int(str(item))
             raise FIXMessageError("item looks like tag, use name or SchemaField")
@@ -268,11 +348,30 @@ class SchemaSet:
 
 
 class SchemaGroup(SchemaSet):
+    """SchemaGroup container.
+
+    Attributes:
+        field_required:
+    """
     def __init__(self, field: SchemaField, required: bool):
+        """Initialize.
+
+        Args:
+            field: SchemaField of group
+            required: required flag
+        """
         super().__init__(field.name, field)
         self.field_required = required
 
     def validate_group(self, groups: list[FIXContainer]):
+        """Validate values of all tags in group.
+
+        Args:
+            groups: list of repeating group items
+
+        Raises:
+            FIXMessageError: validation failed
+        """
         tag_order = {f.tag: i for i, f in enumerate(self.members.values())}
         tag_fields = {f.tag: f for f in self.members.values()}
 
@@ -324,45 +423,81 @@ class SchemaGroup(SchemaSet):
                         )
 
     def __repr__(self):
+        """Repr."""
         members = [str(m) for m in self.members.keys()]
         return f"SchemaGroup({self.field.name}, {members})"
 
 
 class SchemaComponent(SchemaSet):
+    """SchemaComponent container."""
     def __init__(self, name: str):
+        """Initialize.
+
+        Args:
+            name: component name
+        """
         super().__init__(name)
 
 
 class SchemaHeader(SchemaSet):
+    """SchemaHeader container."""
     def __init__(self):
+        """Initialize header."""
         super().__init__(name="Header")
 
 
 class SchemaMessage(SchemaSet):
+    """SchemaMessage container.
+
+    Attributes:
+        msg_type: msg_type value
+        msg_cat: message category
+    """
     def __init__(self, name: str, msg_type: str, msg_cat: str):
+        """Initialize.
+
+        Args:
+            name: message name
+            msg_type: message type
+            msg_cat: message category
+        """
         super().__init__(name)
         self.msg_type = msg_type
         self.msg_cat = msg_cat
 
     def __repr__(self):
+        """Repr."""
         return (
             f"SchemaMessage(name={self.name}, type={self.msg_type}, cat={self.msg_cat})"
         )
 
 
 class FIXSchema:
-    def __init__(self, xml: ET.ElementTree):
-        assert isinstance(xml, ET.ElementTree)
-        self.tag2field: dict[str, SchemaField] = {}
-        self.field2tag: dict[str, SchemaField] = {}
-        self.header: SchemaHeader = None
-        self.components: dict[str, SchemaComponent] = {}
-        self.messages: dict[str, SchemaMessage] = {}
-        self.messages_types: dict[str, SchemaMessage] = {}
-        self.header = {}
-        self.types = set()
+    """FIX schema validator."""
+    def __init__(self, xml_or_path: ET.ElementTree | str):
+        """Initialize.
 
-        self._parse(xml.getroot())
+        Args:
+            xml_or_path: path to xml or xml.etree.ElementTree
+
+        Raises:
+            ValueError:
+        """
+        if isinstance(xml_or_path, str):
+            xml_or_path = ET.parse(xml_or_path)
+
+        assert isinstance(xml_or_path, ET.ElementTree)
+
+        self._tag2field: dict[str, SchemaField] = {}
+        self._field2tag: dict[str, SchemaField] = {}
+        self._header: SchemaHeader = None
+        self._components: dict[str, SchemaComponent] = {}
+        self._messages: dict[str, SchemaMessage] = {}
+        self._messages_types: dict[str, SchemaMessage] = {}
+        self._header = {}
+        self._types = set()
+
+        self._parse(xml_or_path.getroot())
 
     def _parse_msg_set(self, component, element):
         has_circular_refs = False
@@ -370,15 +505,15 @@ class FIXSchema:
             assert val.tag in ["field", "group", "component"]
 
             if val.tag == "field":
-                field = self.field2tag[val.attrib["name"]]
+                field = self._field2tag[val.attrib["name"]]
                 component.add(field, val.attrib["required"].upper() == "Y")
             elif val.tag == "component":
-                if val.attrib["name"] not in self.components:
+                if val.attrib["name"] not in self._components:
                     # We have circular reference, component was referenced before
                     #    described in XML data, just skip and rerun later
                     has_circular_refs = True
                     continue
-                ref_component = self.components[val.attrib["name"]]
+                ref_component = self._components[val.attrib["name"]]
                 component.merge(ref_component)
             elif val.tag == "group":
                 g = self._parse_group(val)
@@ -394,12 +529,12 @@ class FIXSchema:
             return component
 
     def _parse_group(self, element: ET.Element) -> SchemaGroup | None:
-        assert self.field2tag, "parse fields first!"
+        assert self._field2tag, "parse fields first!"
         assert element.tag == "group"
 
         el_name = element.attrib["name"]
 
-        gfield = self.field2tag[el_name]
+        gfield = self._field2tag[el_name]
         group = self._parse_msg_set(
             SchemaGroup(gfield, element.attrib["required"].upper() == "Y"),
             element,
@@ -408,27 +543,27 @@ class FIXSchema:
         return group
 
     def _parse_component(self, element: ET.Element) -> SchemaComponent | None:
-        assert self.field2tag, "parse fields first!"
+        assert self._field2tag, "parse fields first!"
         assert element.tag == "component"
 
         el_name = element.attrib["name"]
 
-        assert el_name not in self.components, "Duplicate component name or double run"
+        assert el_name not in self._components, "Duplicate component name or double run"
         component = self._parse_msg_set(SchemaComponent(el_name), element)
 
         if component:
-            self.components[el_name] = component
+            self._components[el_name] = component
             return component
         else:
             return None
 
     def _parse_message(self, element: ET.Element) -> SchemaMessage | None:
-        assert self.field2tag, "parse fields first!"
+        assert self._field2tag, "parse fields first!"
         assert element.tag == "message"
 
         el_name = element.attrib["name"]
 
-        assert el_name not in self.messages, "Duplicate message?"
+        assert el_name not in self._messages, "Duplicate message?"
 
         message = self._parse_msg_set(
             SchemaMessage(
@@ -440,15 +575,15 @@ class FIXSchema:
         )
         assert message, "Message probably refers to circular refs in comp or groups"
 
-        self.messages[el_name] = message
-        self.messages_types[message.msg_type] = message
+        self._messages[el_name] = message
+        self._messages_types[message.msg_type] = message
         return message
 
     def _parse_header(self, element: ET.Element):
-        assert self.field2tag, "parse fields first!"
+        assert self._field2tag, "parse fields first!"
         assert element.tag == "header"
 
-        self.header = self._parse_msg_set(SchemaHeader(), element)
+        self._header = self._parse_msg_set(SchemaHeader(), element)
 
     def _parse_field(self, element: ET.Element):
         assert element.tag == "field"
@@ -463,12 +598,12 @@ class FIXSchema:
                 assert val.tag == "value"
                 f.values[val.attrib["enum"]] = val.attrib["description"]
 
-        self.types.add(f.ftype)
-        self.tag2field[f.tag] = f
-        self.field2tag[f.name] = f
+        self._types.add(f.ftype)
+        self._tag2field[f.tag] = f
+        self._field2tag[f.name] = f
 
     def _parse(self, root: ET.Element):
-        assert not self.field2tag, "already parsed"
+        assert not self._field2tag, "already parsed"
 
         for element in root.find("fields"):
             self._parse_field(element)
@@ -496,18 +631,18 @@ class FIXSchema:
                     )
                 else:
                     prev_cnt = len(all_components)
-        assert full_count == len(self.components), "Component count mismatch"
+        assert full_count == len(self._components), "Component count mismatch"
 
         n_msg = 0
         for element in root.find("messages"):
             self._parse_message(element)
             n_msg += 1
 
-        assert n_msg == len(self.messages), "Message count mismatch"
+        assert n_msg == len(self._messages), "Message count mismatch"
 
     def _validate_header(self, msg: FIXMessage):
         schema_fields = set()
-        schema_msg = self.header
+        schema_msg = self._header
         for fname, req in schema_msg.required.items():
             f = schema_msg[fname]
             schema_fields.add(fname)
@@ -520,10 +655,21 @@ class FIXSchema:
                     f.validate_value(f_val)
 
     def validate(self, msg: FIXMessage) -> bool:
-        if msg.msg_type not in self.messages_types:
+        """Validates generic FIXMessage based on schema.
+
+        Args:
+            msg: generic FIXMessage
+
+        Returns:
+            True - if ok
+
+        Raises:
+            FIXMessageError: raises on invalid message
+        """
+        if msg.msg_type not in self._messages_types:
             raise FIXMessageError(f"msg_type=`{msg.msg_type}` not in schema")
 
-        schema_msg = self.messages_types[msg.msg_type]
+        schema_msg = self._messages_types[msg.msg_type]
 
         schema_fields = set()
         for fname, req in schema_msg.required.items():
@@ -542,11 +688,11 @@ class FIXSchema:
             if tag == "10":
                 # TODO: check the checksum
                 continue
-            if tag not in self.tag2field:
+            if tag not in self._tag2field:
                 raise FIXMessageError(f"msg tag={tag} not in schema")
-            field = self.tag2field[tag]
+            field = self._tag2field[tag]
 
-            if field in self.header:
+            if field in self._header:
                 continue
 
             if field not in schema_msg:
@@ -570,8 +716,9 @@ class FIXSchema:
         return True
 
     def __getitem__(self, item: int | str | FTag) -> SchemaField:
+        """Get SchemaField by tag."""
         try:
             tag = str(int(str(item)))
-            return self.tag2field[tag]
+            return self._tag2field[tag]
         except ValueError:
-            return self.field2tag[str(item)]
+            return self._field2tag[str(item)]
