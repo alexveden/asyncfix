@@ -1,6 +1,6 @@
 [project]
 name = "asyncfix"
-version = "0.8.3"
+version = "0.9.0"
 description = "AsyncIO FIX Protocol client for Python"
 readme = "README.md"
 authors = [{ name = "Alex Veden", email = "i@alexveden.com" }]
@@ -34,6 +34,8 @@ dev = [
 [project.urls]
 Homepage = "https://github.com/alexveden/asyncfix"
 
+[tool.setuptools]
+py-modules = []
 
 [tool.isort]
 profile = "black"
