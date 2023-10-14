@@ -1,7 +1,8 @@
+"""FIX Tags collection module."""
 import enum
 
 
-class TagEnumMeta(enum.EnumMeta):
+class _TagEnumMeta(enum.EnumMeta):
     def __contains__(cls, item):
         if isinstance(item, enum.Enum):
             return isinstance(item, cls) and item._name_ in cls._member_map_
@@ -10,14 +11,19 @@ class TagEnumMeta(enum.EnumMeta):
             return v in cls._value2member_map_
 
 
-class FTag(enum.Enum, metaclass=TagEnumMeta):
+class FTag(enum.Enum, metaclass=_TagEnumMeta):
+    """All tags enum."""
+
     def __str__(self):
+        """Convert to string."""
         return str(self.value)
 
     def __eq__(self, o):
+        """Equality check."""
         return self.value == str(o)
 
     def __hash__(self):
+        """Hash by tag value."""
         return hash(self.value)
 
     Account = "1"
