@@ -1,7 +1,8 @@
+"""Message type module."""
 import enum
 
 
-class MsgTypeEnumMeta(enum.EnumMeta):
+class _MsgTypeEnumMeta(enum.EnumMeta):
     def __contains__(cls, item):
         if isinstance(item, enum.Enum):
             return isinstance(item, cls) and item._name_ in cls._member_map_
@@ -9,14 +10,18 @@ class MsgTypeEnumMeta(enum.EnumMeta):
             return item in cls._value2member_map_
 
 
-class FMsg(enum.Enum, metaclass=MsgTypeEnumMeta):
+class FMsg(enum.Enum, metaclass=_MsgTypeEnumMeta):
+    """FIXMessage type enum."""
     def __str__(self):
+        """To string."""
         return str(self.value)
 
     def __eq__(self, o):
+        """Equality check."""
         return self.value == o
 
     def __hash__(self):
+        """Hash by value."""
         return hash(self.value)
 
     HEARTBEAT = "0"
