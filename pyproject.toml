@@ -1,6 +1,6 @@
 [project]
 name = "asyncfix"
-version = "0.9.0"
+version = "0.9.1"
 description = "AsyncIO FIX Protocol client for Python"
 readme = "README.md"
 authors = [{ name = "Alex Veden", email = "i@alexveden.com" }]
@@ -9,7 +9,7 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3.8",
-    "Development Status :: 4 - Beta",
+    "Development Status :: 5 - Production/Stable",
 ]
 keywords = ["asyncio", "FIX", "protocol", "client", "server", "parser", "unit tests", "simplefix", "tester", "orders"]
 requires-python = ">=3.8"
@@ -35,11 +35,14 @@ dev = [
 Homepage = "https://github.com/alexveden/asyncfix"
 
 [tool.setuptools]
-py-modules = []
+packages = ["asyncfix", "asyncfix.protocol"]
 
 [tool.isort]
 profile = "black"
 extend_skip = ["__init__.py"]
+
+[tool.distutils.bdist_wheel]
+universal = true
 
 [tool.pydocstringformatter]
 write = true
