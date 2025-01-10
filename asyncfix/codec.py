@@ -17,7 +17,7 @@ class _RepeatingGroupContext(FIXContainer):
         FIXContainer.__init__(self)
 
 
-class Codec(object):
+class Codec:
     """Encoding / decoding engine.
 
     Attributes:

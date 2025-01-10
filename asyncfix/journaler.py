@@ -6,7 +6,7 @@ from asyncfix.message import MessageDirection
 from asyncfix.session import FIXSession
 
 
-class Journaler(object):
+class Journaler:
     """Tracks FIX message history."""
 
     def __init__(self, filename=None):
