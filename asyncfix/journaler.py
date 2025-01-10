@@ -40,6 +40,10 @@ class Journaler(object):
             "UNIQUE (targetCompId, senderCompId))"
         )
 
+    def __del__(self):
+        self.cursor.close()
+        self.conn.close()
+
     def sessions(self) -> dict[tuple[str, str], FIXSession]:
         """Loads all available sessions from journal."""
         sessions = {}

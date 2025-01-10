@@ -189,6 +189,7 @@ def test_persist_tofile():
 
     j = Journaler("test.store")
     assert os.path.exists("test.store")
+    del j
     os.unlink("test.store")
 
 
@@ -249,6 +250,7 @@ def test_seq_set():
     j.persist_msg(enc_messages[1], s1, MessageDirection.INBOUND)
     j.persist_msg(enc_messages[3], s1, MessageDirection.OUTBOUND)
 
+    del j
     os.unlink("test.store")
 
 
@@ -266,5 +268,7 @@ def test_perf():
         _m = msg_tpl.replace(b"34=076", f"34={i}".encode())
         j.persist_msg(_m, s1, MessageDirection.INBOUND)
     t_end = time.time()
+
+    del j
     os.unlink("test.store")
     # assert False, (t_end-t_begin) / n_msgs
