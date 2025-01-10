@@ -11,7 +11,7 @@ class _TagEnumMeta(enum.EnumMeta):
             return v in cls._value2member_map_
 
 
-class FTag(enum.Enum, metaclass=_TagEnumMeta):
+class FTag(str, enum.Enum, metaclass=_TagEnumMeta):
     """All tags enum."""
 
     def __str__(self):
