@@ -17,7 +17,7 @@ class _RepeatingGroupContext(FIXContainer):
         FIXContainer.__init__(self)
 
 
-class Codec(object):
+class Codec:
     """Encoding / decoding engine.
 
     Attributes:
@@ -39,7 +39,7 @@ class Codec(object):
         """FIX complaint date-time string (UTC now)."""
         return datetime.utcnow().strftime("%Y%m%d-%H:%M:%S.%f")[:-3]
 
-    def _addTag(self, body, t, msg: FIXMessage):
+    def _addTag(self, body, t, msg: FIXContainer):
         if msg.is_group(t):
             groups = msg.get_group_list(t)
             body.append("%s=%s" % (t, len(groups)))
@@ -78,14 +78,14 @@ class Codec(object):
 
         seq_no = 0
         if raw_seq_num:
-            seq_no = msg[FTag.MsgSeqNum]
+            seq_no = int(msg[FTag.MsgSeqNum])
         else:
             if msg_type == FMsg.SEQUENCERESET:
                 if FTag.MsgSeqNum not in msg:
                     raise EncodingError(
                         "SequenceReset must have the MsgSeqNum already populated"
                     )
-                seq_no = msg[FTag.MsgSeqNum]
+                seq_no = int(msg[FTag.MsgSeqNum])
             else:
                 # if we have the PossDupFlag set, we need to send the message
                 #   with the same seqNo
@@ -95,7 +95,7 @@ class Codec(object):
                             "Failed to encode message with PossDupFlag=Y but no"
                             " previous MsgSeqNum"
                         )
-                    seq_no = msg[FTag.MsgSeqNum]
+                    seq_no = int(msg[FTag.MsgSeqNum])
                 else:
                     seq_no = session.allocate_next_num_out()
 

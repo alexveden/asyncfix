@@ -2,7 +2,7 @@
 from asyncfix import FMsg, FTag
 
 
-class FIXProtocolBase(object):
+class FIXProtocolBase:
     """Generic FIX protocol."""
 
     beginstring: str = "FIXProtocolBase"

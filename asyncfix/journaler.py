@@ -6,7 +6,7 @@ from asyncfix.message import MessageDirection
 from asyncfix.session import FIXSession
 
 
-class Journaler(object):
+class Journaler:
     """Tracks FIX message history."""
 
     def __init__(self, filename=None):
@@ -39,6 +39,10 @@ class Journaler(object):
             "inboundSeqNo INTEGER DEFAULT 0,"
             "UNIQUE (targetCompId, senderCompId))"
         )
+
+    def __del__(self):
+        self.cursor.close()
+        self.conn.close()
 
     def sessions(self) -> dict[tuple[str, str], FIXSession]:
         """Loads all available sessions from journal."""

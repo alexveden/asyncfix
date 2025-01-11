@@ -44,7 +44,7 @@ class _FIXRepeatingGroupContainer:
     __repr__ = __str__
 
 
-class FIXContainer(object):
+class FIXContainer:
     """Generic FIX container.
 
     Attributes:
