@@ -148,25 +148,21 @@ class Codec:
             if OK - (FIXMessage, bytes_processed, valid_raw_msg_bytes)
             if ERR - (None, n_bytes_skip, None)
         """
-        valid_idx = rawmsg.find(b"8=FIX.")
+        valid_idx = rawmsg.find(b"8=FIX")
         if valid_idx == -1:
             assert silent, "no fix header"
             return None, len(rawmsg), None
 
         parsed_length = valid_idx
 
-        msg = rawmsg[valid_idx:].decode("latin-1")
+        encoded_msg = rawmsg[valid_idx:]
 
-        next_msg = msg[5:].find("8=FIX.")
+        next_msg = encoded_msg.find(b"8=FIX", valid_idx + 1)
         if next_msg != -1:
             # Next fix message added, but incomplete
-            next_msg += 5
-        else:
-            next_msg = len(msg)
+            encoded_msg = encoded_msg[:next_msg]
 
-        encoded_msg = rawmsg[valid_idx : next_msg + valid_idx]
-
-        msg = msg[:next_msg].split(self.SOH)
+        msg = encoded_msg.decode('latin-1').split(self.SOH)
         if not msg[-1]:
             msg = msg[:-1]
 

@@ -46,6 +46,20 @@ def test_decode():
     assert exp_str == str(msg)
 
 
+def test_decode_fix11_header():
+    class FIXTProtocol11(FIXProtocol44):
+        beginstring = "FIXT.1.1"
+        
+    protocol = FIXTProtocol11()
+    codec = Codec(protocol)
+
+    enc_msg = b"8=FIXT.1.1\x019=61\x0135=1\x0149=sender\x0156=target\x0134=1\x0152=20250321-09:28:01.641\x01112=1\x0110=043\x01" # noqa
+    msg, parsed_len, raw_msg = codec.decode(enc_msg)
+
+    exp_str = "8=FIXT.1.1|9=61|35=1|49=sender|56=target|34=1|52=20250321-09:28:01.641|112=1|10=043" # noqa
+    assert exp_str == str(msg)
+
+
 def test_encode(fix_session):
     protocol = FIXProtocol44()
     codec = Codec(protocol)

@@ -978,3 +978,6 @@ class FTag(str, enum.Enum, metaclass=_TagEnumMeta):
     Nested3PartySubIDType = "954"
     LegContractSettlMonth = "955"
     LegInterestAccrualDate = "956"
+    MinPriceIncrement = "969"
+    UnitOfMeasure = "996"
+    UnitOfMeasureCurrency = "1716"
