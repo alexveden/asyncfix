@@ -25,6 +25,7 @@ class FMsg(enum.Enum, metaclass=_MsgTypeEnumMeta):
         """Hash by value."""
         return hash(self.value)
 
+    UNKNOWN = "UNKNOWN"
     HEARTBEAT = "0"
     TESTREQUEST = "1"
     RESENDREQUEST = "2"

@@ -1,6 +1,4 @@
-import pytest
-
-from asyncfix.protocol.common import FExecType, FOrdSide, FOrdStatus, FOrdType
+from asyncfix.protocol.common import FExecType, FOrdSide, FOrdStatus
 
 
 def test_exec_type():

@@ -2,16 +2,15 @@ import asyncio
 import logging
 import os
 import time
-import warnings
 import xml.etree.ElementTree as ET
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 import pytest_asyncio
 
-from asyncfix import FIXMessage, FIXTester, FMsg, FTag
+from asyncfix import FIXMessage, FIXTester, FIXConnTester, FMsg, FTag
 from asyncfix.connection import AsyncFIXConnection, ConnectionRole, ConnectionState
-from asyncfix.errors import FIXConnectionError
+from asyncfix.errors import FIXConnectionError, FIXMessageError
 from asyncfix.journaler import Journaler
 from asyncfix.message import MessageDirection
 from asyncfix.protocol import FIXProtocol44, FIXSchema
@@ -42,7 +41,7 @@ async def fix_connection_socket():
         "ACCEPTOR",
         journaler=j,
         host="localhost",
-        port="64444",
+        port=64444,
         heartbeat_period=30,
         logger=log,
     )
@@ -69,7 +68,7 @@ async def fix_connection():
         "ACCEPTOR",
         journaler=j,
         host="localhost",
-        port="64444",
+        port=64444,
         heartbeat_period=30,
         logger=log,
     )
@@ -81,7 +80,7 @@ async def fix_connection():
 @pytest.mark.asyncio
 async def test_connection_send_not_connected_error(fix_connection):
     conn: AsyncFIXConnection = fix_connection
-    ft = FIXTester(schema=FIX_SCHEMA, connection=conn)
+    ft = FIXConnTester(conn, schema=FIX_SCHEMA)
     msg = ft.msg_logon()
 
     for state in [
@@ -102,7 +101,7 @@ async def test_connection_send_not_connected_error(fix_connection):
 @pytest.mark.asyncio
 async def test_connection_send_first_logon_sets_state(fix_connection):
     conn: AsyncFIXConnection = fix_connection
-    ft = FIXTester(schema=FIX_SCHEMA, connection=conn)
+    ft = FIXConnTester(conn, schema=FIX_SCHEMA)
 
     conn._connection_state = ConnectionState.NETWORK_CONN_ESTABLISHED
     msg = ft.msg_logon()
@@ -123,7 +122,7 @@ async def test_connection_send_first_logon_sets_state(fix_connection):
 @pytest.mark.asyncio
 async def test_connection_send_first_must_be_logon(fix_connection):
     conn: AsyncFIXConnection = fix_connection
-    ft = FIXTester(schema=FIX_SCHEMA, connection=conn)
+    ft = FIXConnTester(conn, schema=FIX_SCHEMA)
 
     conn._connection_state = ConnectionState.NETWORK_CONN_ESTABLISHED
     msg = ft.msg_sequence_reset(1, 12)
@@ -142,10 +141,10 @@ async def test_connection_send_first_must_be_logon(fix_connection):
 @pytest.mark.asyncio
 async def test_connection_logon_acceptor_logon(fix_connection):
     conn: AsyncFIXConnection = fix_connection
-    ft = FIXTester(schema=FIX_SCHEMA, connection=conn)
+    ft = FIXConnTester(conn, schema=FIX_SCHEMA)
 
     assert conn._connection_state == ConnectionState.NETWORK_CONN_ESTABLISHED
-    rmsg = await ft.reply(ft.msg_logon())
+    _ = await ft.reply(ft.msg_logon())
     assert conn.connection_role == ConnectionRole.ACCEPTOR
     assert conn._connection_state == ConnectionState.ACTIVE
 
@@ -153,18 +152,18 @@ async def test_connection_logon_acceptor_logon(fix_connection):
 @pytest.mark.asyncio
 async def test_connection_logon_acceptor_logon_first_message_expected(fix_connection):
     conn: AsyncFIXConnection = fix_connection
-    ft = FIXTester(schema=FIX_SCHEMA, connection=conn)
+    ft = FIXConnTester(conn, schema=FIX_SCHEMA)
 
     assert conn._connection_state == ConnectionState.NETWORK_CONN_ESTABLISHED
     msg_reset = ft.msg_sequence_reset(1, 2)
-    rmsg = await ft.reply(msg_reset)
+    _ = await ft.reply(msg_reset)
     assert conn._connection_state == ConnectionState.DISCONNECTED_BROKEN_CONN
 
 
 @pytest.mark.asyncio
 async def test_connection_logon_valid(fix_connection):
     conn: AsyncFIXConnection = fix_connection
-    ft = FIXTester(schema=FIX_SCHEMA, connection=conn)
+    ft = FIXConnTester(conn, schema=FIX_SCHEMA)
 
     msg = ft.msg_logon()
     await conn.send_msg(msg)
@@ -197,7 +196,7 @@ async def test_connection_logon_valid(fix_connection):
 @pytest.mark.asyncio
 async def test_connection_logon_low_seq_num_by_initator(fix_connection):
     conn: AsyncFIXConnection = fix_connection
-    ft = FIXTester(schema=FIX_SCHEMA, connection=conn)
+    ft = FIXConnTester(conn, schema=FIX_SCHEMA)
 
     conn._session.next_num_out = 20
     ft.set_next_num(num_in=21)
@@ -230,7 +229,7 @@ async def test_connection_logon_low_seq_num_by_initator(fix_connection):
 @pytest.mark.asyncio
 async def test_connection_logon_low_seq_num_by_acceptor(fix_connection):
     conn: AsyncFIXConnection = fix_connection
-    ft = FIXTester(schema=FIX_SCHEMA, connection=conn)
+    ft = FIXConnTester(conn, schema=FIX_SCHEMA)
 
     msg = ft.msg_logon()
     await conn.send_msg(msg)
@@ -264,20 +263,21 @@ async def test_connection_logon_low_seq_num_by_acceptor(fix_connection):
 @pytest.mark.asyncio
 async def test_connection_validation_missing_seqnum(fix_connection):
     conn: AsyncFIXConnection = fix_connection
-    ft = FIXTester(schema=FIX_SCHEMA, connection=conn)
+    ft = FIXConnTester(conn, schema=FIX_SCHEMA)
 
     msg = ft.msg_logon()
     await conn.send_msg(msg)
     msg_out = ft.initiator_sent[-1]
 
     del msg_out[34]
-    assert ft.conn_accept._validate_integrity(msg_out) == "MsgSeqNum(34) tag is missing"
+    with pytest.raises(FIXMessageError, match=r"MsgSeqNum\(34\) tag is missing"):
+        ft.conn_accept._validate_integrity(msg_out)
 
 
 @pytest.mark.asyncio
 async def test_connection_validation_seqnum_toolow(fix_connection):
     conn: AsyncFIXConnection = fix_connection
-    ft = FIXTester(schema=FIX_SCHEMA, connection=conn)
+    ft = FIXConnTester(conn, schema=FIX_SCHEMA)
 
     conn._session.next_num_out = 20
 
@@ -286,16 +286,14 @@ async def test_connection_validation_seqnum_toolow(fix_connection):
     msg_out = ft.initiator_sent[-1]
     ft.set_next_num(num_in=21)
 
-    assert (
+    with pytest.raises(FIXMessageError, match="MsgSeqNum is too low, expected 21, got 20"):
         ft.conn_accept._validate_integrity(msg_out)
-        == "MsgSeqNum is too low, expected 21, got 20"
-    )
 
 
 @pytest.mark.asyncio
 async def test_connection_validation_seqnum_toolow__possdup__in_active(fix_connection):
     conn: AsyncFIXConnection = fix_connection
-    ft = FIXTester(schema=None, connection=conn)
+    ft = FIXConnTester(conn, schema=None)
 
     conn._session.next_num_out = 20
     conn._connection_state = ConnectionState.ACTIVE
@@ -307,16 +305,14 @@ async def test_connection_validation_seqnum_toolow__possdup__in_active(fix_conne
 
     assert conn._connection_state == ConnectionState.ACTIVE
     assert msg_out[FTag.PossDupFlag] == "Y"
-    assert (
+    with pytest.raises(FIXMessageError, match="MsgSeqNum is too low, expected 21, got 19"):
         ft.conn_accept._validate_integrity(msg_out)
-        == "MsgSeqNum is too low, expected 21, got 19"
-    )
 
 
 @pytest.mark.asyncio
 async def test_connection_validation_seqnum_toolow_poss_dup_flag(fix_connection):
     conn: AsyncFIXConnection = fix_connection
-    ft = FIXTester(schema=None, connection=conn)
+    ft = FIXConnTester(conn, schema=None)
 
     conn._session.next_num_out = 20
     conn._connection_state = ConnectionState.RESENDREQ_AWAITING
@@ -334,75 +330,80 @@ async def test_connection_validation_seqnum_toolow_poss_dup_flag(fix_connection)
 @pytest.mark.asyncio
 async def test_connection_validation_beginstring(fix_connection):
     conn: AsyncFIXConnection = fix_connection
-    ft = FIXTester(schema=FIX_SCHEMA, connection=conn)
+    ft = FIXConnTester(conn, schema=FIX_SCHEMA)
 
     msg = ft.msg_logon()
     await conn.send_msg(msg)
     msg_out = ft.initiator_sent[-1]
     msg_out.set(FTag.BeginString, "FIX4.8", replace=True)
 
-    assert (
+    with pytest.raises(
+        FIXMessageError,
+        match=r"Protocol BeginString\(8\) mismatch, expected FIX\.4\.4, got FIX4\.8",
+    ):
         ft.conn_accept._validate_integrity(msg_out)
-        == "Protocol BeginString(8) mismatch, expected FIX.4.4, got FIX4.8"
-    )
 
 
 @pytest.mark.asyncio
 async def test_connection_validation_no_target(fix_connection):
     conn: AsyncFIXConnection = fix_connection
-    ft = FIXTester(schema=FIX_SCHEMA, connection=conn)
+    ft = FIXConnTester(conn, schema=FIX_SCHEMA)
 
     msg = ft.msg_logon()
     await conn.send_msg(msg)
     msg_out = ft.initiator_sent[-1]
     del msg_out[FTag.TargetCompID]
 
-    assert conn._validate_integrity(msg_out) is True
+    with pytest.raises(FIXMessageError, match=''):
+        conn._validate_integrity(msg_out)
 
 
 @pytest.mark.asyncio
 async def test_connection_validation_no_sender(fix_connection):
     conn: AsyncFIXConnection = fix_connection
-    ft = FIXTester(schema=FIX_SCHEMA, connection=conn)
+    ft = FIXConnTester(conn, schema=FIX_SCHEMA)
 
     msg = ft.msg_logon()
     await conn.send_msg(msg)
     msg_out = ft.initiator_sent[-1]
     del msg_out[FTag.SenderCompID]
 
-    assert conn._validate_integrity(msg_out) is True
+    with pytest.raises(FIXMessageError, match=''):
+        conn._validate_integrity(msg_out)
 
 
 @pytest.mark.asyncio
 async def test_connection_validation_sender_mismatch(fix_connection):
     conn: AsyncFIXConnection = fix_connection
-    ft = FIXTester(schema=FIX_SCHEMA, connection=conn)
+    ft = FIXConnTester(conn, schema=FIX_SCHEMA)
 
     msg = ft.msg_logon()
     await conn.send_msg(msg)
     msg_out = ft.initiator_sent[-1]
     msg_out.set(FTag.SenderCompID, "as", replace=True)
 
-    assert conn._validate_integrity(msg_out) == "TargetCompID / SenderCompID mismatch"
+    with pytest.raises(FIXMessageError, match="TargetCompID / SenderCompID mismatch"):
+        conn._validate_integrity(msg_out)
 
 
 @pytest.mark.asyncio
 async def test_connection_validation_target_mismatch(fix_connection):
     conn: AsyncFIXConnection = fix_connection
-    ft = FIXTester(schema=FIX_SCHEMA, connection=conn)
+    ft = FIXConnTester(conn, schema=FIX_SCHEMA)
 
     msg = ft.msg_logon()
     await conn.send_msg(msg)
     msg_out = ft.initiator_sent[-1]
     msg_out.set(FTag.TargetCompID, "as", replace=True)
 
-    assert conn._validate_integrity(msg_out) == "TargetCompID / SenderCompID mismatch"
+    with pytest.raises(FIXMessageError, match="TargetCompID / SenderCompID mismatch"):
+        conn._validate_integrity(msg_out)
 
 
 @pytest.mark.asyncio
 async def test_connection__process_resend_req_synth(fix_connection):
     conn: AsyncFIXConnection = fix_connection
-    ft = FIXTester(schema=FIX_SCHEMA, connection=conn)
+    ft = FIXConnTester(conn, schema=FIX_SCHEMA)
 
     with patch.object(conn, "_journaler") as mock__journaler:
         msgs = [
@@ -468,7 +469,7 @@ async def test_connection__process_resend_req_synth(fix_connection):
 @pytest.mark.asyncio
 async def test_sequence_reset_request__incoming_seq_num_toolow_ignored(fix_connection):
     conn: AsyncFIXConnection = fix_connection
-    ft = FIXTester(schema=FIX_SCHEMA, connection=conn)
+    ft = FIXConnTester(conn, schema=FIX_SCHEMA)
 
     msg = ft.msg_logon()
     await conn.send_msg(msg)
@@ -499,7 +500,7 @@ async def test_sequence_reset_request__incoming_seq_num_toolow_ignored(fix_conne
 @pytest.mark.asyncio
 async def test_sequence_reset_request__no_gap(fix_connection):
     conn: AsyncFIXConnection = fix_connection
-    ft = FIXTester(schema=FIX_SCHEMA, connection=conn)
+    ft = FIXConnTester(conn, schema=FIX_SCHEMA)
 
     msg = ft.msg_logon()
     await conn.send_msg(msg)
@@ -529,7 +530,7 @@ async def test_sequence_reset_request__no_gap(fix_connection):
 @pytest.mark.asyncio
 async def test_sequence_reset_request__unexpected_gapfillflag(fix_connection):
     conn: AsyncFIXConnection = fix_connection
-    ft = FIXTester(schema=FIX_SCHEMA, connection=conn)
+    ft = FIXConnTester(conn, schema=FIX_SCHEMA)
 
     msg = ft.msg_logon()
     await conn.send_msg(msg)
@@ -555,7 +556,7 @@ async def test_sequence_reset_request__unexpected_gapfillflag(fix_connection):
 @pytest.mark.asyncio
 async def test__finalize_message(fix_connection):
     conn: AsyncFIXConnection = fix_connection
-    ft = FIXTester(schema=FIX_SCHEMA, connection=conn)
+    ft = FIXConnTester(conn, schema=FIX_SCHEMA)
 
     msg = ft.msg_sequence_reset(1, 10, is_gap_fill=True)
     assert conn._message_last_time == 0
@@ -603,7 +604,7 @@ async def test__finalize_message(fix_connection):
 @pytest.mark.asyncio
 async def test_connection_both_seqnum_mismach_bidirectional_resend_req(fix_connection):
     conn: AsyncFIXConnection = fix_connection
-    ft = FIXTester(schema=FIX_SCHEMA, connection=conn)
+    ft = FIXConnTester(conn, schema=FIX_SCHEMA)
 
     conn._session.next_num_out = 20
     conn._session.next_num_in = 25
@@ -626,7 +627,7 @@ async def test_connection_both_seqnum_mismach_bidirectional_resend_req(fix_conne
 @pytest.mark.asyncio
 async def test_test_request_exchange(fix_connection):
     conn: AsyncFIXConnection = fix_connection
-    ft = FIXTester(schema=FIX_SCHEMA, connection=conn)
+    ft = FIXConnTester(conn, schema=FIX_SCHEMA)
 
     msg = ft.msg_logon()
     await conn.send_msg(msg)
@@ -645,7 +646,7 @@ async def test_test_request_exchange(fix_connection):
 @pytest.mark.asyncio
 async def test_test_incorrect_response(fix_connection):
     conn: AsyncFIXConnection = fix_connection
-    ft = FIXTester(schema=FIX_SCHEMA, connection=conn)
+    ft = FIXConnTester(conn, schema=FIX_SCHEMA)
 
     msg = ft.msg_logon()
     await conn.send_msg(msg)
@@ -676,7 +677,7 @@ async def test_test_incorrect_response(fix_connection):
 @pytest.mark.asyncio
 async def test_test_request_errors_side_cases(fix_connection):
     conn: AsyncFIXConnection = fix_connection
-    ft = FIXTester(schema=FIX_SCHEMA, connection=conn)
+    ft = FIXConnTester(conn, schema=FIX_SCHEMA)
 
     msg = ft.msg_logon()
     await conn.send_msg(msg)
@@ -716,7 +717,7 @@ async def test_test_request_errors_side_cases(fix_connection):
 @pytest.mark.asyncio
 async def test_extra_msg_during_seq_num_resend_alredy_journaled(fix_connection):
     conn: AsyncFIXConnection = fix_connection
-    ft = FIXTester(schema=FIX_SCHEMA, connection=conn)
+    ft = FIXConnTester(conn, schema=FIX_SCHEMA)
 
     conn._session.next_num_out = 20
     conn._session.next_num_in = 25
@@ -748,7 +749,7 @@ async def test_extra_msg_during_seq_num_resend_alredy_journaled(fix_connection):
 @pytest.mark.asyncio
 async def test_extra_msg_during_seq_num_resend_low_num_not_processed(fix_connection):
     conn: AsyncFIXConnection = fix_connection
-    ft = FIXTester(schema=FIX_SCHEMA, connection=conn)
+    ft = FIXConnTester(conn, schema=FIX_SCHEMA)
 
     conn._session.next_num_out = 20
     conn._session.next_num_in = 25
@@ -785,7 +786,7 @@ async def test_extra_msg_during_seq_num_resend_low_num_not_processed(fix_connect
 @pytest.mark.asyncio
 async def test_connection__process_resend_req_real_processing(fix_connection):
     conn: AsyncFIXConnection = fix_connection
-    ft = FIXTester(schema=FIX_SCHEMA, connection=conn)
+    ft = FIXConnTester(conn, schema=FIX_SCHEMA)
 
     with (
         patch.object(conn, "_journaler") as mock__journaler,
@@ -816,7 +817,7 @@ async def test_connection__process_resend_req_real_processing(fix_connection):
 @pytest.mark.asyncio
 async def test_connection__process_resend__ignores_high_seq_num_msg(fix_connection):
     conn: AsyncFIXConnection = fix_connection
-    ft = FIXTester(schema=FIX_SCHEMA, connection=conn)
+    ft = FIXConnTester(conn, schema=FIX_SCHEMA)
 
     conn._session.next_num_out = 10
 
@@ -870,7 +871,7 @@ async def test_connection__process_resend__ignores_high_seq_num_msg(fix_connecti
 @pytest.mark.asyncio
 async def test_connection_init_launch_tasks(fix_connection):
     conn: AsyncFIXConnection = fix_connection
-    ft = FIXTester(schema=FIX_SCHEMA, connection=conn)
+    ft = FIXConnTester(conn, schema=FIX_SCHEMA)
 
     journaler_mock = MagicMock()
     with (
@@ -884,7 +885,7 @@ async def test_connection_init_launch_tasks(fix_connection):
             "ACCEPTOR",
             journaler=journaler_mock,
             host="localhost",
-            port="64444",
+            port=64444,
             heartbeat_period=33,
         )
 
@@ -1478,7 +1479,7 @@ async def test_heartbeat_task__test_req_sent(fix_connection_socket, fix_msg):
 @pytest.mark.asyncio
 async def test_process_logout(fix_connection):
     conn: AsyncFIXConnection = fix_connection
-    ft = FIXTester(schema=FIX_SCHEMA, connection=conn)
+    ft = FIXConnTester(conn, schema=FIX_SCHEMA)
 
     conn._connection_state = ConnectionState.ACTIVE
 
@@ -1495,7 +1496,7 @@ async def test_process_logout(fix_connection):
 @pytest.mark.asyncio
 async def test_reset_seqnum(fix_connection):
     conn: AsyncFIXConnection = fix_connection
-    ft = FIXTester(schema=FIX_SCHEMA, connection=conn)
+    ft = FIXConnTester(conn, schema=FIX_SCHEMA)
     conn._session.next_num_in = 3
     conn._session.next_num_out = 5
 
@@ -1517,7 +1518,7 @@ async def test_reset_seqnum(fix_connection):
 @pytest.mark.asyncio
 async def test_connection__process_resend_req__dupe_journal_seqnum(fix_connection):
     conn: AsyncFIXConnection = fix_connection
-    ft = FIXTester(schema=FIX_SCHEMA, connection=conn)
+    ft = FIXConnTester(conn, schema=FIX_SCHEMA)
 
     with patch.object(conn._journaler, "recover_messages") as mock__recover_msg:
         msgs = [

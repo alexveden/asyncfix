@@ -1,6 +1,4 @@
 import datetime
-import importlib
-import unittest
 from unittest.mock import Mock, patch
 
 import pytest
@@ -19,7 +17,7 @@ from asyncfix.protocol import FIXProtocol44
 
 class FakeDate(datetime.datetime):
     @classmethod
-    def utcnow(cls):
+    def now(cls, tz=None):
         return cls(2015, 6, 19, 11, 8, 54)
 
 
@@ -85,51 +83,45 @@ def test_encode(fix_session):
 def test_decode_invalid_checksum(fix_session):
     protocol = FIXProtocol44()
     codec = Codec(protocol)
-
     msg = FIXMessage(codec.protocol.msgtype.NEWORDERSINGLE)
     msg.set(codec.protocol.fixtags.Price, "123.45")
     msg.set(codec.protocol.fixtags.OrderQty, 9876)
     msg.set(codec.protocol.fixtags.Symbol, "VOD.L")
-    protocol = FIXProtocol44()
-    codec = Codec(protocol)
     # enc_msg = codec.encode(msg, fix_session)
     # print(repr(enc_msg))
     # assert False, enc_msg
 
     enc_msg = b"8=FIX.4.4\x019=82\x0135=D\x0149=sender\x0156=target\x0134=1\x0152=20230919-07:13:26.808\x0144=123.45\x0138=9876\x0155=VOD.L\x0110=110\x01"  # noqa
-    msg, parsed_len, raw_msg = codec.decode(enc_msg)
+    decoded_msg, parsed_len, raw_msg = codec.decode(enc_msg)
 
-    assert msg is None
+    assert decoded_msg is None
     assert parsed_len == len(enc_msg)
 
     with pytest.raises(AssertionError, match="invalid checksum tag"):
-        msg, parsed_len, raw_msg = codec.decode(enc_msg, silent=False)
+        decoded_msg, parsed_len, raw_msg = codec.decode(enc_msg, silent=False)
 
 
 def test_decode_valid(fix_session):
     protocol = FIXProtocol44()
     codec = Codec(protocol)
-
     msg = FIXMessage(codec.protocol.msgtype.NEWORDERSINGLE)
     msg.set(codec.protocol.fixtags.Price, "123.45")
     msg.set(codec.protocol.fixtags.OrderQty, 9876)
     msg.set(codec.protocol.fixtags.Symbol, "VOD.L")
-    protocol = FIXProtocol44()
-    codec = Codec(protocol)
     # enc_msg = codec.encode(msg, fix_session)
     # print(repr(enc_msg))
     # assert False, enc_msg
 
     enc_msg = b"8=FIX.4.4\x019=82\x0135=D\x0149=sender\x0156=target\x0134=1\x0152=20230919-07:13:26.808\x0144=123.45\x0138=9876\x0155=VOD.L\x0110=100\x01"  # noqa
-    msg, parsed_len, raw_msg = codec.decode(enc_msg, silent=False)
+    decoded_msg, parsed_len, raw_msg = codec.decode(enc_msg, silent=False)
 
-    assert isinstance(msg, FIXMessage)
-    assert msg[8] == "FIX.4.4"
-    assert msg.msg_type == FMsg.NEWORDERSINGLE
-    assert isinstance(msg.msg_type, FMsg)
-    assert msg[FTag.Price] == "123.45"
-    assert msg[FTag.OrderQty] == "9876"
-    assert msg[FTag.Symbol] == "VOD.L"
+    assert isinstance(decoded_msg, FIXMessage)
+    assert decoded_msg[8] == "FIX.4.4"
+    assert decoded_msg.msg_type == FMsg.NEWORDERSINGLE
+    assert isinstance(decoded_msg.msg_type, FMsg)
+    assert decoded_msg[FTag.Price] == "123.45"
+    assert decoded_msg[FTag.OrderQty] == "9876"
+    assert decoded_msg[FTag.Symbol] == "VOD.L"
     assert parsed_len == len(enc_msg)
     assert raw_msg == enc_msg
 
@@ -248,14 +240,14 @@ def test_decode_groups(fix_session):
     # print(repr(msg_out))
     # assert False, enc_msg
 
-    g = msg_out.get_group_list(FTag.NoSecurityAltID)
-    assert g
-    assert isinstance(g, list)
-    assert len(g) == 2
-    assert g[0][FTag.SecurityAltID] == "abc"
-    assert g[0][FTag.SecurityAltIDSource] == "bbb"
-    assert g[1][FTag.SecurityAltID] == "zzz"
-    assert g[1][FTag.SecurityAltIDSource] == "xxx"
+    group_list = msg_out.get_group_list(FTag.NoSecurityAltID)
+    assert group_list
+    assert isinstance(group_list, list)
+    assert len(group_list) == 2
+    assert group_list[0][FTag.SecurityAltID] == "abc"
+    assert group_list[0][FTag.SecurityAltIDSource] == "bbb"
+    assert group_list[1][FTag.SecurityAltID] == "zzz"
+    assert group_list[1][FTag.SecurityAltIDSource] == "xxx"
 
     with pytest.raises(RepeatingTagError, match="tag=.*was repeated"):
         msg_out["20323"]
@@ -264,10 +256,10 @@ def test_decode_groups(fix_session):
         UnmappedRepeatedGrpError,
         match="tag exists, but it does not belong to any group",
     ):
-        g = msg_out.get_group_list("20228")
+        _ = msg_out.get_group_list("20228")
 
     with pytest.raises(TagNotFoundError, match="missing tag group tag="):
-        g = msg_out.get_group_list("129012099")
+        _ = msg_out.get_group_list("129012099")
 
 
 def test_decode_protocol_mismatch(fix_session):
@@ -340,12 +332,12 @@ def test_decode_with_unicode_valid(fix_session):
     # print(repr(enc_msg))
     # assert False, enc_msg
 
-    msg, parsed_len, raw_msg = codec.decode(enc_msg)
-    assert msg is None
+    decoded_msg, parsed_len, raw_msg = codec.decode(enc_msg)
+    assert decoded_msg is None
     assert parsed_len == len(enc_msg)
 
     with pytest.raises(AssertionError, match="invalid checksum tag"):
-        msg, parsed_len, raw_msg = codec.decode(enc_msg, silent=False)
+        decoded_msg, parsed_len, raw_msg = codec.decode(enc_msg, silent=False)
 
 
 def test_decode_empty_tag(fix_session):
@@ -390,6 +382,7 @@ def test_encode_decode_seqnum_reset_gap_fill(fix_session):
     enc_msg = codec.encode(msg, fix_session)
     msg_dec, parsed_len, raw_msg = codec.decode(enc_msg.encode())
 
+    assert msg_dec is not None
     assert msg_dec[34] == "3"
     assert msg_dec[FTag.GapFillFlag] == "Y"
 
@@ -405,6 +398,7 @@ def test_encode_decode_seqnum_reset_gap_fill_no(fix_session):
     enc_msg = codec.encode(msg, fix_session)
     msg_dec, parsed_len, raw_msg = codec.decode(enc_msg.encode())
 
+    assert msg_dec is not None
     assert msg_dec[34] == "3"
     assert FTag.GapFillFlag not in msg_dec
     assert FTag.NewSeqNo not in msg_dec
@@ -437,6 +431,8 @@ def test_encode_decode_pos_dup_flag(fix_session):
     enc_msg = codec.encode(msg, fix_session)
     msg_dec, parsed_len, raw_msg = codec.decode(enc_msg.encode())
 
+    assert msg_dec is not None
+    assert msg_dec is not None
     assert msg_dec[34] == "7"
     assert msg_dec[FTag.PossDupFlag] == "Y"
 
@@ -456,17 +452,8 @@ def test_encode_decode_pos_dup_flag(fix_session):
 def test_decode_custom_msg_type(fix_session):
     protocol = FIXProtocol44()
     codec = Codec(protocol)
-
-    msg = FIXMessage(codec.protocol.msgtype.NEWORDERSINGLE)
-    msg.set(codec.protocol.fixtags.Price, "123.45")
-    msg.set(codec.protocol.fixtags.OrderQty, 9876)
-    msg.set(codec.protocol.fixtags.Symbol, "VOD.L")
-    protocol = FIXProtocol44()
-    codec = Codec(protocol)
-    # enc_msg = codec.encode(msg, fix_session)
-    # print(repr(enc_msg))
-    # assert False, enc_msg
-
     enc_msg = b"8=FIX.4.4\x019=82\x0135=ASD\x0149=sender\x0156=target\x0134=1\x0152=20230919-07:13:26.808\x0144=123.45\x0138=9876\x0155=VOD.L\x0110=248\x01"  # noqa
-    msg, parsed_len, raw_msg = codec.decode(enc_msg, silent=False)
-    assert msg.msg_type == "ASD"
+    with pytest.raises(AssertionError, match="Invalid msg_type ASD"):
+        msg, parsed_len, raw_msg = codec.decode(enc_msg, silent=False)
+        assert msg is not None
+        assert msg.msg_type == "ASD"

@@ -33,5 +33,9 @@ class RepeatingTagError(FIXMessageError):
     """Tag was repeated after decoding, indicates mishandled fix group."""
 
 
+class InvalidTagError(FIXMessageError):
+    """Not enough tokens in tag"""
+
+
 class UnmappedRepeatedGrpError(FIXMessageError):
     """Repeating group improperly set up by protocol."""

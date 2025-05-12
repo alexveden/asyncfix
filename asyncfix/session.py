@@ -13,7 +13,7 @@ class FIXSession:
         next_num_in: next expected seq num in
     """
 
-    def __init__(self, key, target_comp_id: str, sender_comp_id: str):
+    def __init__(self, key: int, target_comp_id: str, sender_comp_id: str) -> None:
         """Initialize session.
 
         Args:
@@ -22,16 +22,10 @@ class FIXSession:
             sender_comp_id: session sender
         """
         self.key = key
-        """Session DB ID / key."""
-
         self.sender_comp_id = sender_comp_id
         self.target_comp_id = target_comp_id
-
-        # Note: None is set intentionally, because session typically has to be
-        #   loaded or created by Journaler class, therefore it sets session values
-        #   internally
-        self.next_num_out = None
-        self.next_num_in = None
+        self.next_num_out: int = 0
+        self.next_num_in: int = 0
 
     def __hash__(self):
         """Hash by (target, sender)."""

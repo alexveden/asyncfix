@@ -110,7 +110,7 @@ class Journaler:
             i_end = msg.index(b"\x01", i_start + 1)
             return int(msg[i_start + 4 : i_end])
         except Exception:
-            raise FIXMessageError(f"tag 34 is not found or invalid, in message: {msg}")
+            raise FIXMessageError(f"tag 34 is not found or invalid, in message: {msg.decode(encoding='utf-8')}")
 
     def set_seq_num(
         self,
@@ -129,12 +129,14 @@ class Journaler:
             assert next_num_out > 0
             session.next_num_out = next_num_out
         else:
+            assert session.next_num_out > 0
             next_num_out = session.next_num_out
 
         if next_num_in is not None:
             assert next_num_in > 0
             session.next_num_in = next_num_in
         else:
+            assert session.next_num_in > 0
             next_num_in = session.next_num_in
 
         self.cursor.execute(
@@ -194,7 +196,7 @@ class Journaler:
         session: FIXSession,
         direction: MessageDirection,
         seq_no: int,
-    ) -> bytes:
+    ) -> bytes | None:
         """Loads specific message from DB by seq no.
 
         Args:

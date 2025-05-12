@@ -1,5 +1,4 @@
 import pickle
-import unittest
 
 import pytest
 
@@ -27,9 +26,9 @@ def test_tag_errors():
     msg = FIXMessage("AB")
     msg["45"] = "dgd"
 
-    with pytest.raises(TagNotFoundError) as exc:
-        msg["99"]
-    with pytest.raises(TagNotFoundError) as exc:
+    with pytest.raises(TagNotFoundError):
+        msg["99"]  # noqa
+    with pytest.raises(TagNotFoundError):
         msg.get("99")
 
     assert msg.get("99", 100) == 100
@@ -48,7 +47,7 @@ def test_tag_errors():
     with pytest.raises(
         RepeatingTagError, match="tag=45 was repeated, possible undefined "
     ):
-        msg[45]
+        msg[45]  # noqa
 
 
 def test_groups():
@@ -76,7 +75,7 @@ def test_groups():
     msg.add_group(2023, {1: "e", 4: "f"})
 
     with pytest.raises(FIXMessageError, match="Expected FIXContext in group, got "):
-        msg.add_group(2023, None)
+        msg.add_group(2023, None)  # noqa
 
     g = msg.get_group_by_index(2023, 0)
     assert isinstance(g, FIXContainer)
@@ -148,8 +147,7 @@ def test_msg_construction():
     rptgrp2 = FIXContainer({611: "zzz", 612: "yyy", "613": "xxx"})
     msg.add_group("444", rptgrp2, 1)
 
-    assert "45=dgd|32=aaaa|323=bbbb|444=2=>[611=aaa|612=bbb|613=ccc,"
-    " 611=zzz|612=yyy|613=xxx]" == str(msg)
+    assert str(msg) == "45=dgd|32=aaaa|323=bbbb|444=2=>[611=aaa|612=bbb|613=ccc, 611=zzz|612=yyy|613=xxx]"
 
     msg.add_group("444", rptgrp2, 1)
 
@@ -158,11 +156,10 @@ def test_msg_construction():
     rptgrp3.set("612", "hhh")
     rptgrp3.set("613", "jjj")
     rptgrp2.add_group("445", rptgrp3, 0)
-    assert "45=dgd|32=aaaa|323=bbbb|444=2=>[611=aaa|612=bbb|613=ccc,"
-    " 611=zzz|612=yyy|613=xxx|445=1=>[611=ggg|612=hhh|613=jjj]]" == str(msg)
+    assert str(msg) == "45=dgd|32=aaaa|323=bbbb|444=3=>[611=aaa|612=bbb|613=ccc, 611=zzz|612=yyy|613=xxx|445=1=>[611=ggg|612=hhh|613=jjj], 611=zzz|612=yyy|613=xxx|445=1=>[611=ggg|612=hhh|613=jjj]]"
 
     grp = msg.get_group_by_tag("444", "612", "yyy")
-    assert "611=zzz|612=yyy|613=xxx|445=1=>[611=ggg|612=hhh|613=jjj]" == str(grp)
+    assert str(grp) == "611=zzz|612=yyy|613=xxx|445=1=>[611=ggg|612=hhh|613=jjj]"
 
 
 def testPickle():

@@ -5,5 +5,5 @@ from .message import FIXMessage
 from .connection import AsyncFIXConnection, ConnectionRole, ConnectionState
 from .connection_client import AsyncFIXClient
 from .connection_server import AsyncFIXDummyServer
-from .fix_tester import FIXTester
+from .fix_tester import FIXTester, FIXConnTester
 from .journaler import Journaler

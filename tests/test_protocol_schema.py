@@ -1,5 +1,6 @@
 import os
 import xml.etree.ElementTree as ET
+from typing import cast
 from unittest.mock import patch
 
 import pytest
@@ -38,7 +39,7 @@ def test_schema_field():
     assert f.name == "Account"
     assert f.ftype == "STRING"
     assert f.values == {}
-    # no values in SchemaField any allowed
+    # no values in SchemaField are allowed
     assert f.validate_value("adslkajdlskj")
 
     f.values["test"] = "1"
@@ -61,7 +62,7 @@ def test_schema_field():
     assert f in fields
     assert fields[f] == 1
     assert fields[f2] == 2
-    assert fields["Account"] == 1
+    assert fields["Account"] == 1  # type: ignore
 
     # search by tag not supported
     assert "1" not in fields
@@ -78,10 +79,10 @@ def test_schema_set():
     assert hash(s) == hash("myset")
 
     with pytest.raises(ValueError, match="Unsupported field_or_set type, got"):
-        s.add("notsupported", False)
+        s.add("notsupported", False)  # type: ignore
 
     with pytest.raises(ValueError, match="tag property is not supported"):
-        s.tag
+        _ = s.tag
 
     assert f in s
     assert f2 in s
@@ -97,19 +98,19 @@ def test_schema_set():
     with pytest.raises(
         ValueError, match="SchemaSet expected to have group field with "
     ):
-        SchemaSet("NoOrders", field=fg)
+        SchemaGroup(fg, True)
 
     with pytest.raises(FIXMessageError, match="item looks like tag"):
         assert "1" in s
 
     with pytest.raises(FIXMessageError, match="item looks like tag"):
-        assert 1 in s
+        assert 1 in s  # type: ignore
 
     with pytest.raises(FIXMessageError, match="item looks like tag"):
-        s["1"]
+        _ = s["1"]
 
     with pytest.raises(FIXMessageError, match="item looks like tag"):
-        s[1]
+        _ = s[1]  # type: ignore
 
 
 def test_schema_set_included_components():
@@ -189,7 +190,6 @@ def test_xml_init(fix_simple_xml):
     c = schema._components["ContraGrp"]
     assert isinstance(c, SchemaComponent)
     assert c.name == "ContraGrp"
-    assert c.field is None
 
     # Check messages
     assert schema._messages
@@ -354,8 +354,8 @@ def test_schema_validation(fix_simple_xml):
     m = FIXMessage(FMsg.EXECUTIONREPORT, {FTag.OrderID: "1234"})
     schema.validate(m)
 
-    m = FIXMessage("1ASD")
-    with pytest.raises(FIXMessageError, match="msg_type=`1ASD` not in schema"):
+    m = FIXMessage("9")
+    with pytest.raises(FIXMessageError, match="msg_type=`9` not in schema"):
         schema.validate(m)
 
     m = FIXMessage(FMsg.EXECUTIONREPORT, {})
@@ -864,10 +864,10 @@ def test_schema_validation_group(fix_simple_xml):
     assert schema["453"].tag == "453"
     assert schema["NoPartyIDs"].tag == "453"
 
-    m = schema._messages_types[FMsg.EXECUTIONREPORT]
+    m = schema._messages_types[str(FMsg.EXECUTIONREPORT)]
 
     assert m.msg_type == FMsg.EXECUTIONREPORT
-    g = m["NoPartyIDs"]
+    g: SchemaGroup = cast(SchemaGroup, m["NoPartyIDs"])
     assert isinstance(g, SchemaGroup)
 
     with pytest.raises(
@@ -896,7 +896,7 @@ def test_schema_validation_group(fix_simple_xml):
         )
         g.validate_group(msg_g.get_group_list(FTag.NoPartyIDs))
 
-    g = m["NoContraBrokers"]
+    g = cast(SchemaGroup, m["NoContraBrokers"])
     with pytest.raises(
         FIXMessageError, match="missing required field SchemaField.*ContraTrader|"
     ):
@@ -910,7 +910,7 @@ def test_schema_validation_group(fix_simple_xml):
         )
         g.validate_group(msg_g.get_group_list(FTag.NoContraBrokers))
 
-    g = m["NoContraBrokers"]
+    g = cast(SchemaGroup, m["NoContraBrokers"])
     with pytest.raises(FIXMessageError, match="incorrect tag order"):
         msg_g = FIXMessage(
             FMsg.EXECUTIONREPORT,
@@ -926,7 +926,7 @@ def test_schema_validation_group(fix_simple_xml):
         )
         g.validate_group(msg_g.get_group_list(FTag.NoContraBrokers))
 
-    g = m["NoContraBrokers"]
+    g = cast(SchemaGroup, m["NoContraBrokers"])
     with pytest.raises(
         FIXMessageError,
         match="Commission|12 validation error .* could not convert string to float:",
@@ -948,9 +948,9 @@ def test_schema_validation_group(fix_simple_xml):
 
 def test_schema_validation_group_nested(fix_simple_xml):
     schema = FIXSchema(fix_simple_xml)
-    m = schema._messages_types[FMsg.EXECUTIONREPORT]
+    m = schema._messages_types[str(FMsg.EXECUTIONREPORT)]
 
-    g = m["NoContraBrokers"]
+    g: SchemaGroup = cast(SchemaGroup, m["NoContraBrokers"])
 
     with pytest.raises(
         FIXMessageError,
@@ -1007,13 +1007,14 @@ def test_schema_validation_header(fix_simple_xml):
     m = FIXMessage(FMsg.EXECUTIONREPORT, {FTag.OrderID: "1234"})
 
     codec = Codec(FIXProtocol44())
-    session = FIXSession("1", "TARG", "SEND")
+    session = FIXSession(1, "TARG", "SEND")
     session.next_num_in = 1
     session.next_num_out = 1
     enc_m = codec.encode(m, session)
 
     dec_m, _, _ = codec.decode(enc_m.encode(), silent=False)
 
+    assert dec_m is not None
     schema.validate(dec_m)
 
     del dec_m[FTag.MsgSeqNum]

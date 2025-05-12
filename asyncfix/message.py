@@ -1,8 +1,10 @@
 """FIX message and containers module."""
 from __future__ import annotations
 
+import inspect
 from collections import OrderedDict
 from enum import Enum
+from typing import cast, Optional
 
 from asyncfix import FMsg, FTag
 from asyncfix.errors import (
@@ -14,13 +16,6 @@ from asyncfix.errors import (
 )
 
 
-def _isclass(cl):
-    try:
-        return issubclass(cl, cl)
-    except TypeError:
-        return False
-
-
 class MessageDirection(Enum):
     """Direction of the message INBOUND/OUTBOUND."""
 
@@ -29,16 +24,16 @@ class MessageDirection(Enum):
 
 
 class _FIXRepeatingGroupContainer:
-    def __init__(self):
+    def __init__(self) -> None:
         self.groups: list[FIXContainer] = []
 
-    def add_group(self, group, index):
+    def add_group(self, group, index) -> None:
         if index == -1:
             self.groups.append(group)
         else:
             self.groups.insert(index, group)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return str(len(self.groups)) + "=>" + str(self.groups)
 
     __repr__ = __str__
@@ -53,8 +48,8 @@ class FIXContainer:
 
     def __init__(
         self,
-        tags: dict[str | int, [str, float, int, list[dict | FIXContainer]]] = None,
-    ):
+        tags: Optional[dict[str | int, str | float | int | list[dict | FIXContainer]]] = None,
+    ) -> None:
         """Initialize.
 
         Examples:
@@ -67,7 +62,7 @@ class FIXContainer:
         Args:
             tags: add tags at initialization time (all keys / values converted to str!)
         """
-        self.tags: dict[str, str | _FIXRepeatingGroupContainer] = OrderedDict()
+        self.tags: dict[str, str | _FIXRepeatingGroupContainer | type[FIXMessageError]] = OrderedDict()
 
         if tags:
             for t, v in tags.items():
@@ -76,7 +71,7 @@ class FIXContainer:
                 else:
                     self.set(t, v)
 
-    def set(self, tag: str | int, value, replace: bool = False):
+    def set(self, tag: str | int, value, replace: bool = False) -> None:
         """Set tag value.
 
         Args:
@@ -96,7 +91,7 @@ class FIXContainer:
 
         t = str(tag)
 
-        if _isclass(value):
+        if inspect.isclass(value):
             # Case for setting tags as errors (allow overwriting by Exception)
             value = value
         else:
@@ -156,7 +151,7 @@ class FIXContainer:
         else:
             return None
 
-    def add_group(self, tag: str | int, group: FIXContainer | dict, index: int = -1):
+    def add_group(self, tag: str | int, group: FIXContainer | dict, index: int = -1) -> None:
         """Add repeating group item to fix message.
 
         Args:
@@ -176,13 +171,15 @@ class FIXContainer:
 
         if tag in self:
             group_container = self.tags[tag]
+            if not isinstance(group_container, _FIXRepeatingGroupContainer):
+                raise FIXMessageError(f"Expected a repeating group container in tag {tag}")
             group_container.add_group(group, index)
         else:
             group_container = _FIXRepeatingGroupContainer()
             group_container.add_group(group, index)
             self.tags[tag] = group_container
 
-    def set_group(self, tag: str | int, groups: list[dict, FIXContainer]):
+    def set_group(self, tag: str | int, groups: list[dict | FIXContainer]) -> None:
         """Set repeating groups of the message.
 
         Args:
@@ -233,7 +230,7 @@ class FIXContainer:
                 "tag exists, but it does not belong to any group, not a group tag or"
                 " missing `repeating_group` in protocol class"
             )
-        return self.tags[tag].groups
+        return cast(_FIXRepeatingGroupContainer, self.tags[tag]).groups
 
     def get_group_by_tag(
         self,
@@ -282,7 +279,7 @@ class FIXContainer:
 
         return g[index]
 
-    def query(self, *tags: tuple[FTag | str | int]) -> dict[FTag | str, str]:
+    def query(self, *tags: FTag | str | int) -> dict[FTag | str, str]:
         """Request multiple tags from FIXMessage as dictionary.
 
         Args:
@@ -293,7 +290,7 @@ class FIXContainer:
         """
         result = {}
         if not tags:
-            tags = self.tags
+            tags = tuple(self.tags.keys())
 
         for t in tags:
             try:
@@ -312,30 +309,30 @@ class FIXContainer:
         """Item getter by tag."""
         return self.get(tag)
 
-    def __setitem__(self, tag: str | int, value):
+    def __setitem__(self, tag: str | int, value) -> None:
         """Item setter by tag."""
         self.set(tag, value)
 
-    def __delitem__(self, tag: str | int):
+    def __delitem__(self, tag: str | int) -> None:
         """Deletes tag from message."""
         del self.tags[str(tag)]
 
-    def __contains__(self, item: str | int):
+    def __contains__(self, item: str | int) -> bool:
         """Checks if container contains tags."""
         return str(item) in self.tags
 
-    def __str__(self):
+    def __repr__(self) -> str:
         """As string."""
         r = ""
-        allTags = []
+        all_tags = []
         for tag, tag_value in self.tags.items():
-            if _isclass(tag_value) and issubclass(tag_value, Exception):
+            if inspect.isclass(tag_value) and issubclass(tag_value, Exception):
                 tag_value = "#err#"
-            allTags.append("%s=%s" % (tag, tag_value))
-        r += "|".join(allTags)
+            all_tags.append("%s=%s" % (tag, tag_value))
+        r += "|".join(all_tags)
         return r
 
-    def __eq__(self, other: FIXContainer | dict) -> bool:
+    def __eq__(self, other: object) -> bool:
         """Equality checks.
 
         Args:
@@ -384,8 +381,6 @@ class FIXContainer:
         else:
             return False
 
-    __repr__ = __str__
-
 
 class FIXMessage(FIXContainer):
     """Generic FIXMessage."""
@@ -393,24 +388,24 @@ class FIXMessage(FIXContainer):
     def __init__(
         self,
         msg_type: str | FMsg,
-        tags: dict[str | int, [str, float, int]] = None,
-    ):
+        tags: Optional[dict[str | int, str | float | int | list[dict | FIXContainer]]] = None,
+    ) -> None:
         """Initialize.
 
         Args:
             msg_type: message type, must comply with FIXTag=35
             tags: initial tags values
         """
-        self._msg_type = msg_type
+        self._msg_type = msg_type if isinstance(msg_type, FMsg) else FMsg(msg_type)
         super().__init__(tags)
 
     @property
-    def msg_type(self) -> str | FMsg:
+    def msg_type(self) -> FMsg:
         """Message type."""
         return self._msg_type
 
     @msg_type.setter
-    def msg_type(self, msg_type: str | FMsg):
+    def msg_type(self, msg_type: FMsg) -> None:
         """Message type setter.
 
         Args:
@@ -418,6 +413,9 @@ class FIXMessage(FIXContainer):
         """
         self._msg_type = msg_type
 
-    def __repr__(self):
+    def __str__(self) -> str:
+        return super().__repr__()
+
+    def __repr__(self) -> str:
         """Repr."""
-        return f"msg_type={self.msg_type}|" + super().__str__()
+        return f"msg_type={self.msg_type}|" + super().__repr__()
