@@ -754,7 +754,7 @@ class AsyncFIXConnection:
             # Expecting test_req_id
             try:
                 msg_test_id = int(hbt_msg.get(FTag.TestReqID, "0"))
-            except Exception:
+            except (ValueError, TypeError):
                 msg_test_id = 0
 
             if self._test_req_id != msg_test_id:

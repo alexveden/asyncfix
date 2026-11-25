@@ -63,7 +63,7 @@ class AsyncFIXClient(AsyncFIXConnection):
             self._socket_reader, self._socket_writer = await asyncio.open_connection(
                 self._host, self._port
             )
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             self.log.info(f"Connection error (waiting reconnect): {repr(exc)}")
             self._connection_state = ConnectionState.DISCONNECTED_BROKEN_CONN
         else:

@@ -111,7 +111,7 @@ class Journaler:
             i_start = msg.index(b"\x0134=")
             i_end = msg.index(b"\x01", i_start + 1)
             return int(msg[i_start + 4 : i_end])
-        except Exception:
+        except ValueError:
             raise FIXMessageError(f"tag 34 is not found or invalid, in message: {msg}")
 
     def set_seq_num(

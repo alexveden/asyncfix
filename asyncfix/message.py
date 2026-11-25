@@ -299,7 +299,7 @@ class FIXContainer:
         for t in tags:
             try:
                 t = FTag(str(t))
-            except Exception:
+            except (ValueError, TypeError):
                 t = str(int(t))
 
             result[t] = self.get(t, None)

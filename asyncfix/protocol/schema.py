@@ -34,7 +34,7 @@ class SchemaField:
         elif isinstance(o, (str, int)):
             try:
                 return self.tag == str(int(o))
-            except Exception:
+            except (ValueError, TypeError):
                 return self.name == o
         else:
             return False
@@ -128,7 +128,7 @@ class SchemaField:
         try:
             dtm.datetime.strptime(value, format)  # noqa: DTZ007
             return None  # all good
-        except Exception as exc:
+        except ValueError as exc:
             return str(exc)
 
     @staticmethod

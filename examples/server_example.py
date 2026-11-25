@@ -114,7 +114,7 @@ class Server(AsyncFIXDummyServer):
             )
             await self.send_msg(msg)
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             msg = FIXMessage(FMsg.EXECUTIONREPORT)
             msg.set(FTag.OrdStatus, FOrdStatus.REJECTED)
             msg.set(FTag.ExecType, FExecType.REJECTED)
