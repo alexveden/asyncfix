@@ -46,4 +46,4 @@ but things went too deep and too far. Hopefully, this project could help. Please
 if you are going to use this project.
 
 ## License
-MIT 2023 Aleksandr Vedeneev
+MIT 2023-2026 Alex Veden
