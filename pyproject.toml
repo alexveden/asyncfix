@@ -8,25 +8,21 @@ license = {text = "MIT License"}
 classifiers = [
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python",
-    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.11",
     "Development Status :: 5 - Production/Stable",
 ]
 keywords = ["asyncio", "FIX", "protocol", "client", "server", "parser", "unit tests", "simplefix", "tester", "orders"]
-requires-python = ">=3.8"
+requires-python = ">=3.11"
 
 dependencies = []
 
 [project.optional-dependencies]
 dev = [
+  "ruff==0.17.6",
   "pytest",
-  "isort==5.12.0",
-  "flake8==6.1.0",
-  "black==23.7.0",
   "pre-commit",
   'pytest-asyncio',
   'lazydocs',
-  'pydocstringformatter',
-  'pydocstyle',
   'toml',
   "mkdocs",
 ]
@@ -37,21 +33,28 @@ Homepage = "https://github.com/alexveden/asyncfix"
 [tool.setuptools]
 packages = ["asyncfix", "asyncfix.protocol"]
 
-[tool.isort]
-profile = "black"
-extend_skip = ["__init__.py"]
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+src = ["."]
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "D"]
+ignore = ["E203", "D403"]
+
+[tool.ruff.lint.per-file-ignores]
+"**/__init__.py" = ["F401", "F403", "I001"]
+"tests/**" = [
+  "D", "E501", "F401", "F403", "F405", "F541",
+  "F841", "E741", "W291", "E265", "W293",
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10
 
 [tool.distutils.bdist_wheel]
 universal = true
-
-[tool.pydocstringformatter]
-write = true
-strip-whitespaces = true
-summary-quotes-same-line = true
-max-line-length = 88
-split-summary-body = false
-linewrap-full-docstring = true
-
-[tool.pydocstyle]
-ignore="D403"
 
