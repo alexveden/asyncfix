@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections import OrderedDict
 from enum import Enum
+from typing import Any, TypeGuard
 
 from asyncfix import FMsg, FTag
 from asyncfix.errors import (
@@ -15,7 +16,7 @@ from asyncfix.errors import (
 )
 
 
-def _isclass(cl):
+def _isclass(cl: Any) -> TypeGuard[type]:
     try:
         return issubclass(cl, cl)
     except TypeError:

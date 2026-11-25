@@ -1,7 +1,8 @@
 """FIX Protocol Unit Tester."""
 
+from collections.abc import Coroutine
 from math import isnan, nan
-from typing import cast
+from typing import Any, cast
 from unittest.mock import AsyncMock, MagicMock
 
 from asyncfix import FIXMessage, FMsg, FTag
@@ -85,7 +86,7 @@ class FIXTester:
             self.conn_accept._socket_writer.drain.side_effect = (
                 self._conn_socket_drain_acceptor
             )
-            self._socket_drain_in_coro = None
+            self._socket_drain_in_coro: Coroutine[Any, Any, None] | None = None
             self.conn_accept._socket_writer.wait_closed = AsyncMock()
 
     def set_next_num(self, num_in=None, num_out=None):
@@ -164,6 +165,7 @@ class FIXTester:
             self.schema.validate(msg)
         self.acceptor_sent.append(msg)
 
+        assert self.conn_init is not None
         self._socket_drain_in_coro = self.conn_init._process_message(msg, data)
 
     async def _conn_socket_drain_acceptor(self):

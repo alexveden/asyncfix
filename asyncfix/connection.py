@@ -148,13 +148,13 @@ class AsyncFIXConnection:
         self._heartbeat_period = heartbeat_period
         self._message_last_time = 0.0
         self._max_seq_num_resend = 0
-        self._test_req_id = None
+        self._test_req_id: int | None = None
         self._socket_reader: asyncio.StreamReader | None = None
         self._socket_writer: asyncio.StreamWriter | None = None
         self._host = host
         self._port = int(port)
-        self._aio_task_socket_read = None
-        self._aio_task_heartbeat = None
+        self._aio_task_socket_read: asyncio.Task | None = None
+        self._aio_task_heartbeat: asyncio.Task | None = None
 
     @property
     def connection_state(self) -> ConnectionState:
@@ -326,6 +326,7 @@ class AsyncFIXConnection:
                     if decoded_msg is None:
                         break
 
+                    assert raw_msg is not None
                     await self._process_message(decoded_msg, raw_msg)
             except asyncio.CancelledError:
                 return
