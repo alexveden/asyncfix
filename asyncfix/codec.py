@@ -1,4 +1,5 @@
 """FIX Message encoding / decoding module."""
+
 import logging
 from datetime import datetime
 
@@ -226,9 +227,9 @@ class Codec:
                     logging.warning(
                         "\tCheckSum: %s (INVALID) expecting %s" % (int(value), checksum)
                     )
-                    assert (
-                        silent
-                    ), f"invalid checksum tag[10]={value} expected: {checksum} {msg=}"
+                    assert silent, (
+                        f"invalid checksum tag[10]={value} expected: {checksum} {msg=}"
+                    )
                     checksum_passed = False
                 else:
                     checksum_passed = True

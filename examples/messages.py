@@ -1,4 +1,6 @@
-from asyncfix import FIXMessage, FTag, FMsg
+"""FIX message construction example."""
+
+from asyncfix import FIXMessage, FMsg, FTag
 from asyncfix.protocol import FOrdType
 
 msg = FIXMessage(
@@ -10,7 +12,7 @@ msg = FIXMessage(
 msg.set(FTag.Price, 22.22, replace=True)
 
 # Can set by item
-msg[FTag.Symbol] = 'TEST.SYM'
+msg[FTag.Symbol] = "TEST.SYM"
 
 # Or integer tag
 msg[40] = FOrdType.LIMIT

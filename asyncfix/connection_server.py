@@ -1,4 +1,5 @@
 """Dummy FIX server module."""
+
 import asyncio
 import logging
 

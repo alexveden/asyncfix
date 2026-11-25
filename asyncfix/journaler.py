@@ -1,4 +1,5 @@
 """Generic SQLite Journaler."""
+
 import sqlite3
 
 from asyncfix.errors import DuplicateSeqNoError, FIXMessageError
@@ -41,6 +42,7 @@ class Journaler:
         )
 
     def __del__(self):
+        """Closes DB cursor and connection."""
         self.cursor.close()
         self.conn.close()
 

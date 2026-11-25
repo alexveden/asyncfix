@@ -1,4 +1,5 @@
 """Base FIX protocol."""
+
 from asyncfix import FMsg, FTag
 
 

@@ -1,10 +1,12 @@
+"""FIX order lifecycle example."""
+
+from asyncfix import FIXTester
 from asyncfix.protocol import (
+    FExecType,
     FIXNewOrderSingle,
     FOrdSide,
     FOrdStatus,
-    FExecType,
 )
-from asyncfix import FIXTester
 
 order = FIXNewOrderSingle(
     "clordTest", "US.F.TICKER", side=FOrdSide.BUY, price=200.0, qty=10
@@ -12,7 +14,7 @@ order = FIXNewOrderSingle(
 
 print("Send new")
 print(order.new_req())
-# > 11=clordTest--1|55=US.F.TICKER|1=000000|40=2|54=1|60=20231014-14:22:44.278|44=200.0|38=10
+# > 11=clordTest--1|55=US.F.TICKER|1=000000|40=2|54=1|60=20231014-14:22:44.278|44=200.0|38=10  # noqa: E501
 
 
 o = FIXNewOrderSingle(
@@ -26,9 +28,9 @@ assert o.status == FOrdStatus.CREATED, f"o.status={chr(o.status)}"
 exep_rep_msg = ft.fix_exec_report_msg(
     o, o.clord_id, FExecType.PENDING_NEW, FOrdStatus.PENDING_NEW
 )
-print('FIXTester exec report')
+print("FIXTester exec report")
 print(exep_rep_msg)
-# > 11=clordTest|37=1|17=10001|150=A|39=A|54=1|14=0.0|151=0.0|55=US.F.TICKER|44=200.0|38=10|6=0.0|1=000000
+# > 11=clordTest|37=1|17=10001|150=A|39=A|54=1|14=0.0|151=0.0|55=US.F.TICKER|44=200.0|38=10|6=0.0|1=000000  # noqa: E501
 
 
 # Order processes exec report internally and maintains itself

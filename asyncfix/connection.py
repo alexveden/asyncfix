@@ -1,4 +1,5 @@
 """Abstract connection module."""
+
 import asyncio
 import logging
 import sys
@@ -543,7 +544,7 @@ class AsyncFIXConnection:
         """Validates incoming MsgSeqNum, sends ResendRequest(35=2) if gap.
 
         Args:
-            msg_seq_num:
+            msg_seq_num: incoming sequence number
 
         Returns:
             True - no gap, MsgSeqNum is correct

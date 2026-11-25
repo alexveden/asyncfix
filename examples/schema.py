@@ -1,7 +1,10 @@
-from asyncfix.protocol import FIXSchema
+"""FIX schema validation example."""
+
+import os
+
 from asyncfix import FIXMessage, FMsg, FTag
 from asyncfix.errors import FIXMessageError
-import os
+from asyncfix.protocol import FIXSchema
 
 schema_file = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "..", "tests", "FIX44.xml")

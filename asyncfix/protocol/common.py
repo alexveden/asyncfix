@@ -1,4 +1,5 @@
 """Common FIX protocol enums."""
+
 import enum
 
 

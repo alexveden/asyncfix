@@ -1,4 +1,5 @@
 """Message type module."""
+
 import enum
 
 

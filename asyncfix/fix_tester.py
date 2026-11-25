@@ -1,4 +1,5 @@
 """FIX Protocol Unit Tester."""
+
 from math import isnan, nan
 from unittest.mock import AsyncMock, MagicMock
 
@@ -345,9 +346,9 @@ class FIXTester:
         if isnan(order_qty):
             order_qty = order.qty
         else:
-            assert (
-                exec_type == FExecType.REPLACED
-            ), "Only applicable to exec_type=5 (replace)"
+            assert exec_type == FExecType.REPLACED, (
+                "Only applicable to exec_type=5 (replace)"
+            )
             assert order_qty > 0
 
         if isnan(cum_qty):
@@ -364,30 +365,30 @@ class FIXTester:
             assert leaves_qty <= order_qty
 
         m[FTag.LeavesQty] = leaves_qty
-        assert (
-            cum_qty + leaves_qty <= order_qty
-        ), f"cum_qty[{cum_qty}] + leaves_qty[{leaves_qty}] <= order_qty[{order_qty}]"
+        assert cum_qty + leaves_qty <= order_qty, (
+            f"cum_qty[{cum_qty}] + leaves_qty[{leaves_qty}] <= order_qty[{order_qty}]"
+        )
 
         if not isnan(last_qty):
             assert not isnan(leaves_qty), "Must also set leaves_qty, when trade"
             assert not isnan(cum_qty), "Must also set cum_qty, when trade"
-            assert (
-                exec_type == FExecType.TRADE
-            ), "Only applicable to exec_type=F (trade)"
+            assert exec_type == FExecType.TRADE, (
+                "Only applicable to exec_type=F (trade)"
+            )
             assert last_qty > 0
             m[FTag.LastQty] = last_qty
-            assert (
-                round(last_qty - (cum_qty - order.cum_qty), 3) == 0
-            ), "Probably incorrect Trade qty"
+            assert round(last_qty - (cum_qty - order.cum_qty), 3) == 0, (
+                "Probably incorrect Trade qty"
+            )
         else:
-            assert (
-                exec_type != FExecType.TRADE
-            ), "You must set last_qty when exec_type=F (trade)"
+            assert exec_type != FExecType.TRADE, (
+                "You must set last_qty when exec_type=F (trade)"
+            )
 
         if not isnan(price):
-            assert (
-                exec_type == FExecType.REPLACED
-            ), "Only applicable to exec_type=5 (replace)"
+            assert exec_type == FExecType.REPLACED, (
+                "Only applicable to exec_type=5 (replace)"
+            )
         else:
             price = order.price
 

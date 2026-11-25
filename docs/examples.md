@@ -14,7 +14,7 @@ msg = FIXMessage(
 msg.set(FTag.Price, 22.22, replace=True)
 
 # Can set by item
-msg[FTag.Symbol] = 'TEST.SYM'
+msg[FTag.Symbol] = "TEST.SYM"
 
 # Or integer tag
 msg[40] = FOrdType.LIMIT
@@ -39,7 +39,6 @@ print(msg.query(11, FTag.Price, "40"))
 
 ## FIX Validation by schema
 ```python
-
 from asyncfix.protocol import FIXSchema
 from asyncfix import FIXMessage, FMsg, FTag
 from asyncfix.errors import FIXMessageError
@@ -61,12 +60,10 @@ try:
     assert False
 except FIXMessageError as exc:
     print(f"Message validation failed: `{repr(m)}`: {repr(exc)}")
-
 ```
 
 ## Order Management and testing
 ```python
-
 from asyncfix.protocol import (
     FIXNewOrderSingle,
     FOrdSide,
@@ -95,12 +92,11 @@ assert o.status == FOrdStatus.CREATED, f"o.status={chr(o.status)}"
 exep_rep_msg = ft.fix_exec_report_msg(
     o, o.clord_id, FExecType.PENDING_NEW, FOrdStatus.PENDING_NEW
 )
-print('FIXTester exec report')
+print("FIXTester exec report")
 print(exep_rep_msg)
 # > 11=clordTest|37=1|17=10001|150=A|39=A|54=1|14=0.0|151=0.0|55=US.F.TICKER|44=200.0|38=10|6=0.0|1=000000
 
 
 # Order processes exec report internally and maintains itself
 assert o.process_execution_report(exep_rep_msg) == 1
-
 ```

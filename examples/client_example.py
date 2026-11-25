@@ -1,4 +1,5 @@
 """Simple AsyncFIX client example."""
+
 import asyncio
 import logging
 

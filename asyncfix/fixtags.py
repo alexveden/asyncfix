@@ -1,4 +1,5 @@
 """FIX Tags collection module."""
+
 import enum
 
 

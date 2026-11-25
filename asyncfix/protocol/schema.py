@@ -1,4 +1,5 @@
 """FIX Schema validation module."""
+
 from __future__ import annotations
 
 import dataclasses

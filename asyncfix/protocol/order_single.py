@@ -1,4 +1,5 @@
 """Generic FIX Order single module."""
+
 import re
 from datetime import datetime
 from math import isfinite, nan
@@ -113,9 +114,9 @@ class FIXNewOrderSingle:
 
     def new_req(self) -> FIXMessage:
         """Creates NewOrderSingle message."""
-        assert (
-            self.status == FOrdStatus.CREATED
-        ), "new_req() must send only just created orders"
+        assert self.status == FOrdStatus.CREATED, (
+            "new_req() must send only just created orders"
+        )
 
         o = FIXMessage(FMsg.NEWORDERSINGLE)
         self.clord_id = self.clord_next()
