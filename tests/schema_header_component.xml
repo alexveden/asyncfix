@@ -1,0 +1,26 @@
+<fix type="FIX" major="4" minor="4" servicepack="0">
+ <header>
+  <field name='BeginString' required='Y' />
+  <field name='MsgType' required='Y' />
+  <component name='HopGrp' required='N' />
+ </header>
+<messages>
+    <message name="Heartbeat" msgtype="0" msgcat="admin">
+        <field name="TestReqID" required="N"/>
+    </message>
+</messages>
+<components>
+    <component name="HopGrp">
+        <group name="NoHops" required="N">
+            <field name="HopCompID" required="N"/>
+        </group>
+    </component>
+</components>
+<fields>
+    <field number='8' name='BeginString' type='STRING' />
+    <field number='35' name='MsgType' type='STRING' />
+    <field number='112' name='TestReqID' type='STRING' />
+    <field number='627' name='NoHops' type='NUMINGROUP' />
+    <field number='628' name='HopCompID' type='STRING' />
+</fields>
+</fix>

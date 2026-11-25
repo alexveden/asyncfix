@@ -613,7 +613,13 @@ class FIXSchema:
         assert self._field2tag, "parse fields first!"
         assert element.tag == "header"
 
-        self._header = cast(SchemaHeader, self._parse_msg_set(SchemaHeader(), element))
+        header = self._parse_msg_set(SchemaHeader(), element)
+        if header is None:
+            raise RuntimeError(
+                "Failed to resolve component reference in header."
+                f" Header: {element.attrib}"
+            )
+        self._header = header
 
     def _parse_field(self, element: ET.Element) -> None:
         assert element.tag == "field"
@@ -642,7 +648,6 @@ class FIXSchema:
 
         header = root.find("header")
         assert header is not None
-        self._parse_header(header)
 
         components = root.find("components")
         assert components is not None
@@ -668,6 +673,8 @@ class FIXSchema:
                 else:
                     prev_cnt = len(all_components)
         assert full_count == len(self._components), "Component count mismatch"
+
+        self._parse_header(header)
 
         n_msg = 0
         messages = root.find("messages")

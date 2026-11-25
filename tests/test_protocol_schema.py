@@ -13,6 +13,7 @@ from asyncfix.protocol.schema import (
     SchemaComponent,
     SchemaField,
     SchemaGroup,
+    SchemaHeader,
     SchemaMessage,
     SchemaSet,
 )
@@ -29,6 +30,11 @@ def fix_simple_xml():
 @pytest.fixture
 def fix_required_group_xml():
     return ET.parse(os.path.join(TEST_DIR, "schema_required_group.xml"))
+
+
+@pytest.fixture
+def fix_header_component_xml():
+    return ET.parse(os.path.join(TEST_DIR, "schema_header_component.xml"))
 
 
 @pytest.fixture
@@ -243,6 +249,31 @@ def test_xml_group_required_flags():
 
     for _, group, required in entries:
         assert required is group.field_required
+
+
+def test_xml_header_component(fix_header_component_xml):
+    schema = FIXSchema(fix_header_component_xml)
+
+    assert isinstance(schema._header, SchemaHeader)
+    assert "NoHops" in schema._header
+    assert isinstance(schema._header["NoHops"], SchemaGroup)
+
+    m = FIXMessage(
+        FMsg.HEARTBEAT,
+        {8: "FIX.4.4", 35: "0", 627: [{628: "HOP1"}]},
+    )
+    assert schema.validate(m)
+
+
+def test_xml_header_missing_component(fix_header_component_xml):
+    header = fix_header_component_xml.getroot().find("header")
+    assert header is not None
+    component = header.find("component")
+    assert component is not None
+    component.attrib["name"] = "Missing"
+
+    with pytest.raises(RuntimeError, match="header"):
+        FIXSchema(fix_header_component_xml)
 
 
 def test_xml_circular_init(fix_circular_invalid_xml):

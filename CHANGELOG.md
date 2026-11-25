@@ -45,6 +45,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   instead of its member dictionary.
 - `Journaler` asserts `lastrowid` after inserting the session row.
 - `Journaler` closes its cursor and connection on shutdown.
+- Header components parse after components are loaded; an unresolvable header
+  component reference raises `RuntimeError` at load instead of leaving
+  `FIXSchema._header` as `None`.
 - Type annotations across `asyncfix` and `examples`; `mypy --strict` is clean.
 
 ### Breaking
