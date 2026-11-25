@@ -23,7 +23,7 @@ o = FIXNewOrderSingle(
 
 ft = FIXTester(schema=None)  # Optionally allows schema for validation
 assert ft.order_register_single(o) == 1
-assert o.status == FOrdStatus.CREATED, f"o.status={chr(o.status)}"
+assert o.status == FOrdStatus.CREATED, f"o.status={o.status}"
 
 exep_rep_msg = ft.fix_exec_report_msg(
     o, o.clord_id, FExecType.PENDING_NEW, FOrdStatus.PENDING_NEW

@@ -52,7 +52,7 @@ def main():
         # list all sessions
         row_format = "{:^15}|" * 3
         separator_format = "{:->15}|" * 3
-        for session in journal.sessions():
+        for session in journal.sessions().values():
             print(row_format.format("Session Id", "TargetCompId", "SenderCompId"))
             print(separator_format.format("", "", ""))
             print(

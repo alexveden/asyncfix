@@ -56,7 +56,7 @@ class FIXContainer:
     def __init__(
         self,
         tags: (
-            dict[str | int, str | float | int | list[dict | FIXContainer]] | None
+            dict[str | int, str | float | int | Enum | list[dict | FIXContainer]] | None
         ) = None,
     ):
         """Initialize.
@@ -390,7 +390,7 @@ class FIXMessage(FIXContainer):
     def __init__(
         self,
         msg_type: str | FMsg,
-        tags: dict[str | int, str | float | int | list[dict | FIXContainer]]
+        tags: dict[str | int, str | float | int | Enum | list[dict | FIXContainer]]
         | None = None,
     ):
         """Initialize.
