@@ -69,7 +69,7 @@ async def test_connect():
         assert mock_start_server.call_args[0][2] == server._port
         assert mock_start_server.call_args[1] == {}
 
-        assert mock_srv.serve_forever.awaited
+        mock_srv.serve_forever.assert_awaited()
 
         reader = AsyncMock(asyncio.StreamReader)
         writer = AsyncMock(asyncio.StreamWriter)

@@ -50,7 +50,7 @@ def test_schema_field():
     assert f.validate_value("test")
 
     assert f != f2
-    assert f == f
+    assert f == f  # noqa: PLR0124
     assert f == "Account"
     assert f == "1"
     assert f == 1
@@ -81,7 +81,7 @@ def test_schema_set():
         s.add("notsupported", False)
 
     with pytest.raises(ValueError, match="tag property is not supported"):
-        s.tag
+        _ = s.tag
 
     assert f in s
     assert f2 in s

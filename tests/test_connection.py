@@ -1168,7 +1168,7 @@ async def test_socket_read__connection_closed_by_peer(fix_connection_socket, fix
     assert conn._socket_reader is None
     assert conn._socket_writer is None
     assert mock_socket_writer.close.called
-    assert mock_socket_writer.wait_closed.awaited
+    mock_socket_writer.wait_closed.assert_awaited()
     assert not mock_send_msg.called  # no LOGOUT sent!
 
     assert mock_sleep.call_count == 2
@@ -1204,7 +1204,7 @@ async def test_socket_read__empty_message_closes_socket(fix_connection_socket, f
     assert conn._socket_reader is None
     assert conn._socket_writer is None
     assert mock_socket_writer.close.called
-    assert mock_socket_writer.wait_closed.awaited
+    mock_socket_writer.wait_closed.assert_awaited()
     assert not mock_send_msg.called  # no LOGOUT sent!
 
     assert mock_sleep.call_count == 2
@@ -1271,7 +1271,7 @@ async def test_disconnect(fix_connection_socket, fix_msg):
         assert conn._socket_reader is None
         assert conn._socket_writer is None
         assert mock_socket_writer.close.called
-        assert mock_socket_writer.wait_closed.awaited
+        mock_socket_writer.wait_closed.assert_awaited()
         assert mock_send_msg.call_count == 1
 
         assert isinstance(mock_send_msg.call_args[0][0], FIXMessage)

@@ -64,7 +64,7 @@ async def test_connect():
         assert client._socket_reader == "r"
         assert client._socket_writer == "w"
 
-        assert mock_on_connect.awaited
+        mock_on_connect.assert_awaited()
         assert mock_on_connect.call_args[0] == ()
         assert mock_on_connect.call_args[1] == {}
 

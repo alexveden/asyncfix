@@ -127,8 +127,6 @@ class Client(AsyncFIXClient):
                 self.log.debug("cancelling order")
                 cxl_req = order.cancel_req()
                 await self.send_msg(cxl_req)
-        else:
-            self.log.log
 
 
 async def main():

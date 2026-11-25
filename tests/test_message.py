@@ -148,18 +148,20 @@ def test_msg_construction():
     rptgrp2 = FIXContainer({611: "zzz", 612: "yyy", "613": "xxx"})
     msg.add_group("444", rptgrp2, 1)
 
-    assert "45=dgd|32=aaaa|323=bbbb|444=2=>[611=aaa|612=bbb|613=ccc,"
-    " 611=zzz|612=yyy|613=xxx]" == str(msg)
-
-    msg.add_group("444", rptgrp2, 1)
+    assert (
+        "45=dgd|32=aaaa|323=bbbb|444=2=>[611=aaa|612=bbb|613=ccc,"
+        " 611=zzz|612=yyy|613=xxx]"
+    ) == str(msg)
 
     rptgrp3 = FIXContainer()
     rptgrp3.set("611", "ggg")
     rptgrp3.set("612", "hhh")
     rptgrp3.set("613", "jjj")
     rptgrp2.add_group("445", rptgrp3, 0)
-    assert "45=dgd|32=aaaa|323=bbbb|444=2=>[611=aaa|612=bbb|613=ccc,"
-    " 611=zzz|612=yyy|613=xxx|445=1=>[611=ggg|612=hhh|613=jjj]]" == str(msg)
+    assert (
+        "45=dgd|32=aaaa|323=bbbb|444=2=>[611=aaa|612=bbb|613=ccc,"
+        " 611=zzz|612=yyy|613=xxx|445=1=>[611=ggg|612=hhh|613=jjj]]"
+    ) == str(msg)
 
     grp = msg.get_group_by_tag("444", "612", "yyy")
     assert "611=zzz|612=yyy|613=xxx|445=1=>[611=ggg|612=hhh|613=jjj]" == str(grp)
