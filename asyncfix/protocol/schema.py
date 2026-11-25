@@ -126,7 +126,7 @@ class SchemaField:
             format = f"{format}.%f"
 
         try:
-            dtm.datetime.strptime(value, format)
+            dtm.datetime.strptime(value, format)  # noqa: DTZ007
             return None  # all good
         except Exception as exc:
             return str(exc)

@@ -19,8 +19,8 @@ from asyncfix.protocol import FIXProtocol44
 
 class FakeDate(datetime.datetime):
     @classmethod
-    def utcnow(cls):
-        return cls(2015, 6, 19, 11, 8, 54)
+    def now(cls, tz=None):
+        return cls(2015, 6, 19, 11, 8, 54, tzinfo=tz)
 
 
 @pytest.fixture

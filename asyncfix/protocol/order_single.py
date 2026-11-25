@@ -1,7 +1,7 @@
 """Generic FIX Order single module."""
 
 import re
-from datetime import datetime
+from datetime import UTC, datetime
 from math import isfinite, nan
 
 from asyncfix import FIXMessage, FMsg, FTag
@@ -110,7 +110,7 @@ class FIXNewOrderSingle:
     @staticmethod
     def current_datetime():
         """Date for TransactTime field."""
-        return datetime.utcnow().strftime("%Y%m%d-%H:%M:%S.%f")[:-3]
+        return datetime.now(UTC).strftime("%Y%m%d-%H:%M:%S.%f")[:-3]
 
     def new_req(self) -> FIXMessage:
         """Creates NewOrderSingle message."""

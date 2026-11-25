@@ -1,7 +1,7 @@
 """FIX Message encoding / decoding module."""
 
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
 
 from asyncfix import FMsg, FTag
 from asyncfix.errors import EncodingError
@@ -38,7 +38,7 @@ class Codec:
     @staticmethod
     def current_datetime() -> str:
         """FIX complaint date-time string (UTC now)."""
-        return datetime.utcnow().strftime("%Y%m%d-%H:%M:%S.%f")[:-3]
+        return datetime.now(UTC).strftime("%Y%m%d-%H:%M:%S.%f")[:-3]
 
     def _addTag(self, body, t, msg: FIXContainer):
         if msg.is_group(t):
