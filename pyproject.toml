@@ -30,9 +30,9 @@ dev = [
   "build",
   "twine",
   "pre-commit",
-  "lazydocs",
+  "lazydocs==0.4.8",
   "toml",
-  "mkdocs",
+  "mkdocs==1.6.1",
 ]
 
 [project.urls]

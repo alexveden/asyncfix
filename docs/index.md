@@ -35,6 +35,7 @@ make lint         # ruff check
 make fmt          # ruff format
 make typecheck    # mypy
 make complexity   # mccabe, advisory
+make docs         # regenerate API reference and deploy
 ```
 
 ## Getting started

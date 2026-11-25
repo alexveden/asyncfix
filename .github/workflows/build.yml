@@ -1,5 +1,6 @@
 # This workflow runs tests on every supported Python version, then lints,
-# type checks, and updates the coverage badge once.
+# type checks, builds the docs, updates the coverage badge, and deploys the
+# docs to GitHub Pages.
 # For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
 
 name: pytest + ruff + mypy
@@ -61,6 +62,12 @@ jobs:
       run: |
         mypy .
 
+    - name: Build docs
+      run: |
+        ruff check ./asyncfix/ --select D
+        lazydocs --output-path="./docs/reference" --overview-file="README.md" --src-base-url="https://github.com/alexveden/asyncfix/blob/main/" asyncfix
+        mkdocs build --strict
+
     - name: Run coverage
       run: |
           coverage run -m pytest tests/
@@ -90,3 +97,35 @@ jobs:
       with:
         github_token: ${{ secrets.github_token }}
         branch: ${{ github.ref }}
+
+  docs:
+
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [ test, lint-and-coverage ]
+
+    runs-on: ubuntu-latest
+
+    concurrency:
+      group: docs-deploy
+      cancel-in-progress: false
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.11"
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e ".[dev]"
+    - name: Generate API reference
+      run: |
+        ruff check ./asyncfix/ --select D
+        lazydocs --output-path="./docs/reference" --overview-file="README.md" --src-base-url="https://github.com/alexveden/asyncfix/blob/main/" asyncfix
+    - name: Build docs
+      run: |
+        mkdocs build --strict
+    - name: Deploy docs
+      run: |
+        mkdocs gh-deploy --force
