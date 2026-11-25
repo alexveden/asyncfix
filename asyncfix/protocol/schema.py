@@ -555,7 +555,7 @@ class FIXSchema:
             element,
         )
         # assert group, f'group parse erorr, {element.attrib}'
-        return group
+        return cast(SchemaGroup | None, group)
 
     def _parse_component(self, element: ET.Element) -> SchemaComponent | None:
         assert self._field2tag, "parse fields first!"
@@ -568,7 +568,7 @@ class FIXSchema:
 
         if component:
             self._components[el_name] = component
-            return component
+            return cast(SchemaComponent | None, component)
         else:
             return None
 
@@ -592,7 +592,7 @@ class FIXSchema:
 
         self._messages[el_name] = message
         self._messages_types[message.msg_type] = message
-        return message
+        return cast(SchemaMessage | None, message)
 
     def _parse_header(self, element: ET.Element):
         assert self._field2tag, "parse fields first!"

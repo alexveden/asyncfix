@@ -10,6 +10,6 @@ class FIXProtocolBase:
 
     beginstring: str = "FIXProtocolBase"
     repeating_groups: ClassVar[dict[str, list[str]]] = {}
-    session_message_types: ClassVar[set] = set()
+    session_message_types: ClassVar[set[FMsg]] = set()
     fixtags: type[FTag] = FTag
     msgtype: type[FMsg] = FMsg

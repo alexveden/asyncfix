@@ -437,7 +437,7 @@ class FIXTester:
             self.schema.validate(m)
         return m
 
-    def msg_logon(self, tags: dict | None = None) -> FIXMessage:
+    def msg_logon(self, tags: dict[Any, Any] | None = None) -> FIXMessage:
         """Generates message LOGON + schema validation.
 
         Args:

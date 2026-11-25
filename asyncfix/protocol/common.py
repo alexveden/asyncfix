@@ -4,13 +4,13 @@ import enum
 
 
 class _StrEnum(enum.Enum):
-    def __str__(self):
+    def __str__(self) -> str:
         return str(self.value)
 
-    def __eq__(self, o):
-        return self.value == str(o)
+    def __eq__(self, o: object) -> bool:
+        return str(self.value) == str(o)
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash(self.value)
 
 

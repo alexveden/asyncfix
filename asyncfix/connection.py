@@ -5,6 +5,7 @@ import logging
 import sys
 import time
 from enum import Enum, IntEnum
+from typing import Any
 
 from asyncfix import FMsg, FTag
 from asyncfix.codec import Codec
@@ -153,8 +154,8 @@ class AsyncFIXConnection:
         self._socket_writer: asyncio.StreamWriter | None = None
         self._host = host
         self._port = int(port)
-        self._aio_task_socket_read: asyncio.Task | None = None
-        self._aio_task_heartbeat: asyncio.Task | None = None
+        self._aio_task_socket_read: asyncio.Task[Any] | None = None
+        self._aio_task_heartbeat: asyncio.Task[Any] | None = None
 
     @property
     def connection_state(self) -> ConnectionState:

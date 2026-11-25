@@ -5,8 +5,8 @@ from datetime import UTC, datetime
 from typing import cast
 
 from asyncfix import FMsg, FTag
-from asyncfix.errors import EncodingError
-from asyncfix.message import FIXContainer, FIXMessage, RepeatingTagError
+from asyncfix.errors import EncodingError, RepeatingTagError
+from asyncfix.message import FIXContainer, FIXMessage
 from asyncfix.protocol import FIXProtocolBase
 from asyncfix.session import FIXSession
 

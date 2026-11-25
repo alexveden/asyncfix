@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections import OrderedDict
 from enum import Enum
-from typing import Any, TypeGuard
+from typing import Any, TypeGuard, cast
 
 from asyncfix import FMsg, FTag
 from asyncfix.errors import (
@@ -40,7 +40,7 @@ class _FIXRepeatingGroupContainer:
         else:
             self.groups.insert(index, group)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return str(len(self.groups)) + "=>" + str(self.groups)
 
     __repr__ = __str__
@@ -56,7 +56,11 @@ class FIXContainer:
     def __init__(
         self,
         tags: (
-            dict[str | int, str | float | int | Enum | list[dict | FIXContainer]] | None
+            dict[
+                str | int,
+                str | float | int | Enum | list[dict[Any, Any] | FIXContainer],
+            ]
+            | None
         ) = None,
     ):
         """Initialize.
@@ -109,7 +113,7 @@ class FIXContainer:
 
         self.tags[t] = value
 
-    def get(self, tag: str | int | FTag, default=TagNotFoundError) -> str:
+    def get(self, tag: str | int | FTag, default: object = TagNotFoundError) -> str:
         """Get tag value.
 
         Args:
@@ -136,7 +140,7 @@ class FIXContainer:
             raise FIXMessageError(
                 "You are trying to get group as simple tag,use get_group*() methods"
             )
-        return result
+        return cast(str, result)
 
     def is_group(self, tag: str | int) -> bool | None:
         """Check if tag is repeating group.
@@ -155,7 +159,9 @@ class FIXContainer:
         else:
             return None
 
-    def add_group(self, tag: str | int, group: FIXContainer | dict, index: int = -1):
+    def add_group(
+        self, tag: str | int, group: FIXContainer | dict[Any, Any], index: int = -1
+    ):
         """Add repeating group item to fix message.
 
         Args:
@@ -182,7 +188,7 @@ class FIXContainer:
             group_container.add_group(group, index)
             self.tags[tag] = group_container
 
-    def set_group(self, tag: str | int, groups: list[dict | FIXContainer]):
+    def set_group(self, tag: str | int, groups: list[dict[Any, Any] | FIXContainer]):
         """Set repeating groups of the message.
 
         Args:
@@ -325,7 +331,7 @@ class FIXContainer:
         """Checks if container contains tags."""
         return str(item) in self.tags
 
-    def __str__(self):
+    def __str__(self) -> str:
         """As string."""
         r = ""
         allTags = []
@@ -390,7 +396,9 @@ class FIXMessage(FIXContainer):
     def __init__(
         self,
         msg_type: str | FMsg,
-        tags: dict[str | int, str | float | int | Enum | list[dict | FIXContainer]]
+        tags: dict[
+            str | int, str | float | int | Enum | list[dict[Any, Any] | FIXContainer]
+        ]
         | None = None,
     ):
         """Initialize.

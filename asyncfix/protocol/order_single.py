@@ -41,7 +41,7 @@ class FIXNewOrderSingle:
         price: float,
         qty: float,
         ord_type: FOrdType | str = FOrdType.LIMIT,
-        account: str | dict = "000000",
+        account: str | dict[Any, Any] = "000000",
         target_price: float | None = None,
     ):
         """Initialize order.
