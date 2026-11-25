@@ -11,7 +11,7 @@ tests:
 	pytest $(p)
 
 coverage: 
-	coverage run -m  pytest -q --disable-warnings . && coverage html -i
+	coverage run -m  pytest -q --disable-warnings . && coverage report -m && coverage html -i
 
 coverage-report:
 	open ./htmlcov/index.html 
