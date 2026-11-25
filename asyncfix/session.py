@@ -31,8 +31,8 @@ class FIXSession:
         # Note: None is set intentionally, because session typically has to be
         #   loaded or created by Journaler class, therefore it sets session values
         #   internally
-        self.next_num_out = None
-        self.next_num_in = None
+        self.next_num_out: int | None = None
+        self.next_num_in: int | None = None
 
     def __hash__(self):
         """Hash by (target, sender)."""
@@ -76,6 +76,7 @@ class FIXSession:
 
     def allocate_next_num_out(self):
         """Increments next_num_out counter."""
+        assert self.next_num_out is not None
         n = str(self.next_num_out)
         self.next_num_out += 1
         return n

@@ -1,6 +1,7 @@
 """FIX Protocol Unit Tester."""
 
 from math import isnan, nan
+from typing import cast
 from unittest.mock import AsyncMock, MagicMock
 
 from asyncfix import FIXMessage, FMsg, FTag
@@ -35,7 +36,7 @@ class FIXTester:
             schema: (optional) FIXSchema for validating incoming/outgoing messages
             connection: (optional) fix initiator connection
         """
-        self.registered_orders = {}
+        self.registered_orders: dict[str, FIXNewOrderSingle] = {}
         self.schema = schema
         self._order_id = 0
         self._exec_id = 10000
@@ -44,7 +45,7 @@ class FIXTester:
         self.initiator_sent: list[FIXMessage] = []
         """List of fix messages sent by self.connection.send_msg()."""
 
-        self.acceptor_rcv_que: list[tuple(FIXMessage, bytes)] = []
+        self.acceptor_rcv_que: list[tuple[FIXMessage, bytes]] = []
 
         self.acceptor_sent: list[FIXMessage] = []
         """List of fix messages sent by FIXTester.reply()."""
@@ -55,13 +56,13 @@ class FIXTester:
             j = Journaler()
             self.conn_accept = AsyncFIXConnection(
                 FIXProtocol44(),
-                target_comp_id=self.conn_init._session.sender_comp_id,
-                sender_comp_id=self.conn_init._session.target_comp_id,
+                target_comp_id=connection._session.sender_comp_id,
+                sender_comp_id=connection._session.target_comp_id,
                 journaler=j,
                 host="localhost",
-                port="64444",
+                port=64444,
                 heartbeat_period=30,
-                logger=self.conn_init.log,
+                logger=connection.log,
             )
             self.conn_accept._connection_state = (
                 ConnectionState.NETWORK_CONN_ESTABLISHED
@@ -94,6 +95,7 @@ class FIXTester:
             num_in: next num in expected by simulated acceptor
             num_out: next num out sent by simulated acceptor
         """
+        assert self.conn_accept is not None
         if num_in is not None:
             assert isinstance(num_in, int)
             assert num_in > 0
@@ -123,7 +125,9 @@ class FIXTester:
         Returns:
             dict {FTag.MsgSeqNum: "34", "12382": "some value"}
         """
-        return self.acceptor_sent[index].query(*tags)
+        return self.acceptor_sent[index].query(
+            *cast(tuple[FTag | str | int, ...], tags)
+        )
 
     def initiator_sent_query(
         self,
@@ -139,17 +143,23 @@ class FIXTester:
         Returns:
             dict {FTag.MsgSeqNum: "34", "12382": "some value"}
         """
-        return self.initiator_sent[index].query(*tags)
+        return self.initiator_sent[index].query(
+            *cast(tuple[FTag | str | int, ...], tags)
+        )
 
     def _conn_socket_write_initiator(self, data):
+        assert self.conn_init is not None
         msg, _, _ = self.conn_init._codec.decode(data, silent=False)
+        assert msg is not None
         if self.schema:
             self.schema.validate(msg)
         self.initiator_sent.append(msg)
         self.acceptor_rcv_que.append((msg, data))
 
     def _conn_socket_write_acceptor(self, data):
+        assert self.conn_accept is not None
         msg, _, _ = self.conn_accept._codec.decode(data, silent=False)
+        assert msg is not None
         if self.schema:
             self.schema.validate(msg)
         self.acceptor_sent.append(msg)
@@ -169,6 +179,7 @@ class FIXTester:
         Args:
             index: None - processes all messages in que, number - only one at that index
         """
+        assert self.conn_accept is not None
         assert self.acceptor_rcv_que, "No messages in self.acceptor_rcv_que"
 
         while self.acceptor_rcv_que:
@@ -183,6 +194,7 @@ class FIXTester:
         Args:
             msg: arbitrary FIXMessage
         """
+        assert self.conn_accept is not None
         if self.schema:
             self.schema.validate(msg)
 
@@ -193,7 +205,9 @@ class FIXTester:
         ).encode()
 
         # Pretend the message was transfered to initiator
+        assert self.conn_init is not None
         decoded_msg, _, _ = self.conn_init._codec.decode(raw_msg, silent=False)
+        assert decoded_msg is not None
 
         if self.schema:
             self.schema.validate(decoded_msg)
@@ -330,7 +344,7 @@ class FIXTester:
         m[FTag.ClOrdID] = clord_id
 
         if order.order_id is None:
-            order_id = self._next_order_id()
+            order_id: str | int = self._next_order_id()
         else:
             order_id = order.order_id
 

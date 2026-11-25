@@ -22,7 +22,7 @@ class FIXProtocol44(FIXProtocolBase):
         FMsg.XMLNONFIX,
     }
 
-    repeating_groups: ClassVar[dict[FTag, list[FTag]]] = {
+    repeating_groups: ClassVar[dict[str, list[str]]] = {
         FTag.NoSecurityAltID: [FTag.SecurityAltID, FTag.SecurityAltIDSource],
         FTag.NoMiscFees: [
             FTag.MiscFeeAmt,

@@ -113,7 +113,9 @@ class Journaler:
             i_end = msg.index(b"\x01", i_start + 1)
             return int(msg[i_start + 4 : i_end])
         except ValueError:
-            raise FIXMessageError(f"tag 34 is not found or invalid, in message: {msg}")
+            raise FIXMessageError(
+                f"tag 34 is not found or invalid, in message: {msg!r}"
+            )
 
     def set_seq_num(
         self,
@@ -133,12 +135,14 @@ class Journaler:
             session.next_num_out = next_num_out
         else:
             next_num_out = session.next_num_out
+            assert next_num_out is not None
 
         if next_num_in is not None:
             assert next_num_in > 0
             session.next_num_in = next_num_in
         else:
             next_num_in = session.next_num_in
+            assert next_num_in is not None
 
         self.cursor.execute(
             "UPDATE session SET inboundSeqNo=?, outboundSeqNo=?  WHERE sessionId = ?",
@@ -197,7 +201,7 @@ class Journaler:
         session: FIXSession,
         direction: MessageDirection,
         seq_no: int,
-    ) -> bytes:
+    ) -> bytes | None:
         """Loads specific message from DB by seq no.
 
         Args:

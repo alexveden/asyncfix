@@ -19,6 +19,7 @@ dependencies = []
 [project.optional-dependencies]
 dev = [
   "ruff==0.17.6",
+  "mypy",
   "pytest",
   "pytest-asyncio",
   "coverage",
@@ -57,6 +58,10 @@ max-complexity = 10
 
 [tool.pytest.ini_options]
 asyncio_default_fixture_loop_scope = "function"
+
+[tool.mypy]
+python_version = "3.11"
+files = ["asyncfix"]
 
 [tool.distutils.bdist_wheel]
 universal = true

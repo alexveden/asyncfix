@@ -55,7 +55,7 @@ class FIXContainer:
     def __init__(
         self,
         tags: (
-            dict[str | int, [str, float, int, list[dict | FIXContainer]]] | None
+            dict[str | int, str | float | int | list[dict | FIXContainer]] | None
         ) = None,
     ):
         """Initialize.
@@ -174,13 +174,14 @@ class FIXContainer:
 
         if tag in self:
             group_container = self.tags[tag]
+            assert isinstance(group_container, _FIXRepeatingGroupContainer)
             group_container.add_group(group, index)
         else:
             group_container = _FIXRepeatingGroupContainer()
             group_container.add_group(group, index)
             self.tags[tag] = group_container
 
-    def set_group(self, tag: str | int, groups: list[dict, FIXContainer]):
+    def set_group(self, tag: str | int, groups: list[dict | FIXContainer]):
         """Set repeating groups of the message.
 
         Args:
@@ -231,7 +232,9 @@ class FIXContainer:
                 "tag exists, but it does not belong to any group, not a group tag or"
                 " missing `repeating_group` in protocol class"
             )
-        return self.tags[tag].groups
+        group_container = self.tags[tag]
+        assert isinstance(group_container, _FIXRepeatingGroupContainer)
+        return group_container.groups
 
     def get_group_by_tag(
         self,
@@ -279,7 +282,7 @@ class FIXContainer:
 
         return g[index]
 
-    def query(self, *tags: tuple[FTag | str | int]) -> dict[FTag | str, str]:
+    def query(self, *tags: FTag | str | int) -> dict[FTag | str, str]:
         """Request multiple tags from FIXMessage as dictionary.
 
         Args:
@@ -290,7 +293,7 @@ class FIXContainer:
         """
         result = {}
         if not tags:
-            tags = self.tags
+            tags = tuple(self.tags)
 
         for t in tags:
             try:
@@ -332,7 +335,7 @@ class FIXContainer:
         r += "|".join(allTags)
         return r
 
-    def __eq__(self, other: FIXContainer | dict) -> bool:
+    def __eq__(self, other: object) -> bool:
         """Equality checks.
 
         Args:
@@ -386,7 +389,8 @@ class FIXMessage(FIXContainer):
     def __init__(
         self,
         msg_type: str | FMsg,
-        tags: dict[str | int, [str, float, int]] | None = None,
+        tags: dict[str | int, str | float | int | list[dict | FIXContainer]]
+        | None = None,
     ):
         """Initialize.
 

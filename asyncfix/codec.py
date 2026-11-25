@@ -2,6 +2,7 @@
 
 import logging
 from datetime import UTC, datetime
+from typing import cast
 
 from asyncfix import FMsg, FTag
 from asyncfix.errors import EncodingError
@@ -118,16 +119,16 @@ class Codec:
         # Enable easy change when debugging
         SEP = self.SOH
 
-        body = self.SOH.join(body) + self.SOH
+        body_encoded = self.SOH.join(body) + self.SOH
 
         # Create header
         header = []
         msg_type = f"{FTag.MsgType}={msg_type}"
         header.append(f"{FTag.BeginString}={self.protocol.beginstring}")
-        header.append(f"{FTag.BodyLength}={len(body) + len(msg_type) + 1}")
+        header.append(f"{FTag.BodyLength}={len(body_encoded) + len(msg_type) + 1}")
         header.append(msg_type)
 
-        fixmsg = self.SOH.join(header) + self.SOH + body
+        fixmsg = self.SOH.join(header) + self.SOH + body_encoded
 
         cksum = sum([ord(i) for i in fixmsg]) % 256
         fixmsg = fixmsg + f"{FTag.CheckSum}={cksum:03d}"
@@ -158,18 +159,18 @@ class Codec:
 
         parsed_length = valid_idx
 
-        msg = rawmsg[valid_idx:].decode("latin-1")
+        msg_str = rawmsg[valid_idx:].decode("latin-1")
 
-        next_msg = msg[5:].find("8=FIX.")
+        next_msg = msg_str[5:].find("8=FIX.")
         if next_msg != -1:
             # Next fix message added, but incomplete
             next_msg += 5
         else:
-            next_msg = len(msg)
+            next_msg = len(msg_str)
 
         encoded_msg = rawmsg[valid_idx : next_msg + valid_idx]
 
-        msg = msg[:next_msg].split(self.SOH)
+        msg = msg_str[:next_msg].split(self.SOH)
         if not msg[-1]:
             msg = msg[:-1]
 
@@ -210,9 +211,9 @@ class Codec:
         parsed_length += msg_length
 
         decoded_msg = FIXMessage("UNKNOWN")
-        repeating_groups = []
+        repeating_groups: list[_RepeatingGroupContext] = []
         repeating_group_tags = self.protocol.repeating_groups
-        current_context = decoded_msg
+        current_context: FIXContainer = decoded_msg
 
         for m in msg:
             toks = m.split("=", 1)
@@ -244,9 +245,10 @@ class Codec:
             # found the start of a repeating group
             if tag in repeating_group_tags:
                 # i.e. we are already in a repeating group
-                if type(current_context) is _RepeatingGroupContext:
+                if isinstance(current_context, _RepeatingGroupContext):
                     while (
                         repeating_groups
+                        and isinstance(current_context, _RepeatingGroupContext)
                         and tag not in current_context.repeating_group_tags
                     ):
                         current_context.parent.add_group(
@@ -265,7 +267,9 @@ class Codec:
                 # we have 1 or more repeating groups in progress
                 #    & our tag isn't the start of a group
                 while (
-                    repeating_groups and tag not in current_context.repeating_group_tags
+                    repeating_groups
+                    and isinstance(current_context, _RepeatingGroupContext)
+                    and tag not in current_context.repeating_group_tags
                 ):
                     current_context.parent.add_group(
                         current_context.tag, current_context
@@ -277,13 +281,12 @@ class Codec:
                 if tag in current_context.tags:
                     # if the repeating group already contains this field,
                     #     start the next
-                    current_context.parent.add_group(
-                        current_context.tag, current_context
-                    )
+                    group_ctx = cast(_RepeatingGroupContext, current_context)
+                    group_ctx.parent.add_group(group_ctx.tag, group_ctx)
                     ctx = _RepeatingGroupContext(
-                        current_context.tag,
-                        current_context.repeating_group_tags,
-                        current_context.parent,
+                        group_ctx.tag,
+                        group_ctx.repeating_group_tags,
+                        group_ctx.parent,
                     )
                     del repeating_groups[-1]
                     repeating_groups.append(ctx)

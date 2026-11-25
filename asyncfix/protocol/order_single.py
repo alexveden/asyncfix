@@ -3,6 +3,7 @@
 import re
 from datetime import UTC, datetime
 from math import isfinite, nan
+from typing import Any, cast
 
 from asyncfix import FIXMessage, FMsg, FTag
 from asyncfix.errors import FIXError
@@ -58,8 +59,8 @@ class FIXNewOrderSingle:
         assert clord_id, "empty clord_id"
 
         self.clord_id = clord_id
-        self.orig_clord_id = None
-        self.order_id = None
+        self.orig_clord_id: str | None = None
+        self.order_id: str | None = None
         self.ticker = cl_ticker
         self.side = side
         self.price = price
@@ -240,12 +241,12 @@ class FIXNewOrderSingle:
 
     @staticmethod
     def change_status(
-        status: FOrdStatus,
-        fix_msg_type: FMsg,
-        msg_exec_type: FExecType,
-        msg_status: FOrdStatus,
+        status: FOrdStatus | str,
+        fix_msg_type: FMsg | str,
+        msg_exec_type: FExecType | str | int,
+        msg_status: FOrdStatus | str,
         raise_on_err: bool = True,
-    ) -> FOrdStatus | None:
+    ) -> FOrdStatus | str | None:
         """FIX Order State transition algo.
 
         :param status: current order status
@@ -260,7 +261,7 @@ class FIXNewOrderSingle:
                  None - if transition is valid, but need to wait for a good state
                  raises FIXError - when transition is invalid
         """
-        status_transitions = {}
+        status_transitions: dict[object, Any] = {}
 
         if fix_msg_type == FMsg.EXECUTIONREPORT:
             status_transitions = {
@@ -408,7 +409,7 @@ class FIXNewOrderSingle:
             self.leaves_qty = 0
 
         if new_status is not None:
-            self.status = new_status
+            self.status = cast(FOrdStatus, new_status)
             return True
         else:
             return False

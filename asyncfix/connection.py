@@ -131,10 +131,7 @@ class AsyncFIXConnection:
             start_tasks: True - starts socket/heartbeat asyncio tasks, False - no tasks
                         (this is useful in debugging / testing)
         """
-        if not logger:
-            self.log: logging.Logger = logging.getLogger()
-        else:
-            self.log: logging.Logger = logger
+        self.log: logging.Logger = logging.getLogger() if not logger else logger
 
         # Private attributes
         self._connection_state: ConnectionState = (
@@ -152,8 +149,8 @@ class AsyncFIXConnection:
         self._message_last_time = 0.0
         self._max_seq_num_resend = 0
         self._test_req_id = None
-        self._socket_reader: asyncio.StreamReader = None
-        self._socket_writer: asyncio.StreamWriter = None
+        self._socket_reader: asyncio.StreamReader | None = None
+        self._socket_writer: asyncio.StreamWriter | None = None
         self._host = host
         self._port = int(port)
         self._aio_task_socket_read = None
@@ -267,6 +264,7 @@ class AsyncFIXConnection:
             f" {msg.msg_type!r}\n\t {msg_raw.decode()}\n"
         )
 
+        assert self._socket_writer is not None
         self._socket_writer.write(encoded_msg)
         await self._socket_writer.drain()
 
@@ -464,7 +462,7 @@ class AsyncFIXConnection:
             self._connection_was_active = True
         await self.on_state_change(connection_state)
 
-    def _validate_integrity(self, msg: FIXMessage) -> bool:
+    def _validate_integrity(self, msg: FIXMessage) -> bool | str | None:
         """Validates incoming message critical integrity.
 
         Args:
@@ -495,6 +493,7 @@ class AsyncFIXConnection:
             return "MsgSeqNum(34) tag is missing"
 
         msg_seq_num = int(msg[FTag.MsgSeqNum])
+        assert self._session.next_num_in is not None
         if msg_seq_num < self._session.next_num_in:
             _is_err = True
             if msg.msg_type == FMsg.SEQUENCERESET:
@@ -523,6 +522,7 @@ class AsyncFIXConnection:
 
         if self._connection_role == ConnectionRole.ACCEPTOR:
             assert self._connection_state == ConnectionState.LOGON_INITIAL_RECV
+            assert self._session.next_num_in is not None
             if msg_seq_num >= self._session.next_num_in:
                 msg_logon = FIXMessage(FMsg.LOGON)
                 msg_logon.set(FTag.EncryptMethod, logon_msg[FTag.EncryptMethod])
@@ -546,6 +546,7 @@ class AsyncFIXConnection:
             True - no gap, MsgSeqNum is correct
             False - there is a gap, ResendRequest() sent
         """
+        assert self._session.next_num_in is not None
         if msg_seq_num > self._session.next_num_in:
             if self._connection_state != ConnectionState.RESENDREQ_AWAITING:
                 resend_req = FIXMessage(
@@ -602,6 +603,7 @@ class AsyncFIXConnection:
 
         # Remember next_num_out
         current_next_num_out = self._session.next_num_out
+        assert current_next_num_out is not None
 
         self._journaler.set_seq_num(self._session, next_num_out=begin_seq_no)
         gap_fill_begin = int(begin_seq_no)
@@ -618,9 +620,10 @@ class AsyncFIXConnection:
 
         for enc_msg in journal_replay_msgs:
             replay_msg, _, _ = self._codec.decode(enc_msg, silent=False)
+            assert replay_msg is not None
             msg_seq_num = int(replay_msg[FTag.MsgSeqNum])
 
-            is_sess_msg = replay_msg[FTag.MsgType] in noreply_msgs
+            is_sess_msg = replay_msg.msg_type in noreply_msgs
             if is_sess_msg or not await self.should_replay(replay_msg):
                 gap_fill_end = msg_seq_num + 1
             else:

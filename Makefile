@@ -2,7 +2,7 @@ PROJ_ROOT:=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 
 p ?= $(PROJ_ROOT)
 
-.PHONY: tests coverage coverage-report complexity lint fmt pypi pre-commit docs
+.PHONY: tests coverage coverage-report complexity lint fmt typecheck pypi pre-commit docs
 
 pre-commit:
 	pre-commit run --all-files
@@ -24,6 +24,9 @@ lint:
 
 fmt:
 	ruff format $(p)
+
+typecheck:
+	mypy
 
 pypi:
 	rm -f dist/*

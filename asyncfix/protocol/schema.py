@@ -8,6 +8,7 @@ import re
 import warnings
 import xml.etree.ElementTree as ET
 from math import isfinite
+from typing import cast
 
 from asyncfix import FIXMessage, FTag
 from asyncfix.errors import FIXMessageError
@@ -234,7 +235,8 @@ class SchemaSet:
             ValueError: if not NUMINGROUP type or similar tag name
         """
         self.name: str = name
-        self.field: SchemaField = field  # this is set for groups, with attached field
+        # this is set for groups, with attached field
+        self.field: SchemaField | None = field
         if field and not (
             ("No" in field.name or "Num" in field.name)
             and field.ftype in ["NUMINGROUP", "INT"]
@@ -313,7 +315,7 @@ class SchemaSet:
         else:
             return self.name == o
 
-    def __contains__(self, item: str | SchemaField) -> bool:
+    def __contains__(self, item: str | SchemaField | SchemaSet) -> bool:
         """Check if SchemaSet contains field or name.
 
         Args:
@@ -331,7 +333,9 @@ class SchemaSet:
         except ValueError:
             return item in self.members
 
-    def __getitem__(self, item: str | SchemaField) -> SchemaField | SchemaSet:
+    def __getitem__(
+        self, item: str | SchemaField | SchemaSet
+    ) -> SchemaField | SchemaSet:
         """Get field item by SchemaField or name.
 
         Args:
@@ -347,7 +351,7 @@ class SchemaSet:
             int(str(item))
             raise FIXMessageError("item looks like tag, use name or SchemaField")
         except ValueError:
-            return self.members[item]
+            return self.members[cast(SchemaField | SchemaSet, item)]
 
 
 class SchemaGroup(SchemaSet):
@@ -356,6 +360,8 @@ class SchemaGroup(SchemaSet):
     Attributes:
         field_required:
     """
+
+    field: SchemaField
 
     def __init__(self, field: SchemaField, required: bool):
         """Initialize.
@@ -494,21 +500,19 @@ class FIXSchema:
         Raises:
             ValueError:
         """
-        if isinstance(xml_or_path, str):
-            xml_or_path = ET.parse(xml_or_path)
-
-        assert isinstance(xml_or_path, ET.ElementTree)
+        tree = ET.parse(xml_or_path) if isinstance(xml_or_path, str) else xml_or_path
 
         self._tag2field: dict[str, SchemaField] = {}
         self._field2tag: dict[str, SchemaField] = {}
-        self._header: SchemaHeader = None
+        self._header: SchemaHeader = SchemaHeader()
         self._components: dict[str, SchemaComponent] = {}
         self._messages: dict[str, SchemaMessage] = {}
         self._messages_types: dict[str, SchemaMessage] = {}
-        self._header = {}
-        self._types = set()
+        self._types: set[str] = set()
 
-        self._parse(xml_or_path.getroot())
+        root = tree.getroot()
+        assert root is not None
+        self._parse(root)
 
     def _parse_msg_set(self, component, element):
         has_circular_refs = False
@@ -616,12 +620,18 @@ class FIXSchema:
     def _parse(self, root: ET.Element):
         assert not self._field2tag, "already parsed"
 
-        for element in root.find("fields"):
+        fields = root.find("fields")
+        assert fields is not None
+        for element in fields:
             self._parse_field(element)
 
-        self._parse_header(root.find("header"))
+        header = root.find("header")
+        assert header is not None
+        self._parse_header(header)
 
-        all_components = [e for e in root.find("components")]
+        components = root.find("components")
+        assert components is not None
+        all_components = [e for e in components]
         full_count = len(all_components)
         prev_cnt = len(all_components)
         while all_components:
@@ -645,7 +655,9 @@ class FIXSchema:
         assert full_count == len(self._components), "Component count mismatch"
 
         n_msg = 0
-        for element in root.find("messages"):
+        messages = root.find("messages")
+        assert messages is not None
+        for element in messages:
             self._parse_message(element)
             n_msg += 1
 
@@ -679,7 +691,7 @@ class FIXSchema:
         if msg.msg_type not in self._messages_types:
             raise FIXMessageError(f"msg_type=`{msg.msg_type}` not in schema")
 
-        schema_msg = self._messages_types[msg.msg_type]
+        schema_msg = self._messages_types[str(msg.msg_type)]
 
         schema_fields = set()
         for fname, req in schema_msg.required.items():
@@ -714,6 +726,7 @@ class FIXSchema:
                     raise FIXMessageError(
                         f"msg tag={tag} val={val} must be a tag, got group"
                     )
+                assert isinstance(val, str)
                 fschema.validate_value(val)
 
             elif isinstance(fschema, SchemaGroup):
