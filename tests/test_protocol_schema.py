@@ -219,6 +219,27 @@ def test_xml_init(fix_simple_xml):
     assert field in schema._header
 
 
+def test_xml_group_required_flags():
+    tree = ET.parse(os.path.join(TEST_DIR, "TT-FIX44.xml"))
+    schema = FIXSchema(tree)
+
+    entries = [
+        (st, member, required)
+        for st in [
+            schema._header,
+            *schema._messages.values(),
+            *schema._components.values(),
+        ]
+        for member, required in st.required.items()
+        if isinstance(member, SchemaGroup)
+    ]
+    assert any(req is True for _, _, req in entries)
+    assert any(req is False for _, _, req in entries)
+
+    for _, group, required in entries:
+        assert required is group.field_required
+
+
 def test_xml_circular_init(fix_circular_invalid_xml):
     with pytest.raises(
         RuntimeError,
