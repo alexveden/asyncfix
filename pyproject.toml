@@ -4,9 +4,8 @@ version = "1.1.0"
 description = "AsyncIO FIX Protocol client for Python"
 readme = "README.md"
 authors = [{ name = "Alex Veden", email = "i@alexveden.com" }]
-license = {text = "MIT License"}
+license = "MIT"
 classifiers = [
-    "License :: OSI Approved :: MIT License",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
@@ -71,7 +70,4 @@ python_version = "3.11"
 files = ["asyncfix"]
 exclude = ["^tests/", "^build/"]
 strict = true
-
-[tool.distutils.bdist_wheel]
-universal = true
 
