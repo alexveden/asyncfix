@@ -27,6 +27,11 @@ def fix_simple_xml():
 
 
 @pytest.fixture
+def fix_required_group_xml():
+    return ET.parse(os.path.join(TEST_DIR, "schema_required_group.xml"))
+
+
+@pytest.fixture
 def fix_circular_invalid_xml():
     return os.path.join(TEST_DIR, "schema_fix_comp_circular.xml")
 
@@ -430,6 +435,38 @@ def test_schema_validation(fix_simple_xml):
     assert len(mock_valgrp.call_args[0][0]) == 1
     assert mock_valgrp.call_args[1] == {}
     assert mock_valgrp.call_args[0][0][0] == {1: "test"}
+
+
+def test_schema_validation_required_group(fix_required_group_xml):
+    schema = FIXSchema(fix_required_group_xml)
+    tags = {
+        8: "FIX.4.4",
+        35: "E",
+        627: [{628: "HOP1"}],
+        11: "clord-1",
+        73: [{11: "grp-1", 38: 10, 78: [{79: "ACC-1"}]}],
+    }
+
+    assert schema.validate(FIXMessage("E", tags))
+    assert schema.validate(FIXMessage("E", {**tags, 453: [{448: "P1"}]}))
+
+    without_group = {k: v for k, v in tags.items() if k != 73}
+    with pytest.raises(
+        FIXMessageError, match="Missing required group=SchemaGroup.*NoOrders"
+    ):
+        schema.validate(FIXMessage("E", without_group))
+
+    without_nested_group = {**tags, 73: [{11: "grp-1", 38: 10}]}
+    with pytest.raises(
+        FIXMessageError, match="missing required group SchemaGroup.*NoAllocs"
+    ):
+        schema.validate(FIXMessage("E", without_nested_group))
+
+    without_header_group = {k: v for k, v in tags.items() if k != 627}
+    with pytest.raises(
+        FIXMessageError, match="Missing required group=SchemaGroup.*NoHops"
+    ):
+        schema.validate(FIXMessage("E", without_header_group))
 
 
 def test_field_type_validation__int():

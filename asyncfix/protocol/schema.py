@@ -434,14 +434,16 @@ class SchemaGroup(SchemaSet):
                 )
 
             for sv in tag_fields.values():
-                if (
-                    isinstance(sv, SchemaField)
-                    and sv.tag not in fmsg
-                    and self.required[sv]
-                ):
+                if sv.tag in fmsg or not self.required[sv]:
+                    continue
+                if isinstance(sv, SchemaField):
                     raise FIXMessageError(
                         f"fixmessage={groups} missing required field {sv!r}"
                     )
+                assert isinstance(sv, SchemaGroup)
+                raise FIXMessageError(
+                    f"fixmessage={groups} missing required group {sv!r}"
+                )
 
     def __repr__(self) -> str:
         """Repr."""
@@ -688,6 +690,8 @@ class FIXSchema:
                     raise FIXMessageError(f"Missing required field={f!r}")
                 f_val = msg[f.tag]
                 f.validate_value(f_val)
+            elif req and isinstance(f, SchemaGroup) and f.tag not in msg:
+                raise FIXMessageError(f"Missing required group={f!r}")
 
     def validate(self, msg: FIXMessage) -> bool:
         """Validates generic FIXMessage based on schema.
@@ -713,6 +717,8 @@ class FIXSchema:
 
             if req and isinstance(f, SchemaField) and f.tag not in msg:
                 raise FIXMessageError(f"Missing required field={f!r}")
+            if req and isinstance(f, SchemaGroup) and f.tag not in msg:
+                raise FIXMessageError(f"Missing required group={f!r}")
 
         if "8" in msg:
             self._validate_header(msg)
