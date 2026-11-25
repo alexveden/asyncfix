@@ -10,7 +10,7 @@ from asyncfix.protocol import FIXNewOrderSingle, FIXProtocol44, FOrdSide, FOrdTy
 class Client(AsyncFIXClient):
     """Simple AsyncFIX client."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize."""
         journal = Journaler("client_example.store")
         super().__init__(
@@ -24,7 +24,7 @@ class Client(AsyncFIXClient):
         self.orders: dict[str, FIXNewOrderSingle] = {}
         self.clord_id = 0
 
-    async def on_connect(self):
+    async def on_connect(self) -> None:
         """(AppEvent) Underlying socket connected."""
         self.log.info("on_connect: sending logon")
 
@@ -37,11 +37,11 @@ class Client(AsyncFIXClient):
         )
         await self.send_msg(logon_msg)
 
-    async def on_disconnect(self):
+    async def on_disconnect(self) -> None:
         """(AppEvent) Underlying socket disconnected."""
         self.log.info("on_disconnect")
 
-    async def on_logon(self, is_healthy: bool):
+    async def on_logon(self, is_healthy: bool) -> None:
         """(AppEvent) Logon(35=A) received from peer.
 
         Args:
@@ -49,7 +49,7 @@ class Client(AsyncFIXClient):
         """
         self.log.info("on_logon")
 
-    async def on_logout(self, msg: FIXMessage):
+    async def on_logout(self, msg: FIXMessage) -> None:
         """(AppEvent) Logout(35=5) received from peer.
 
         Args:
@@ -67,7 +67,7 @@ class Client(AsyncFIXClient):
         """
         return True
 
-    async def on_state_change(self, connection_state: ConnectionState):
+    async def on_state_change(self, connection_state: ConnectionState) -> None:
         """(AppEvent) On ConnectionState change.
 
         Args:
@@ -78,7 +78,7 @@ class Client(AsyncFIXClient):
             # Send test order once connected
             await self.send_order()
 
-    async def on_message(self, msg: FIXMessage):
+    async def on_message(self, msg: FIXMessage) -> None:
         """(AppEvent) Business message was received.
 
         Typically excludes session messages
@@ -91,7 +91,7 @@ class Client(AsyncFIXClient):
         else:
             self.log.debug(f"on_message: app msg skipped: {msg}")
 
-    async def send_order(self):
+    async def send_order(self) -> None:
         """Sends test order."""
         self.clord_id = self.clord_id + 1
         order = FIXNewOrderSingle(
@@ -113,7 +113,7 @@ class Client(AsyncFIXClient):
 
         await self.send_msg(msg)
 
-    async def on_execution_report(self, msg: FIXMessage):
+    async def on_execution_report(self, msg: FIXMessage) -> None:
         """Processes execution report."""
         clord_id = msg[FTag.ClOrdID]
         if clord_id in self.orders:
@@ -129,7 +129,7 @@ class Client(AsyncFIXClient):
                 await self.send_msg(cxl_req)
 
 
-async def main():
+async def main() -> None:
     """Main function."""
     client = Client()
     await client.connect()

@@ -4,7 +4,7 @@ import enum
 
 
 class _TagEnumMeta(enum.EnumMeta):
-    def __contains__(cls, item):
+    def __contains__(cls, item: object) -> bool:
         if isinstance(item, enum.Enum):
             return isinstance(item, cls) and item._name_ in cls._member_map_
         else:
@@ -15,15 +15,15 @@ class _TagEnumMeta(enum.EnumMeta):
 class FTag(str, enum.Enum, metaclass=_TagEnumMeta):
     """All tags enum."""
 
-    def __str__(self):
+    def __str__(self) -> str:
         """Convert to string."""
         return str(self.value)
 
-    def __eq__(self, o):
+    def __eq__(self, o: object) -> bool:
         """Equality check."""
-        return self.value == str(o)
+        return str(self.value) == str(o)
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         """Hash by tag value."""
         return hash(self.value)
 

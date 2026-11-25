@@ -9,7 +9,7 @@ from asyncfix.journaler import Journaler
 from asyncfix.message import MessageDirection
 
 
-def main():
+def main() -> None:
     """Entry point."""
     logging.basicConfig(format="%(asctime)s %(message)s", level=logging.INFO)
 
@@ -72,13 +72,13 @@ def main():
                 else MessageDirection.OUTBOUND
             )
         )
-        for seqNo, msg, msgDirection, session in journal.get_all_msgs(
+        for seqNo, msg, msgDirection, session_key in journal.get_all_msgs(
             args.sessions, direction
         ):
             mfmt = msg.decode()
             mfmt = mfmt.replace("\x01", "|")
             d = "---->" if msgDirection == MessageDirection.OUTBOUND.value else "<----"
-            print(f"{session:>3} {d:^5} [{seqNo:>5}] {mfmt}")
+            print(f"{session_key:>3} {d:^5} [{seqNo:>5}] {mfmt}")
 
 
 if __name__ == "__main__":

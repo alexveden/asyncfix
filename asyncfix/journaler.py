@@ -10,7 +10,7 @@ from asyncfix.session import FIXSession
 class Journaler:
     """Tracks FIX message history."""
 
-    def __init__(self, filename=None):
+    def __init__(self, filename: str | None = None) -> None:
         """Initialize SQLite Journaler.
 
         Args:
@@ -41,7 +41,7 @@ class Journaler:
             "UNIQUE (targetCompId, senderCompId))"
         )
 
-    def __del__(self):
+    def __del__(self) -> None:
         """Closes DB cursor and connection."""
         self.cursor.close()
         self.conn.close()
@@ -61,7 +61,7 @@ class Journaler:
 
         return sessions
 
-    def create_or_load(self, target_comp_id, sender_comp_id) -> FIXSession:
+    def create_or_load(self, target_comp_id: str, sender_comp_id: str) -> FIXSession:
         """Creates or loads new session with unique target_comp_id/sender_comp_id.
 
         Args:
@@ -77,6 +77,7 @@ class Journaler:
                 (target_comp_id, sender_comp_id),
             )
             session_id = self.cursor.lastrowid
+            assert session_id is not None
             self.conn.commit()
             session = FIXSession(session_id, target_comp_id, sender_comp_id)
             session.next_num_out = 1
@@ -122,7 +123,7 @@ class Journaler:
         session: FIXSession,
         next_num_out: int | None = None,
         next_num_in: int | None = None,
-    ):
+    ) -> None:
         """Sets journal and session seq num.
 
         Args:
@@ -163,7 +164,7 @@ class Journaler:
         msg: bytes,
         session: FIXSession,
         direction: MessageDirection,
-    ):
+    ) -> None:
         """Commits encoded fix message into DB.
 
         Args:
@@ -251,7 +252,7 @@ class Journaler:
         self,
         sessions: list[FIXSession] | None = None,
         direction: MessageDirection | None = None,
-    ):
+    ) -> list[tuple[int, bytes, int, int]]:
         """Get all messages from the Journaler DB.
 
         Args:

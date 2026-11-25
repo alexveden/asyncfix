@@ -47,7 +47,7 @@ class AsyncFIXDummyServer(AsyncFIXConnection):
         )
         self._connection_role = ConnectionRole.ACCEPTOR
 
-    async def connect(self):
+    async def connect(self) -> None:
         """Starts the server and infinitely runs it.
 
         Raises:
@@ -67,7 +67,7 @@ class AsyncFIXDummyServer(AsyncFIXConnection):
         self,
         reader: asyncio.StreamReader,
         writer: asyncio.StreamWriter,
-    ):
+    ) -> None:
         """Executed when new client connection established."""
         if self._socket_writer:
             self.log.info("Multiple connections are not allowed for dummy server")

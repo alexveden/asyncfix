@@ -47,7 +47,7 @@ class AsyncFIXClient(AsyncFIXConnection):
         )
         self._connection_role = ConnectionRole.INITIATOR
 
-    async def connect(self):
+    async def connect(self) -> None:
         """Connects to the FIX server and initializes session.
 
         Raises:

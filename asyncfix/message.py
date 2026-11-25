@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections import OrderedDict
+from collections.abc import ItemsView
 from enum import Enum
 from typing import Any, TypeGuard, cast
 
@@ -31,10 +32,10 @@ class MessageDirection(Enum):
 
 
 class _FIXRepeatingGroupContainer:
-    def __init__(self):
+    def __init__(self) -> None:
         self.groups: list[FIXContainer] = []
 
-    def add_group(self, group, index):
+    def add_group(self, group: FIXContainer, index: int) -> None:
         if index == -1:
             self.groups.append(group)
         else:
@@ -75,7 +76,9 @@ class FIXContainer:
         Args:
             tags: add tags at initialization time (all keys / values converted to str!)
         """
-        self.tags: dict[str, str | _FIXRepeatingGroupContainer] = OrderedDict()
+        self.tags: dict[str, str | _FIXRepeatingGroupContainer | type[Exception]] = (
+            OrderedDict()
+        )
 
         if tags:
             for t, v in tags.items():
@@ -84,7 +87,7 @@ class FIXContainer:
                 else:
                     self.set(t, v)
 
-    def set(self, tag: str | int, value, replace: bool = False):
+    def set(self, tag: str | int, value: object, replace: bool = False) -> None:
         """Set tag value.
 
         Args:
@@ -104,14 +107,14 @@ class FIXContainer:
 
         t = str(tag)
 
-        if not _isclass(value):
+        if _isclass(value):
+            self.tags[t] = value
+        else:
             # Case for setting tags as errors (allow overwriting by Exception)
             if not replace and t in self.tags:
                 raise DuplicatedTagError(f"tag={t} already exists")
 
-            value = str(value)
-
-        self.tags[t] = value
+            self.tags[t] = str(value)
 
     def get(self, tag: str | int | FTag, default: object = TagNotFoundError) -> str:
         """Get tag value.
@@ -160,8 +163,11 @@ class FIXContainer:
             return None
 
     def add_group(
-        self, tag: str | int, group: FIXContainer | dict[Any, Any], index: int = -1
-    ):
+        self,
+        tag: str | int,
+        group: FIXContainer | dict[Any, Any],
+        index: int = -1,
+    ) -> None:
         """Add repeating group item to fix message.
 
         Args:
@@ -188,7 +194,9 @@ class FIXContainer:
             group_container.add_group(group, index)
             self.tags[tag] = group_container
 
-    def set_group(self, tag: str | int, groups: list[dict[Any, Any] | FIXContainer]):
+    def set_group(
+        self, tag: str | int, groups: list[dict[Any, Any] | FIXContainer]
+    ) -> None:
         """Set repeating groups of the message.
 
         Args:
@@ -311,7 +319,9 @@ class FIXContainer:
             result[t] = self.get(t, None)
         return result
 
-    def items(self):
+    def items(
+        self,
+    ) -> ItemsView[str, str | _FIXRepeatingGroupContainer | type[Exception]]:
         """All tags items iterator."""
         return self.tags.items()
 
@@ -319,15 +329,15 @@ class FIXContainer:
         """Item getter by tag."""
         return self.get(tag)
 
-    def __setitem__(self, tag: str | int, value):
+    def __setitem__(self, tag: str | int, value: object) -> None:
         """Item setter by tag."""
         self.set(tag, value)
 
-    def __delitem__(self, tag: str | int):
+    def __delitem__(self, tag: str | int) -> None:
         """Deletes tag from message."""
         del self.tags[str(tag)]
 
-    def __contains__(self, item: str | int):
+    def __contains__(self, item: str | int) -> bool:
         """Checks if container contains tags."""
         return str(item) in self.tags
 
@@ -416,7 +426,7 @@ class FIXMessage(FIXContainer):
         return self._msg_type
 
     @msg_type.setter
-    def msg_type(self, msg_type: str | FMsg):
+    def msg_type(self, msg_type: str | FMsg) -> None:
         """Message type setter.
 
         Args:
@@ -424,6 +434,6 @@ class FIXMessage(FIXContainer):
         """
         self._msg_type = msg_type
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         """Repr."""
         return f"msg_type={self.msg_type}|" + super().__str__()

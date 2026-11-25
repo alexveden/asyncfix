@@ -18,7 +18,7 @@ from asyncfix.protocol import FExecType, FIXNewOrderSingle, FIXProtocol44, FOrdS
 class Server(AsyncFIXDummyServer):
     """Dummy server, supports only 1 connection."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize."""
         journal = Journaler("server_example.store")
         super().__init__(
@@ -33,15 +33,15 @@ class Server(AsyncFIXDummyServer):
         self.orders: dict[str, FIXNewOrderSingle] = {}
         self.clord_id = 0
 
-    async def on_connect(self):
+    async def on_connect(self) -> None:
         """(AppEvent) Underlying socket connected."""
         self.log.info("on_connect")
 
-    async def on_disconnect(self):
+    async def on_disconnect(self) -> None:
         """(AppEvent) Underlying socket disconnected."""
         self.log.info("on_disconnect")
 
-    async def on_logon(self, is_healthy: bool):
+    async def on_logon(self, is_healthy: bool) -> None:
         """(AppEvent) Logon(35=A) received from peer.
 
         Args:
@@ -49,7 +49,7 @@ class Server(AsyncFIXDummyServer):
         """
         self.log.info("on_logon")
 
-    async def on_logout(self, msg: FIXMessage):
+    async def on_logout(self, msg: FIXMessage) -> None:
         """(AppEvent) Logout(35=5) received from peer.
 
         Args:
@@ -67,7 +67,7 @@ class Server(AsyncFIXDummyServer):
         """
         return True
 
-    async def on_state_change(self, connection_state: ConnectionState):
+    async def on_state_change(self, connection_state: ConnectionState) -> None:
         """(AppEvent) On ConnectionState change.
 
         Args:
@@ -75,7 +75,7 @@ class Server(AsyncFIXDummyServer):
         """
         self.log.info("on_state_change")
 
-    async def on_message(self, msg: FIXMessage):
+    async def on_message(self, msg: FIXMessage) -> None:
         """(AppEvent) Business message was received.
 
         Typically excludes session messages
@@ -88,7 +88,7 @@ class Server(AsyncFIXDummyServer):
         else:
             self.log.debug(f"on_message: app msg skipped: {msg}")
 
-    async def on_new_order(self, msg: FIXMessage):
+    async def on_new_order(self, msg: FIXMessage) -> None:
         """Reply execution report on incoming order request.
 
         Args:
@@ -124,7 +124,7 @@ class Server(AsyncFIXDummyServer):
             await self.send_msg(msg)
 
 
-async def main():
+async def main() -> None:
     """Entry point."""
     server = Server()
 

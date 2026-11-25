@@ -14,7 +14,7 @@ class FIXSession:
         next_num_in: next expected seq num in
     """
 
-    def __init__(self, key, target_comp_id: str, sender_comp_id: str):
+    def __init__(self, key: int, target_comp_id: str, sender_comp_id: str) -> None:
         """Initialize session.
 
         Args:
@@ -34,11 +34,11 @@ class FIXSession:
         self.next_num_out: int | None = None
         self.next_num_in: int | None = None
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         """Hash by (target, sender)."""
         return hash((self.target_comp_id, self.sender_comp_id))
 
-    def __eq__(self, o):
+    def __eq__(self, o: object) -> bool:
         """Equality by FIXSession or tuple(target, sender)."""
         if isinstance(o, FIXSession):
             return (
@@ -48,10 +48,10 @@ class FIXSession:
         elif isinstance(o, tuple):
             if len(o) != 2:
                 return False
-            return self.target_comp_id == o[0] and self.sender_comp_id == o[1]
+            return bool(self.target_comp_id == o[0] and self.sender_comp_id == o[1])
         return False
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         """Repr."""
         return (
             f"FIXSession(key={self.key},"
@@ -74,7 +74,7 @@ class FIXSession:
             and self.target_comp_id == target_comp_id
         )
 
-    def allocate_next_num_out(self):
+    def allocate_next_num_out(self) -> str:
         """Increments next_num_out counter."""
         assert self.next_num_out is not None
         n = str(self.next_num_out)

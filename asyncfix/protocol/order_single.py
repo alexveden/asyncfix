@@ -74,7 +74,7 @@ class FIXNewOrderSingle:
         self.status: FOrdStatus = FOrdStatus.CREATED
         self.target_price = target_price if target_price is not None else price
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         """Repr."""
         return (
             f"FIXNewOrderSingle({self.status.name}, clord={self.clord_id},"
@@ -109,7 +109,7 @@ class FIXNewOrderSingle:
         return self.clord_root(self.clord_id)
 
     @staticmethod
-    def current_datetime():
+    def current_datetime() -> str:
         """Date for TransactTime field."""
         return datetime.now(UTC).strftime("%Y%m%d-%H:%M:%S.%f")[:-3]
 
@@ -205,7 +205,7 @@ class FIXNewOrderSingle:
 
         return m
 
-    def set_instrument(self, ord_msg: FIXMessage):
+    def set_instrument(self, ord_msg: FIXMessage) -> None:
         """Set order instrument definition (override this in child).
 
         Args:
@@ -215,7 +215,7 @@ class FIXNewOrderSingle:
         #  more fields (override this method in child class)
         ord_msg[FTag.Symbol] = self.ticker
 
-    def set_account(self, ord_msg: FIXMessage):
+    def set_account(self, ord_msg: FIXMessage) -> None:
         """Set account definition (override this in child).
 
         Args:
@@ -225,7 +225,7 @@ class FIXNewOrderSingle:
         assert isinstance(self.account, str), "Account expected a string"
         ord_msg[FTag.Account] = self.account
 
-    def set_price_qty(self, ord_msg: FIXMessage, price: float, qty: float):
+    def set_price_qty(self, ord_msg: FIXMessage, price: float, qty: float) -> None:
         """Set order price and qty definition (override this in child).
 
         This method handles custom price/qty rounding/decimal formatting, or maybe

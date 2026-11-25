@@ -14,7 +14,9 @@ logger = logging.getLogger(__name__)
 
 
 class _RepeatingGroupContext(FIXContainer):
-    def __init__(self, tag, repeating_group_tags, parent):
+    def __init__(
+        self, tag: str, repeating_group_tags: list[str], parent: FIXContainer
+    ) -> None:
         self.tag = tag
         self.repeating_group_tags = repeating_group_tags
         self.parent = parent
@@ -43,7 +45,7 @@ class Codec:
         """FIX complaint date-time string (UTC now)."""
         return datetime.now(UTC).strftime("%Y%m%d-%H:%M:%S.%f")[:-3]
 
-    def _addTag(self, body, t, msg: FIXContainer):
+    def _addTag(self, body: list[str], t: str, msg: FIXContainer) -> None:
         if msg.is_group(t):
             groups = msg.get_group_list(t)
             body.append(f"{t}={len(groups)}")
@@ -80,7 +82,7 @@ class Codec:
         body.append(f"{FTag.SenderCompID}={session.sender_comp_id}")
         body.append(f"{FTag.TargetCompID}={session.target_comp_id}")
 
-        seq_no = 0
+        seq_no: str | int = 0
         if raw_seq_num:
             seq_no = int(msg[FTag.MsgSeqNum])
         else:

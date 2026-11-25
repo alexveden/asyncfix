@@ -4,7 +4,7 @@ import enum
 
 
 class _MsgTypeEnumMeta(enum.EnumMeta):
-    def __contains__(cls, item):
+    def __contains__(cls, item: object) -> bool:
         if isinstance(item, enum.Enum):
             return isinstance(item, cls) and item._name_ in cls._member_map_
         else:
@@ -14,15 +14,15 @@ class _MsgTypeEnumMeta(enum.EnumMeta):
 class FMsg(enum.Enum, metaclass=_MsgTypeEnumMeta):
     """FIXMessage type enum."""
 
-    def __str__(self):
+    def __str__(self) -> str:
         """To string."""
         return str(self.value)
 
-    def __eq__(self, o):
+    def __eq__(self, o: object) -> bool:
         """Equality check."""
-        return self.value == o
+        return bool(self.value == o)
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         """Hash by value."""
         return hash(self.value)
 

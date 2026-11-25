@@ -89,7 +89,9 @@ class FIXTester:
             self._socket_drain_in_coro: Coroutine[Any, Any, None] | None = None
             self.conn_accept._socket_writer.wait_closed = AsyncMock()
 
-    def set_next_num(self, num_in=None, num_out=None):
+    def set_next_num(
+        self, num_in: int | None = None, num_out: int | None = None
+    ) -> None:
         """Set expected session seq nums for simulated acceptor.
 
         Args:
@@ -106,7 +108,7 @@ class FIXTester:
             assert num_out > 0
             self.conn_accept._session.next_num_out = num_out
 
-    def reset_messages(self):
+    def reset_messages(self) -> None:
         """Reset messages queues of initiator and acceptor."""
         self.initiator_sent.clear()
         self.acceptor_rcv_que.clear()
@@ -148,7 +150,7 @@ class FIXTester:
             *cast(tuple[FTag | str | int, ...], tags)
         )
 
-    def _conn_socket_write_initiator(self, data):
+    def _conn_socket_write_initiator(self, data: bytes) -> None:
         assert self.conn_init is not None
         msg, _, _ = self.conn_init._codec.decode(data, silent=False)
         assert msg is not None
@@ -157,7 +159,7 @@ class FIXTester:
         self.initiator_sent.append(msg)
         self.acceptor_rcv_que.append((msg, data))
 
-    def _conn_socket_write_acceptor(self, data):
+    def _conn_socket_write_acceptor(self, data: bytes) -> None:
         assert self.conn_accept is not None
         msg, _, _ = self.conn_accept._codec.decode(data, silent=False)
         assert msg is not None
@@ -168,14 +170,14 @@ class FIXTester:
         assert self.conn_init is not None
         self._socket_drain_in_coro = self.conn_init._process_message(msg, data)
 
-    async def _conn_socket_drain_acceptor(self):
+    async def _conn_socket_drain_acceptor(self) -> None:
         try:
             if self._socket_drain_in_coro:
                 await self._socket_drain_in_coro
         finally:
             self._socket_drain_in_coro = None
 
-    async def process_msg_acceptor(self, index=None):
+    async def process_msg_acceptor(self, index: int | None = None) -> None:
         """Processes messages queued by initiator.send_msg().
 
         Args:
@@ -190,7 +192,7 @@ class FIXTester:
             if index is not None:
                 break
 
-    async def reply(self, msg: FIXMessage):
+    async def reply(self, msg: FIXMessage) -> FIXMessage:
         """Manually reply to the initiator with arbitrary FIXMessage.
 
         Args:
@@ -228,7 +230,7 @@ class FIXTester:
         self._exec_id += 1
         return self._exec_id
 
-    def order_register_single(self, o: FIXNewOrderSingle):
+    def order_register_single(self, o: FIXNewOrderSingle) -> bool:
         """Registers FIXNewOrderSingle."""
         self.registered_orders[o.clord_id] = o
         return True
@@ -466,7 +468,7 @@ class FIXTester:
 
         return msg
 
-    def msg_heartbeat(self, test_req_id=None) -> FIXMessage:
+    def msg_heartbeat(self, test_req_id: int | str | None = None) -> FIXMessage:
         """Generates message HEARTBEAT + schema validation.
 
         Args:
@@ -481,7 +483,7 @@ class FIXTester:
 
         return msg
 
-    def msg_test_request(self, test_req_id) -> FIXMessage:
+    def msg_test_request(self, test_req_id: int | str) -> FIXMessage:
         """Generates message TESTREQUEST + schema validation.
 
         Args:
@@ -516,7 +518,9 @@ class FIXTester:
             self.schema.validate(msg)
         return msg
 
-    def msg_resend_request(self, begin_seq_no, end_seq_no="0") -> FIXMessage:
+    def msg_resend_request(
+        self, begin_seq_no: int, end_seq_no: int | str = "0"
+    ) -> FIXMessage:
         """Generates message RESENDREQUEST + schema validation.
 
         Args:
