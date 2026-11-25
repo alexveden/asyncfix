@@ -22,6 +22,19 @@ message exchange)
 pip install asyncfix
 ```
 
+## Development
+Install the package with development tools, then run the checks:
+```
+pip install -e ".[dev]"
+pre-commit install
+```
+```
+make tests        # pytest
+make lint         # ruff check
+make fmt          # ruff format
+make complexity   # mccabe, advisory
+```
+
 ## Getting started
 * [Simple snippets](https://alexveden.github.io/asyncfix/examples/)
 * [Client example](https://github.com/alexveden/asyncfix/tree/main/examples/client_example.py)
