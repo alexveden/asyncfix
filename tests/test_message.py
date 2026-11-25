@@ -51,6 +51,20 @@ def test_tag_errors():
         msg[45]
 
 
+def test_get_returns_default_for_missing_tag():
+    msg = FIXMessage("AB", {FTag.Price: 21.21})
+
+    assert msg.get(FTag.Price) == "21.21"
+    assert isinstance(msg.get(FTag.Price), str)
+    assert msg.get(FTag.Price, None) == "21.21"
+    assert msg.get("99", None) is None
+    assert msg.get("99", 0) == 0
+    assert msg.get("99", "0") == "0"
+
+    with pytest.raises(TagNotFoundError):
+        msg.get("99")
+
+
 def test_groups():
     msg = FIXMessage("AB")
 
@@ -262,3 +276,4 @@ def test_query():
         "21238": "test",
     } == msg.query()
     assert {FTag.ClOrdID: "clordis", FTag.Account: "account"} != msg.query(12, 1)
+    assert msg.query(11, 21239) == {FTag.ClOrdID: "clordis", "21239": None}

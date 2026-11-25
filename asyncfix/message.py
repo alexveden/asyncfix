@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections import OrderedDict
 from collections.abc import ItemsView
 from enum import Enum
-from typing import Any, TypeGuard, cast
+from typing import Any, TypeGuard, TypeVar, overload
 
 from asyncfix import FMsg, FTag
 from asyncfix.errors import (
@@ -15,6 +15,8 @@ from asyncfix.errors import (
     TagNotFoundError,
     UnmappedRepeatedGrpError,
 )
+
+_T = TypeVar("_T")
 
 
 def _isclass(cl: Any) -> TypeGuard[type]:
@@ -116,7 +118,13 @@ class FIXContainer:
 
             self.tags[t] = str(value)
 
-    def get(self, tag: str | int | FTag, default: object = TagNotFoundError) -> str:
+    @overload
+    def get(self, tag: str | int | FTag) -> str: ...
+
+    @overload
+    def get(self, tag: str | int | FTag, default: _T) -> str | _T: ...
+
+    def get(self, tag: str | int | FTag, default: object = TagNotFoundError) -> object:
         """Get tag value.
 
         Args:
@@ -143,7 +151,7 @@ class FIXContainer:
             raise FIXMessageError(
                 "You are trying to get group as simple tag,use get_group*() methods"
             )
-        return cast(str, result)
+        return result
 
     def is_group(self, tag: str | int) -> bool | None:
         """Check if tag is repeating group.
@@ -297,7 +305,7 @@ class FIXContainer:
 
         return g[index]
 
-    def query(self, *tags: FTag | str | int) -> dict[FTag | str, str]:
+    def query(self, *tags: FTag | str | int) -> dict[FTag | str, str | None]:
         """Request multiple tags from FIXMessage as dictionary.
 
         Args:

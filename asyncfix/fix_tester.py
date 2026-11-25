@@ -118,7 +118,7 @@ class FIXTester:
         self,
         tags: tuple[FTag | str | int] | None = None,
         index: int = -1,
-    ) -> dict[FTag | str, str]:
+    ) -> dict[FTag | str, str | None]:
         """Query message sent from FIXTester to initiator.
 
         Args:
@@ -136,7 +136,7 @@ class FIXTester:
         self,
         tags: tuple[FTag | str | int] | None = None,
         index: int = -1,
-    ) -> dict[FTag | str, str]:
+    ) -> dict[FTag | str, str | None]:
         """Query message sent from initiator to FixTester.
 
         Args:
