@@ -32,6 +32,7 @@ pre-commit install
 make tests        # pytest
 make lint         # ruff check
 make fmt          # ruff format
+make typecheck    # mypy
 make complexity   # mccabe, advisory
 ```
 

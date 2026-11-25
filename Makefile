@@ -26,7 +26,7 @@ fmt:
 	ruff format $(p)
 
 typecheck:
-	mypy
+	mypy $(p)
 
 pypi:
 	rm -f dist/*

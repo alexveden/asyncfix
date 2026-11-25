@@ -19,7 +19,7 @@ dependencies = []
 [project.optional-dependencies]
 dev = [
   "ruff==0.17.6",
-  "mypy",
+  "mypy==2.4.1",
   "pytest",
   "pytest-asyncio",
   "coverage",
@@ -36,6 +36,9 @@ Homepage = "https://github.com/alexveden/asyncfix"
 
 [tool.setuptools]
 packages = ["asyncfix", "asyncfix.protocol"]
+
+[tool.setuptools.package-data]
+asyncfix = ["py.typed"]
 
 [tool.ruff]
 line-length = 88
@@ -62,7 +65,7 @@ asyncio_default_fixture_loop_scope = "function"
 [tool.mypy]
 python_version = "3.11"
 files = ["asyncfix"]
-exclude = ["^tests/"]
+exclude = ["^tests/", "^build/"]
 strict = true
 
 [tool.distutils.bdist_wheel]

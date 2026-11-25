@@ -16,3 +16,11 @@ repos:
       language: system
       pass_filenames: false
       always_run: true
+    - id: mypy
+      name: mypy
+      stages: [push]
+      types: [python]
+      entry: mypy .
+      language: system
+      pass_filenames: false
+      always_run: true
