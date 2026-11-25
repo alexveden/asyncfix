@@ -142,13 +142,13 @@ def test_simple_execution_report_state_created__2__pending_new():
 
     ft = FIXTester(FIX_SCHEMA)
     assert ft.order_register_single(o) == 1
-    assert o.status == FOrdStatus.CREATED, f"o.status={chr(o.status)}"
+    assert o.status == FOrdStatus.CREATED, f"o.status={o.status}"
 
     msg = ft.fix_exec_report_msg(
         o, o.clord_id, FExecType.PENDING_NEW, FOrdStatus.PENDING_NEW
     )
     assert o.process_execution_report(msg) == 1
-    assert o.status == FOrdStatus.PENDING_NEW, f"o.status={chr(o.status)}"
+    assert o.status == FOrdStatus.PENDING_NEW, f"o.status={o.status}"
 
 
 def test_simple_execution_report_state_created__2__rejected():
@@ -158,11 +158,11 @@ def test_simple_execution_report_state_created__2__rejected():
 
     ft = FIXTester(FIX_SCHEMA)
     assert ft.order_register_single(o) == 1
-    assert o.status == FOrdStatus.CREATED, f"o.status={chr(o.status)}"
+    assert o.status == FOrdStatus.CREATED, f"o.status={o.status}"
 
     msg = ft.fix_exec_report_msg(o, o.clord_id, FExecType.REJECTED, FOrdStatus.REJECTED)
     assert o.process_execution_report(msg) == 1
-    assert o.status == FOrdStatus.REJECTED, f"o.status={chr(o.status)}"
+    assert o.status == FOrdStatus.REJECTED, f"o.status={o.status}"
 
 
 def test_state_transition__unsupported_msg():
@@ -465,7 +465,7 @@ def test_exec_sequence__vanilla_fill():
     )
     ft = FIXTester(FIX_SCHEMA)
     assert ft.order_register_single(o) == 1
-    assert o.status == FOrdStatus.CREATED, f"o.status={chr(o.status)}"
+    assert o.status == FOrdStatus.CREATED, f"o.status={o.status}"
     assert o.order_id is None
     assert not o.can_cancel()
     assert not o.can_replace()
@@ -478,7 +478,7 @@ def test_exec_sequence__vanilla_fill():
     assert o.process_execution_report(msg) == 1
     assert o.avg_px == 0
     assert o.order_id is not None
-    assert o.status == FOrdStatus.PENDING_NEW, f"o.status={chr(o.status)}"
+    assert o.status == FOrdStatus.PENDING_NEW, f"o.status={o.status}"
     assert not o.can_cancel()
     assert not o.can_replace()
     assert o.is_finished() == 0
@@ -487,7 +487,7 @@ def test_exec_sequence__vanilla_fill():
         o, o.clord_id, FExecType.NEW, FOrdStatus.NEW, cum_qty=0, leaves_qty=10
     )
     assert o.process_execution_report(msg) == 1
-    assert o.status == FOrdStatus.NEW, f"o.status={chr(o.status)}"
+    assert o.status == FOrdStatus.NEW, f"o.status={o.status}"
     assert o.qty == 10
     assert o.cum_qty == 0
     assert o.leaves_qty == 10
@@ -507,7 +507,7 @@ def test_exec_sequence__vanilla_fill():
         avg_price=120,
     )
     assert o.process_execution_report(msg) == 1
-    assert o.status == FOrdStatus.PARTIALLY_FILLED, f"o.status={chr(o.status)}"
+    assert o.status == FOrdStatus.PARTIALLY_FILLED, f"o.status={o.status}"
     assert o.avg_px == 120
     assert o.qty == 10
     assert o.cum_qty == 2
@@ -527,7 +527,7 @@ def test_exec_sequence__vanilla_fill():
         last_qty=1,
     )
     assert o.process_execution_report(msg) == 1
-    assert o.status == FOrdStatus.PARTIALLY_FILLED, f"o.status={chr(o.status)}"
+    assert o.status == FOrdStatus.PARTIALLY_FILLED, f"o.status={o.status}"
     assert o.qty == 10
     assert o.cum_qty == 3
     assert o.leaves_qty == 7
@@ -542,7 +542,7 @@ def test_exec_sequence__vanilla_fill():
         last_qty=7,
     )
     assert o.process_execution_report(msg) == 1
-    assert o.status == FOrdStatus.FILLED, f"o.status={chr(o.status)}"
+    assert o.status == FOrdStatus.FILLED, f"o.status={o.status}"
     assert o.qty == 10
     assert o.cum_qty == 10
     assert o.leaves_qty == 0
@@ -565,19 +565,19 @@ def test_exec_sequence__vanilla_fill_reject__pendingnew():
 
     ft = FIXTester(FIX_SCHEMA)
     assert ft.order_register_single(o) == 1
-    assert o.status == FOrdStatus.CREATED, f"o.status={chr(o.status)}"
+    assert o.status == FOrdStatus.CREATED, f"o.status={o.status}"
 
     msg = ft.fix_exec_report_msg(
         o, o.clord_id, FExecType.PENDING_NEW, FOrdStatus.PENDING_NEW
     )
     assert o.process_execution_report(msg) == 1
-    assert o.status == FOrdStatus.PENDING_NEW, f"o.status={chr(o.status)}"
+    assert o.status == FOrdStatus.PENDING_NEW, f"o.status={o.status}"
 
     msg = ft.fix_exec_report_msg(
         o, o.clord_id, FExecType.REJECTED, FOrdStatus.REJECTED, cum_qty=0, leaves_qty=0
     )
     assert o.process_execution_report(msg) == 1
-    assert o.status == FOrdStatus.REJECTED, f"o.status={chr(o.status)}"
+    assert o.status == FOrdStatus.REJECTED, f"o.status={o.status}"
     assert o.qty == 10
     assert o.cum_qty == 0
     assert o.leaves_qty == 00
@@ -600,19 +600,19 @@ def test_exec_sequence__vanilla_fill__reject_new():
 
     ft = FIXTester(FIX_SCHEMA)
     assert ft.order_register_single(o) == 1
-    assert o.status == FOrdStatus.CREATED, f"o.status={chr(o.status)}"
+    assert o.status == FOrdStatus.CREATED, f"o.status={o.status}"
 
     msg = ft.fix_exec_report_msg(
         o, o.clord_id, FExecType.PENDING_NEW, FOrdStatus.PENDING_NEW
     )
     assert o.process_execution_report(msg) == 1
-    assert o.status == FOrdStatus.PENDING_NEW, f"o.status={chr(o.status)}"
+    assert o.status == FOrdStatus.PENDING_NEW, f"o.status={o.status}"
 
     msg = ft.fix_exec_report_msg(
         o, o.clord_id, FExecType.NEW, FOrdStatus.NEW, cum_qty=0, leaves_qty=10
     )
     assert o.process_execution_report(msg) == 1
-    assert o.status == FOrdStatus.NEW, f"o.status={chr(o.status)}"
+    assert o.status == FOrdStatus.NEW, f"o.status={o.status}"
     assert o.qty == 10
     assert o.cum_qty == 0
     assert o.leaves_qty == 10
@@ -621,7 +621,7 @@ def test_exec_sequence__vanilla_fill__reject_new():
         o, o.clord_id, FExecType.REJECTED, FOrdStatus.REJECTED, cum_qty=0, leaves_qty=0
     )
     assert o.process_execution_report(msg) == 1
-    assert o.status == FOrdStatus.REJECTED, f"o.status={chr(o.status)}"
+    assert o.status == FOrdStatus.REJECTED, f"o.status={o.status}"
     assert o.qty == 10
     assert o.cum_qty == 0
     assert o.leaves_qty == 00
@@ -640,19 +640,19 @@ def test_exec_sequence__vanilla_suspended():
 
     ft = FIXTester(FIX_SCHEMA)
     assert ft.order_register_single(o) == 1
-    assert o.status == FOrdStatus.CREATED, f"o.status={chr(o.status)}"
+    assert o.status == FOrdStatus.CREATED, f"o.status={o.status}"
 
     msg = ft.fix_exec_report_msg(
         o, o.clord_id, FExecType.PENDING_NEW, FOrdStatus.PENDING_NEW
     )
     assert o.process_execution_report(msg) == 1
-    assert o.status == FOrdStatus.PENDING_NEW, f"o.status={chr(o.status)}"
+    assert o.status == FOrdStatus.PENDING_NEW, f"o.status={o.status}"
 
     msg = ft.fix_exec_report_msg(
         o, o.clord_id, FExecType.NEW, FOrdStatus.NEW, cum_qty=0, leaves_qty=10
     )
     assert o.process_execution_report(msg) == 1
-    assert o.status == FOrdStatus.NEW, f"o.status={chr(o.status)}"
+    assert o.status == FOrdStatus.NEW, f"o.status={o.status}"
     assert o.qty == 10
     assert o.cum_qty == 0
     assert o.leaves_qty == 10
@@ -667,7 +667,7 @@ def test_exec_sequence__vanilla_suspended():
         last_qty=2,
     )
     assert o.process_execution_report(msg) == 1
-    assert o.status == FOrdStatus.PARTIALLY_FILLED, f"o.status={chr(o.status)}"
+    assert o.status == FOrdStatus.PARTIALLY_FILLED, f"o.status={o.status}"
     assert o.qty == 10
     assert o.cum_qty == 2
     assert o.leaves_qty == 8
@@ -681,7 +681,7 @@ def test_exec_sequence__vanilla_suspended():
         leaves_qty=0,
     )
     assert o.process_execution_report(msg) == 1
-    assert o.status == FOrdStatus.SUSPENDED, f"o.status={chr(o.status)}"
+    assert o.status == FOrdStatus.SUSPENDED, f"o.status={o.status}"
     assert o.qty == 10
     assert o.cum_qty == 2
     assert o.leaves_qty == 0
@@ -699,7 +699,7 @@ def test_exec_sequence__vanilla_suspended():
         leaves_qty=8,
     )
     assert o.process_execution_report(msg) == 1
-    assert o.status == FOrdStatus.PARTIALLY_FILLED, f"o.status={chr(o.status)}"
+    assert o.status == FOrdStatus.PARTIALLY_FILLED, f"o.status={o.status}"
     assert o.qty == 10
     assert o.cum_qty == 2
     assert o.leaves_qty == 8
@@ -749,7 +749,7 @@ def test_cancel_req__zero_filled_order():
 
     ft = FIXTester(FIX_SCHEMA)
     assert ft.order_register_single(o) == 1
-    assert o.status == FOrdStatus.CREATED, f"o.status={chr(o.status)}"
+    assert o.status == FOrdStatus.CREATED, f"o.status={o.status}"
 
     msg = ft.fix_exec_report_msg(
         o, o.clord_id, FExecType.PENDING_NEW, FOrdStatus.PENDING_NEW
@@ -795,7 +795,7 @@ def test_cancel_req__zero_filled_order__cancel_reject():
 
     ft = FIXTester(FIX_SCHEMA)
     assert ft.order_register_single(o) == 1
-    assert o.status == FOrdStatus.CREATED, f"o.status={chr(o.status)}"
+    assert o.status == FOrdStatus.CREATED, f"o.status={o.status}"
 
     msg = ft.fix_exec_report_msg(
         o, o.clord_id, FExecType.PENDING_NEW, FOrdStatus.PENDING_NEW
@@ -839,7 +839,7 @@ def test_cancel_req__zero_filled_order__cancel_reject_after_pending():
 
     ft = FIXTester(FIX_SCHEMA)
     assert ft.order_register_single(o) == 1
-    assert o.status == FOrdStatus.CREATED, f"o.status={chr(o.status)}"
+    assert o.status == FOrdStatus.CREATED, f"o.status={o.status}"
 
     msg = ft.fix_exec_report_msg(
         o, o.clord_id, FExecType.PENDING_NEW, FOrdStatus.PENDING_NEW
@@ -899,7 +899,7 @@ def test_cancel_req__part_filled_order__with_some_execution_between():
 
     ft = FIXTester(FIX_SCHEMA)
     assert ft.order_register_single(o) == 1
-    assert o.status == FOrdStatus.CREATED, f"o.status={chr(o.status)}"
+    assert o.status == FOrdStatus.CREATED, f"o.status={o.status}"
 
     msg = ft.fix_exec_report_msg(
         o, o.clord_id, FExecType.PENDING_NEW, FOrdStatus.PENDING_NEW
@@ -1010,7 +1010,7 @@ def test_cancel_req__order_filled_before_cancel_accepted_different_clord():
 
     ft = FIXTester(FIX_SCHEMA)
     assert ft.order_register_single(o) == 1
-    assert o.status == FOrdStatus.CREATED, f"o.status={chr(o.status)}"
+    assert o.status == FOrdStatus.CREATED, f"o.status={o.status}"
 
     msg = ft.fix_exec_report_msg(
         o, o.clord_id, FExecType.PENDING_NEW, FOrdStatus.PENDING_NEW
@@ -1116,7 +1116,7 @@ def test_cancel_req__not_acknoledged_order_by_gate():
 
     ft = FIXTester(FIX_SCHEMA)
     assert ft.order_register_single(o) == 1
-    assert o.status == FOrdStatus.CREATED, f"o.status={chr(o.status)}"
+    assert o.status == FOrdStatus.CREATED, f"o.status={o.status}"
 
     with pytest.raises(FIXError, match="order is not allowed for cancel"):
         cxl_req = o.cancel_req()
@@ -1141,7 +1141,7 @@ def test_cancel_req__multiple_requests_are_blocked():
 
     ft = FIXTester(FIX_SCHEMA)
     assert ft.order_register_single(o) == 1
-    assert o.status == FOrdStatus.CREATED, f"o.status={chr(o.status)}"
+    assert o.status == FOrdStatus.CREATED, f"o.status={o.status}"
 
     msg = ft.fix_exec_report_msg(
         o, o.clord_id, FExecType.PENDING_NEW, FOrdStatus.PENDING_NEW
@@ -1171,7 +1171,7 @@ def test_cancel_req__order_filled_before_cancel_accepted():
 
     ft = FIXTester(FIX_SCHEMA)
     assert ft.order_register_single(o) == 1
-    assert o.status == FOrdStatus.CREATED, f"o.status={chr(o.status)}"
+    assert o.status == FOrdStatus.CREATED, f"o.status={o.status}"
 
     msg = ft.fix_exec_report_msg(
         o, o.clord_id, FExecType.PENDING_NEW, FOrdStatus.PENDING_NEW
@@ -1308,7 +1308,7 @@ def test_replace_req__zero_filled__increased_qty():
 
     ft = FIXTester(FIX_SCHEMA)
     assert ft.order_register_single(o) == 1
-    assert o.status == FOrdStatus.CREATED, f"o.status={chr(o.status)}"
+    assert o.status == FOrdStatus.CREATED, f"o.status={o.status}"
 
     msg = ft.fix_exec_report_msg(
         o, o.clord_id, FExecType.PENDING_NEW, FOrdStatus.PENDING_NEW
@@ -1380,7 +1380,7 @@ def test_replace_req__part_filled__increased_qty_while_pending_replace_fractiona
 
     ft = FIXTester(FIX_SCHEMA)
     assert ft.order_register_single(o) == 1
-    assert o.status == FOrdStatus.CREATED, f"o.status={chr(o.status)}"
+    assert o.status == FOrdStatus.CREATED, f"o.status={o.status}"
 
     msg = ft.fix_exec_report_msg(
         o, o.clord_id, FExecType.PENDING_NEW, FOrdStatus.PENDING_NEW
@@ -1502,7 +1502,7 @@ def test_replace_req__zero_filled__cxlrep_reject_when_new():
 
     ft = FIXTester(FIX_SCHEMA)
     assert ft.order_register_single(o) == 1
-    assert o.status == FOrdStatus.CREATED, f"o.status={chr(o.status)}"
+    assert o.status == FOrdStatus.CREATED, f"o.status={o.status}"
 
     msg = ft.fix_exec_report_msg(
         o, o.clord_id, FExecType.PENDING_NEW, FOrdStatus.PENDING_NEW
@@ -1546,7 +1546,7 @@ def test_replace_req__filled_order_rejected_after_filled():
 
     ft = FIXTester(FIX_SCHEMA)
     assert ft.order_register_single(o) == 1
-    assert o.status == FOrdStatus.CREATED, f"o.status={chr(o.status)}"
+    assert o.status == FOrdStatus.CREATED, f"o.status={o.status}"
 
     msg = ft.fix_exec_report_msg(
         o, o.clord_id, FExecType.PENDING_NEW, FOrdStatus.PENDING_NEW
@@ -1612,7 +1612,7 @@ def test_replace_req__filled_order_rejected__filled_increase_passed():
 
     ft = FIXTester(FIX_SCHEMA)
     assert ft.order_register_single(o) == 1
-    assert o.status == FOrdStatus.CREATED, f"o.status={chr(o.status)}"
+    assert o.status == FOrdStatus.CREATED, f"o.status={o.status}"
 
     msg = ft.fix_exec_report_msg(
         o, o.clord_id, FExecType.PENDING_NEW, FOrdStatus.PENDING_NEW
@@ -1722,7 +1722,7 @@ def test_replace_req__replace_price_only_but_rejected_because_fill():
 
     ft = FIXTester(FIX_SCHEMA)
     assert ft.order_register_single(o) == 1
-    assert o.status == FOrdStatus.CREATED, f"o.status={chr(o.status)}"
+    assert o.status == FOrdStatus.CREATED, f"o.status={o.status}"
 
     msg = ft.fix_exec_report_msg(
         o, o.clord_id, FExecType.PENDING_NEW, FOrdStatus.PENDING_NEW
@@ -1785,7 +1785,7 @@ def test_replace_req__decreased_qty():
 
     ft = FIXTester(FIX_SCHEMA)
     assert ft.order_register_single(o) == 1
-    assert o.status == FOrdStatus.CREATED, f"o.status={chr(o.status)}"
+    assert o.status == FOrdStatus.CREATED, f"o.status={o.status}"
 
     msg = ft.fix_exec_report_msg(
         o, o.clord_id, FExecType.PENDING_NEW, FOrdStatus.PENDING_NEW
@@ -1859,7 +1859,7 @@ def test_replace_req__decreased_qty_exact_match_to_fill():
 
     ft = FIXTester(FIX_SCHEMA)
     assert ft.order_register_single(o) == 1
-    assert o.status == FOrdStatus.CREATED, f"o.status={chr(o.status)}"
+    assert o.status == FOrdStatus.CREATED, f"o.status={o.status}"
 
     msg = ft.fix_exec_report_msg(
         o, o.clord_id, FExecType.PENDING_NEW, FOrdStatus.PENDING_NEW
@@ -1921,7 +1921,7 @@ def test_replace_req__decreased_qty__also_less_than_cum_qty():
 
     ft = FIXTester(FIX_SCHEMA)
     assert ft.order_register_single(o) == 1
-    assert o.status == FOrdStatus.CREATED, f"o.status={chr(o.status)}"
+    assert o.status == FOrdStatus.CREATED, f"o.status={o.status}"
 
     msg = ft.fix_exec_report_msg(
         o, o.clord_id, FExecType.PENDING_NEW, FOrdStatus.PENDING_NEW
@@ -1978,7 +1978,7 @@ def test_exec_report_clord_mismatch():
 
     ft = FIXTester(FIX_SCHEMA)
     assert ft.order_register_single(o) == 1
-    assert o.status == FOrdStatus.CREATED, f"o.status={chr(o.status)}"
+    assert o.status == FOrdStatus.CREATED, f"o.status={o.status}"
 
     msg = ft.fix_exec_report_msg(
         o, "unknown clord", FExecType.PENDING_NEW, FOrdStatus.PENDING_NEW
@@ -2000,7 +2000,7 @@ def test_cancel_req__cancel_reject_invalid_transition():
 
     ft = FIXTester(FIX_SCHEMA)
     assert ft.order_register_single(o) == 1
-    assert o.status == FOrdStatus.CREATED, f"o.status={chr(o.status)}"
+    assert o.status == FOrdStatus.CREATED, f"o.status={o.status}"
 
     msg = ft.fix_exec_report_msg(
         o, o.clord_id, FExecType.PENDING_NEW, FOrdStatus.PENDING_NEW
