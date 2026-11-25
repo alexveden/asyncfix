@@ -848,7 +848,9 @@ def test_field_type_validation__localmktdate():
     with pytest.raises(FIXMessageError, match="unconverted data remains"):
         assert f.validate_value("20230921 14:00:00.12312")
 
-    with pytest.raises(FIXMessageError, match="day is out of range for month"):
+    with pytest.raises(
+        FIXMessageError, match=r"day (is out of range for month|31 must be in range)"
+    ):
         assert f.validate_value("20230231")
 
 
@@ -865,7 +867,9 @@ def test_field_type_validation__utsdateonly():
     with pytest.raises(FIXMessageError, match="unconverted data remains"):
         assert f.validate_value("20230921 14:00:00.12312")
 
-    with pytest.raises(FIXMessageError, match="day is out of range for month"):
+    with pytest.raises(
+        FIXMessageError, match=r"day (is out of range for month|31 must be in range)"
+    ):
         assert f.validate_value("20230231")
 
 
