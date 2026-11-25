@@ -332,7 +332,7 @@ class FIXContainer:
         for tag, tag_value in self.tags.items():
             if _isclass(tag_value) and issubclass(tag_value, Exception):
                 tag_value = "#err#"
-            allTags.append("%s=%s" % (tag, tag_value))
+            allTags.append(f"{tag}={tag_value}")
         r += "|".join(allTags)
         return r
 

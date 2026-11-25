@@ -43,12 +43,12 @@ class Codec:
     def _addTag(self, body, t, msg: FIXContainer):
         if msg.is_group(t):
             groups = msg.get_group_list(t)
-            body.append("%s=%s" % (t, len(groups)))
+            body.append(f"{t}={len(groups)}")
             for group in groups:
                 for tag in group.tags:
                     self._addTag(body, tag, group)
         else:
-            body.append("%s=%s" % (t, msg[t]))
+            body.append(f"{t}={msg[t]}")
 
     def encode(
         self,
@@ -74,8 +74,8 @@ class Codec:
 
         msg_type = msg.msg_type
 
-        body.append("%s=%s" % (FTag.SenderCompID, session.sender_comp_id))
-        body.append("%s=%s" % (FTag.TargetCompID, session.target_comp_id))
+        body.append(f"{FTag.SenderCompID}={session.sender_comp_id}")
+        body.append(f"{FTag.TargetCompID}={session.target_comp_id}")
 
         seq_no = 0
         if raw_seq_num:
@@ -100,8 +100,8 @@ class Codec:
                 else:
                     seq_no = session.allocate_next_num_out()
 
-        body.append("%s=%s" % (FTag.MsgSeqNum, seq_no))
-        body.append("%s=%s" % (FTag.SendingTime, self.current_datetime()))
+        body.append(f"{FTag.MsgSeqNum}={seq_no}")
+        body.append(f"{FTag.SendingTime}={self.current_datetime()}")
 
         for t in msg.tags:
             if t in {
@@ -120,15 +120,15 @@ class Codec:
 
         # Create header
         header = []
-        msg_type = "%s=%s" % (FTag.MsgType, msg_type)
-        header.append("%s=%s" % (FTag.BeginString, self.protocol.beginstring))
-        header.append("%s=%i" % (FTag.BodyLength, len(body) + len(msg_type) + 1))
+        msg_type = f"{FTag.MsgType}={msg_type}"
+        header.append(f"{FTag.BeginString}={self.protocol.beginstring}")
+        header.append(f"{FTag.BodyLength}={len(body) + len(msg_type) + 1}")
         header.append(msg_type)
 
         fixmsg = self.SOH.join(header) + self.SOH + body
 
         cksum = sum([ord(i) for i in fixmsg]) % 256
-        fixmsg = fixmsg + "%s=%0.3i" % (FTag.CheckSum, cksum)
+        fixmsg = fixmsg + f"{FTag.CheckSum}={cksum:03d}"
 
         # print len(fixmsg)
 
@@ -179,8 +179,8 @@ class Codec:
         tag, value = msg[0].split("=", 1)
         if value != self.protocol.beginstring:
             logging.error(
-                "FIX Version unexpected (Recv: %s Expected: %s)"
-                % (value, self.protocol.beginstring)
+                "FIX Version unexpected "
+                f"(Recv: {value} Expected: {self.protocol.beginstring})"
             )
             assert silent, "protocol beginstring mismatch"
             return (None, len(rawmsg), None)
@@ -225,7 +225,7 @@ class Codec:
 
                 if checksum != int(value):
                     logging.warning(
-                        "\tCheckSum: %s (INVALID) expecting %s" % (int(value), checksum)
+                        f"\tCheckSum: {int(value)} (INVALID) expecting {checksum}"
                     )
                     assert silent, (
                         f"invalid checksum tag[10]={value} expected: {checksum} {msg=}"

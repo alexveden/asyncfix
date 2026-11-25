@@ -78,7 +78,7 @@ def main():
             mfmt = msg.decode()
             mfmt = mfmt.replace("\x01", "|")
             d = "---->" if msgDirection == MessageDirection.OUTBOUND.value else "<----"
-            print("{:>3} {:^5} [{:>5}] {}".format(session, d, seqNo, mfmt))
+            print(f"{session:>3} {d:^5} [{seqNo:>5}] {mfmt}")
 
 
 if __name__ == "__main__":

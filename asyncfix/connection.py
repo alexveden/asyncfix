@@ -331,9 +331,7 @@ class AsyncFIXConnection:
             except asyncio.CancelledError:
                 return
             except ConnectionError as why:
-                self.log.debug(
-                    "socket_read_task: connection has been closed %s" % (why,)
-                )
+                self.log.debug(f"socket_read_task: connection has been closed {why}")
                 await self.disconnect(ConnectionState.DISCONNECTED_BROKEN_CONN)
 
                 # Reset reconnect time

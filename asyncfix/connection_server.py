@@ -79,6 +79,6 @@ class AsyncFIXDummyServer(AsyncFIXConnection):
         self._socket_writer = writer
         self._connection_state = ConnectionState.NETWORK_CONN_ESTABLISHED
         addr = writer.get_extra_info("peername")
-        self.log.info("Connection from %s" % repr(addr))
+        self.log.info(f"Connection from {addr!r}")
 
         await self.on_connect()

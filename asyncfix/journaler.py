@@ -189,7 +189,7 @@ class Journaler:
 
             self.conn.commit()
         except sqlite3.IntegrityError as e:
-            raise DuplicateSeqNoError("%s is a duplicate, error %s" % (seq_no, repr(e)))
+            raise DuplicateSeqNoError(f"{seq_no} is a duplicate, error {e!r}")
 
     def recover_msg(
         self,
