@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `FIXContainer.get()` overloads: without a default it returns `str`, with a
   default it returns `str | T`.
 - Ruff checks in CI and a hardened lint configuration.
+- CI runs the test suite on Python 3.11 through 3.15.
+- Python 3.12 through 3.15 classifiers.
 - Development environment setup documented.
 - Tests: `test_xml_group_required_flags`,
   `test_get_returns_default_for_missing_tag`, and
@@ -34,6 +36,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Connection `port` parameters accept `int | str`; values are still coerced with
   `int(port)`.
 - `dev` extras pin `mypy==2.4.1`.
+- Date validation tests accept the CPython 3.14+ `strptime` error message for
+  out-of-range days.
 
 ### Fixed
 

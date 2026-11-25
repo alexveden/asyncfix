@@ -21,6 +21,7 @@ message exchange)
 ```
 pip install asyncfix
 ```
+Requires Python 3.11+; tested on 3.11 through 3.15.
 
 ## Development
 Install the package with development tools, then run the checks:
