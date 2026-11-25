@@ -2,7 +2,7 @@ PROJ_ROOT:=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 
 p ?= $(PROJ_ROOT)
 
-.PHONY: tests coverage coverage-report complexity pypi pre-commit docs
+.PHONY: tests coverage coverage-report complexity lint fmt pypi pre-commit docs
 
 pre-commit:
 	pre-commit run --all-files
@@ -17,7 +17,13 @@ coverage-report:
 	open ./htmlcov/index.html 
 
 complexity:
-	flake8 $(p) --max-complexity 10
+	ruff check $(p) --select C90
+
+lint:
+	ruff check $(p)
+
+fmt:
+	ruff format $(p)
 
 pypi:
 	rm -f dist/*
@@ -25,11 +31,8 @@ pypi:
 	twine upload dist/* --verbose
 
 docs:
-	# format docs
-	pydocstringformatter asyncfix/
-
 	# Check validity of docs
-	pydocstyle --convention=google ./asyncfix/
+	ruff check ./asyncfix/ --select D
 
 	# Builds markdown docs 
 	lazydocs \
