@@ -20,10 +20,13 @@ dependencies = []
 dev = [
   "ruff==0.17.6",
   "pytest",
+  "pytest-asyncio",
+  "coverage",
+  "build",
+  "twine",
   "pre-commit",
-  'pytest-asyncio',
-  'lazydocs',
-  'toml',
+  "lazydocs",
+  "toml",
   "mkdocs",
 ]
 
@@ -40,20 +43,20 @@ src = ["."]
 
 [tool.ruff.lint]
 extend-select = ["D", "E501"]
-ignore = ["UP042", "D403"]
+ignore = ["UP042"]
 
 [tool.ruff.lint.per-file-ignores]
-"**/__init__.py" = ["F401", "F403", "I001"]
-"tests/**" = [
-  "D", "E501", "F401", "F403", "F405", "F541",
-  "F841", "E741", "W291", "E265", "W293",
-]
+"**/__init__.py" = ["F401", "I001"]
+"tests/**" = ["D", "E501", "F401", "F841"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
 
 [tool.ruff.lint.mccabe]
 max-complexity = 10
+
+[tool.pytest.ini_options]
+asyncio_default_fixture_loop_scope = "function"
 
 [tool.distutils.bdist_wheel]
 universal = true
