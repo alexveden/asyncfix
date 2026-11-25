@@ -41,7 +41,7 @@ class FIXNewOrderSingle:
         price: float,
         qty: float,
         ord_type: FOrdType | str = FOrdType.LIMIT,
-        account: str | dict[Any, Any] = "000000",
+        account: str = "000000",
         target_price: float | None = None,
     ):
         """Initialize order.
@@ -164,7 +164,9 @@ class FIXNewOrderSingle:
 
         return cxl_req_msg
 
-    def replace_req(self, price: float = nan, qty: float = nan) -> FIXMessage:
+    def replace_req(
+        self, price: float | None = nan, qty: float | None = nan
+    ) -> FIXMessage:
         """Creates order replace request.
 
         Args:
