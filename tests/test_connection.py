@@ -78,6 +78,18 @@ async def fix_connection():
     return connection
 
 
+def test_connection_converts_port_str_to_int():
+    connection = AsyncFIXConnection(
+        FIXProtocol44(),
+        "INITIATOR",
+        "ACCEPTOR",
+        journaler=Journaler(),
+        host="localhost",
+        port="64444",
+    )
+    assert connection._port == 64444
+
+
 @pytest.mark.asyncio
 async def test_connection_send_not_connected_error(fix_connection):
     conn: AsyncFIXConnection = fix_connection

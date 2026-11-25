@@ -31,6 +31,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `FIXContainer.query()`, `FIXTester.acceptor_sent_query()`, and
   `FIXTester.initiator_sent_query()` now declare `dict[..., str | None]`, which
   matches the values they already returned for missing tags.
+- Connection `port` parameters accept `int | str`; values are still coerced with
+  `int(port)`.
 - `dev` extras pin `mypy==2.4.1`.
 
 ### Fixed

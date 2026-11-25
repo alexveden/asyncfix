@@ -19,7 +19,7 @@ class AsyncFIXDummyServer(AsyncFIXConnection):
         target_comp_id: str,
         journaler: Journaler,
         host: str,
-        port: int,
+        port: int | str,
         heartbeat_period: int = 30,
         logger: logging.Logger | None = None,
     ):
