@@ -189,7 +189,7 @@ class AsyncFIXConnection:
     async def disconnect(
         self,
         disconn_state: ConnectionState,
-        logout_message: str = None,
+        logout_message: str | None = None,
     ):
         """Disconnect session and closes the socket.
 
@@ -244,15 +244,14 @@ class AsyncFIXConnection:
             await self._state_set(ConnectionState.LOGON_INITIAL_SENT)
             self._connection_role = ConnectionRole.INITIATOR
         else:
-            if self._connection_role == ConnectionRole.INITIATOR:
-                if (
-                    self._connection_state == ConnectionState.LOGON_INITIAL_SENT
-                    and msg.msg_type != FMsg.LOGOUT
-                ):
-                    raise FIXConnectionError(
-                        "Initiator is waiting for Logon() response, you must not send"
-                        " any additional messages before acceptor responce."
-                    )
+            if self._connection_role == ConnectionRole.INITIATOR and (
+                self._connection_state == ConnectionState.LOGON_INITIAL_SENT
+                and msg.msg_type != FMsg.LOGOUT
+            ):
+                raise FIXConnectionError(
+                    "Initiator is waiting for Logon() response, you must not send"
+                    " any additional messages before acceptor responce."
+                )
 
         if msg.msg_type == FMsg.TESTREQUEST and self._test_req_id is None:
             raise FIXConnectionError(
@@ -297,11 +296,13 @@ class AsyncFIXConnection:
                 if not self._socket_reader:
                     # Socket was not connected, just wait
                     await asyncio.sleep(1)
-                    if self.connection_role == ConnectionRole.INITIATOR:
-                        if time.time() - last_connect > self.heartbeat_period * 1.5:
-                            self.log.debug("Trying reconnect")
-                            last_connect = time.time()
-                            await self.connect()
+                    if (
+                        self.connection_role == ConnectionRole.INITIATOR
+                        and time.time() - last_connect > self.heartbeat_period * 1.5
+                    ):
+                        self.log.debug("Trying reconnect")
+                        last_connect = time.time()
+                        await self.connect()
                     continue
 
                 msg = await self._socket_reader.read(4096)
@@ -352,11 +353,13 @@ class AsyncFIXConnection:
 
                 tm = time.time()
 
-                if self._connection_state == ConnectionState.ACTIVE:
-                    if tm - self._message_last_time > self._heartbeat_period - 1:
-                        if not self._test_req_id:
-                            await self.send_test_req()
-                        self._message_last_time = tm
+                if (
+                    self._connection_state == ConnectionState.ACTIVE
+                    and tm - self._message_last_time > self._heartbeat_period - 1
+                ):
+                    if not self._test_req_id:
+                        await self.send_test_req()
+                    self._message_last_time = tm
 
                 if (
                     self._message_last_time

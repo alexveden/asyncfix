@@ -54,7 +54,9 @@ class FIXContainer:
 
     def __init__(
         self,
-        tags: dict[str | int, [str, float, int, list[dict | FIXContainer]]] = None,
+        tags: (
+            dict[str | int, [str, float, int, list[dict | FIXContainer]]] | None
+        ) = None,
     ):
         """Initialize.
 
@@ -97,10 +99,8 @@ class FIXContainer:
 
         t = str(tag)
 
-        if _isclass(value):
+        if not _isclass(value):
             # Case for setting tags as errors (allow overwriting by Exception)
-            value = value
-        else:
             if not replace and t in self.tags:
                 raise DuplicatedTagError(f"tag={t} already exists")
 
@@ -150,10 +150,7 @@ class FIXContainer:
         """
         tag_val = self.tags.get(str(tag), None)
         if tag_val is not None:
-            if isinstance(tag_val, _FIXRepeatingGroupContainer):
-                return True
-            else:
-                return False
+            return bool(isinstance(tag_val, _FIXRepeatingGroupContainer))
         else:
             return None
 
@@ -256,9 +253,8 @@ class FIXContainer:
             TagNotFoundError: tag not found
         """
         for group in self.get_group_list(tag):
-            if gtag in group:
-                if group.get(gtag) == gvalue:
-                    return group
+            if gtag in group and group.get(gtag) == gvalue:
+                return group
         raise TagNotFoundError(f"get_group_by_tag: {tag=} {gtag=} {gvalue=} missing")
 
     def get_group_by_index(self, tag: str | int, index: int) -> FIXContainer:
@@ -360,12 +356,8 @@ class FIXContainer:
                 FTag.MsgType,
             }
 
-            other_tags = set(
-                [str(t) for t in other.keys() if str(t) not in ignore_tags]
-            )
-            self_tags = set(
-                [str(t) for t in self.tags.keys() if str(t) not in ignore_tags]
-            )
+            other_tags = {str(t) for t in other if str(t) not in ignore_tags}
+            self_tags = {str(t) for t in self.tags if str(t) not in ignore_tags}
 
             if other_tags != self_tags:
                 return False
@@ -394,7 +386,7 @@ class FIXMessage(FIXContainer):
     def __init__(
         self,
         msg_type: str | FMsg,
-        tags: dict[str | int, [str, float, int]] = None,
+        tags: dict[str | int, [str, float, int]] | None = None,
     ):
         """Initialize.
 

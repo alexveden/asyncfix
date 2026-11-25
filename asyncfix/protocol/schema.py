@@ -114,10 +114,9 @@ class SchemaField:
             return True
 
     def _validate_special_cases(self, value, prev_err):
-        if self.tag == "16":
+        if self.tag == "16" and value == "0":
             # EndSeqNo
-            if value == "0":
-                prev_err = None
+            prev_err = None
         return prev_err
 
     @staticmethod
@@ -236,16 +235,15 @@ class SchemaSet:
         """
         self.name: str = name
         self.field: SchemaField = field  # this is set for groups, with attached field
-        if field:
-            if not (
-                ("No" in field.name or "Num" in field.name)
-                and field.ftype in ["NUMINGROUP", "INT"]
-            ):
-                # warnings.warn('')
-                raise ValueError(
-                    "SchemaSet expected to have group field with NUMINGROUP|INT type,"
-                    f" name contais No/Num, got {field}"
-                )
+        if field and not (
+            ("No" in field.name or "Num" in field.name)
+            and field.ftype in ["NUMINGROUP", "INT"]
+        ):
+            # warnings.warn('')
+            raise ValueError(
+                "SchemaSet expected to have group field with NUMINGROUP|INT type,"
+                f" name contais No/Num, got {field}"
+            )
         self.members: dict[SchemaField | SchemaSet, SchemaField | SchemaSet] = {}
         self.required: dict[SchemaField | SchemaSet, bool] = {}
 
@@ -283,7 +281,9 @@ class SchemaSet:
         elif isinstance(field_or_set, SchemaSet):
             assert field_or_set.field, "field_or_set.field is empty, try to merge"
         else:
-            raise ValueError(f"Unsupported field_or_set type, got {type(field_or_set)}")
+            raise ValueError(  # noqa: TRY004
+                f"Unsupported field_or_set type, got {type(field_or_set)}"
+            )
 
         self.members[field_or_set] = field_or_set
         self.required[field_or_set] = required
@@ -296,7 +296,7 @@ class SchemaSet:
         """
         assert isinstance(comp, SchemaSet)
 
-        for field, required in comp.members.items():
+        for field in comp.members:
             self.add(field, comp.required[field])
 
     def __hash__(self):
@@ -419,16 +419,19 @@ class SchemaGroup(SchemaSet):
                     f"fixmessage={groups} does not contain mandatory first tag {self}"
                 )
 
-            for st, sv in tag_fields.items():
-                if isinstance(sv, SchemaField):
-                    if sv.tag not in fmsg and self.required[sv]:
-                        raise FIXMessageError(
-                            f"fixmessage={groups} missing required field {sv!r}"
-                        )
+            for sv in tag_fields.values():
+                if (
+                    isinstance(sv, SchemaField)
+                    and sv.tag not in fmsg
+                    and self.required[sv]
+                ):
+                    raise FIXMessageError(
+                        f"fixmessage={groups} missing required field {sv!r}"
+                    )
 
     def __repr__(self):
         """Repr."""
-        members = [str(m) for m in self.members.keys()]
+        members = [str(m) for m in self.members]
         return f"SchemaGroup({self.field.name}, {members})"
 
 
@@ -655,12 +658,11 @@ class FIXSchema:
             f = schema_msg[fname]
             schema_fields.add(fname)
 
-            if req:
-                if isinstance(f, SchemaField):
-                    if f.tag not in msg:
-                        raise FIXMessageError(f"Missing required field={f!r}")
-                    f_val = msg[f.tag]
-                    f.validate_value(f_val)
+            if req and isinstance(f, SchemaField):
+                if f.tag not in msg:
+                    raise FIXMessageError(f"Missing required field={f!r}")
+                f_val = msg[f.tag]
+                f.validate_value(f_val)
 
     def validate(self, msg: FIXMessage) -> bool:
         """Validates generic FIXMessage based on schema.
@@ -684,10 +686,8 @@ class FIXSchema:
             f = schema_msg[fname]
             schema_fields.add(fname)
 
-            if req:
-                if isinstance(f, SchemaField):
-                    if f.tag not in msg:
-                        raise FIXMessageError(f"Missing required field={f!r}")
+            if req and isinstance(f, SchemaField) and f.tag not in msg:
+                raise FIXMessageError(f"Missing required field={f!r}")
 
         if "8" in msg:
             self._validate_header(msg)

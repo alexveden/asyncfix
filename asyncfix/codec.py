@@ -9,6 +9,8 @@ from asyncfix.message import FIXContainer, FIXMessage, RepeatingTagError
 from asyncfix.protocol import FIXProtocolBase
 from asyncfix.session import FIXSession
 
+logger = logging.getLogger(__name__)
+
 
 class _RepeatingGroupContext(FIXContainer):
     def __init__(self, tag, repeating_group_tags, parent):
@@ -178,7 +180,7 @@ class Codec:
 
         tag, value = msg[0].split("=", 1)
         if value != self.protocol.beginstring:
-            logging.error(
+            logger.error(
                 "FIX Version unexpected "
                 f"(Recv: {value} Expected: {self.protocol.beginstring})"
             )
@@ -193,7 +195,7 @@ class Codec:
 
         msg_length = len(msg[0]) + len(msg[1]) + len("10=000") + 3
         if tag != FTag.BodyLength:
-            logging.error(f"*** BodyLength missing or not 2nd field *** [{tag}]: {msg}")
+            logger.error(f"*** BodyLength missing or not 2nd field *** [{tag}]: {msg}")
             assert silent, "2nd tag must be BodyLength"
             return (None, len(rawmsg), None)
         else:
@@ -224,7 +226,7 @@ class Codec:
                 checksum = (sum([ord(i) for i in cheksum_base]) + 1) % 256
 
                 if checksum != int(value):
-                    logging.warning(
+                    logger.warning(
                         f"\tCheckSum: {int(value)} (INVALID) expecting {checksum}"
                     )
                     assert silent, (

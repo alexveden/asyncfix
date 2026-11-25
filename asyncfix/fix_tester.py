@@ -302,7 +302,7 @@ class FIXTester:
         last_qty: float = nan,
         price: float = nan,
         order_qty: float = nan,
-        orig_clord_id: str = None,
+        orig_clord_id: str | None = None,
         avg_price: float = 0.0,
     ) -> FIXMessage:
         """Generates synthetic EXECUTIONREPORT.

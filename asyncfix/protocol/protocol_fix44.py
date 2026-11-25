@@ -1,5 +1,7 @@
 """FIX Protocol 4.4 module."""
 
+from typing import ClassVar
+
 from asyncfix import FMsg, FTag
 from asyncfix.protocol.protocol_base import FIXProtocolBase
 
@@ -9,7 +11,7 @@ class FIXProtocol44(FIXProtocolBase):
 
     beginstring = "FIX.4.4"
 
-    session_message_types = {
+    session_message_types: ClassVar[set[FMsg]] = {
         FMsg.HEARTBEAT,
         FMsg.TESTREQUEST,
         FMsg.RESENDREQUEST,
@@ -20,7 +22,7 @@ class FIXProtocol44(FIXProtocolBase):
         FMsg.XMLNONFIX,
     }
 
-    repeating_groups = {
+    repeating_groups: ClassVar[dict[FTag, list[FTag]]] = {
         FTag.NoSecurityAltID: [FTag.SecurityAltID, FTag.SecurityAltIDSource],
         FTag.NoMiscFees: [
             FTag.MiscFeeAmt,
