@@ -116,7 +116,7 @@ class AsyncFIXConnection:
         port: int,
         heartbeat_period: int = 30,
         logger: logging.Logger | None = None,
-    ):  # noqa: D403
+    ):
         """AsyncFIX bidirectional connection.
 
         Args:
@@ -211,7 +211,7 @@ class AsyncFIXConnection:
                     msg[FTag.Text] = logout_message
                 await self.send_msg(msg)
 
-            self.log.info(f"Client disconnected, with state: {repr(disconn_state)}")
+            self.log.info(f"Client disconnected, with state: {disconn_state!r}")
             if self._socket_writer:
                 self._socket_writer.close()
                 await self._socket_writer.wait_closed()
@@ -232,14 +232,14 @@ class AsyncFIXConnection:
         if self._connection_state < ConnectionState.NETWORK_CONN_ESTABLISHED:
             raise FIXConnectionError(
                 "Connection must be established before sending any "
-                f"FIX message, got state: {repr(self._connection_state)}"
+                f"FIX message, got state: {self._connection_state!r}"
             )
         elif self._connection_state == ConnectionState.NETWORK_CONN_ESTABLISHED:
             # INITIATOR mode, connection was just established
             if msg.msg_type != FMsg.LOGON and msg.msg_type != FMsg.LOGOUT:
                 raise FIXConnectionError(
                     "You must send first Logon(35=A)/Logout() message immediately after"
-                    f" connection, got {repr(msg)}"
+                    f" connection, got {msg!r}"
                 )
             await self._state_set(ConnectionState.LOGON_INITIAL_SENT)
             self._connection_role = ConnectionRole.INITIATOR
@@ -265,7 +265,7 @@ class AsyncFIXConnection:
         msg_raw = encoded_msg.replace(b"\x01", b"|")
         self.log.debug(
             f"[{self._connection_role.name}]:send_msg ({self._connection_state.name})"
-            f" {repr(msg.msg_type)}\n\t {msg_raw.decode()}\n"
+            f" {msg.msg_type!r}\n\t {msg_raw.decode()}\n"
         )
 
         self._socket_writer.write(encoded_msg)
@@ -406,11 +406,9 @@ class AsyncFIXConnection:
     async def on_connect(self):
         """(AppEvent) Underlying socket connected."""
         raise NotImplementedError("on_connect() must be implemented in app class")
-        pass
 
     async def on_disconnect(self):
         """(AppEvent) Underlying socket disconnected."""
-        pass
 
     async def on_logon(self, is_healthy: bool):
         """(AppEvent) Logon(35=A) received from peer.
@@ -418,7 +416,6 @@ class AsyncFIXConnection:
         Args:
             is_healthy: True - if connection_state is ACTIVE
         """
-        pass
 
     async def on_logout(self, msg: FIXMessage):
         """(AppEvent) Logout(35=5) received from peer.
@@ -426,7 +423,6 @@ class AsyncFIXConnection:
         Args:
             msg: Logout(35=5) FIXMessage
         """
-        pass
 
     async def on_state_change(self, connection_state: ConnectionState):
         """(AppEvent) On ConnectionState change.
@@ -434,7 +430,6 @@ class AsyncFIXConnection:
         Args:
             connection_state: new connection state
         """
-        pass
 
     async def should_replay(self, historical_replay_msg: FIXMessage) -> bool:
         """(AppLevel) Checks if historical_replay_msg from Journaler should be replayed.
@@ -772,7 +767,7 @@ class AsyncFIXConnection:
         """
         self.log.debug(
             f"[{self._connection_role.name}]:process_message"
-            f" ({self._connection_state.name}) {repr(msg.msg_type)}\n\t {msg}\n"
+            f" ({self._connection_state.name}) {msg.msg_type!r}\n\t {msg}\n"
         )
 
         err_msg = self._validate_integrity(msg)
@@ -833,7 +828,7 @@ class AsyncFIXConnection:
         except Exception:
             self.log.exception(
                 f"[{self._connection_role.name}]:process_message"
-                f" ({self._connection_state.name}) {repr(msg.msg_type)}\n\t {msg}\n"
+                f" ({self._connection_state.name}) {msg.msg_type!r}\n\t {msg}\n"
             )
         finally:
             if is_valid_msg_num:

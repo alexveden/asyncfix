@@ -32,4 +32,4 @@ print(msg.get_group_list(FTag.NoAllocs))
 # > [70=1|153=1, 70=2|153=2]
 
 print(msg.query(11, FTag.Price, "40"))
-# > {<FTag.ClOrdID: '11'>: 'clordis', <FTag.Price: '44'>: '22.22', <FTag.OrdType: '40'>: '2'} # noqa
+# > {<FTag.ClOrdID: '11'>: 'clordis', <FTag.Price: '44'>: '22.22', <FTag.OrdType: '40'>: '2'}  # noqa: E501

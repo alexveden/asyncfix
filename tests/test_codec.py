@@ -42,7 +42,7 @@ def test_decode():
     )
     msg, remaining, enc_msg = codec.decode(inMsg)
 
-    exp_str = "8=FIX.4.4|9=817|35=J|34=953|49=FIX_ALAUDIT|56=BFUT_ALAUDIT|43=N|52=20150615-09:21:42.459|70=00000002664ASLO1001|626=2|10626=#err#|71=0|60=20150615-10:21:42|857=1|73=1=>[11=00000006321ORLO1|38=100.0|800=100.0]|124=1=>[32=100.0|17=00000009758TRLO1|31=484.50]|54=2|53=100.0|55=FTI|207=XEUE|454=1=>[455=EOM5|456=A]|200=201506|541=20150619|461=FXXXXX|6=484.50|74=2|75=20150615|78=1=>[79=TEST123]|30009=#err#|467=#err#|9520=#err#|80=#err#|366=#err#|81=#err#|153=#err#|79=TEST124|453=3=>[448=TEST1|447=D|452=3|802=2=>[523=12345|803=3, 523=TEST1|803=19], 448=TEST1WA|447=D|452=38|802=4=>[523=Test1 Wait|803=10, 523= |803=26, 523=|803=3, 523=TestWaCRF2|803=28], 448=hagap|447=D|452=11|802=2=>[523=GB|803=25, 523=BarCapFutures.FETService|803=24]]|10=033"  # noqa
+    exp_str = "8=FIX.4.4|9=817|35=J|34=953|49=FIX_ALAUDIT|56=BFUT_ALAUDIT|43=N|52=20150615-09:21:42.459|70=00000002664ASLO1001|626=2|10626=#err#|71=0|60=20150615-10:21:42|857=1|73=1=>[11=00000006321ORLO1|38=100.0|800=100.0]|124=1=>[32=100.0|17=00000009758TRLO1|31=484.50]|54=2|53=100.0|55=FTI|207=XEUE|454=1=>[455=EOM5|456=A]|200=201506|541=20150619|461=FXXXXX|6=484.50|74=2|75=20150615|78=1=>[79=TEST123]|30009=#err#|467=#err#|9520=#err#|80=#err#|366=#err#|81=#err#|153=#err#|79=TEST124|453=3=>[448=TEST1|447=D|452=3|802=2=>[523=12345|803=3, 523=TEST1|803=19], 448=TEST1WA|447=D|452=38|802=4=>[523=Test1 Wait|803=10, 523= |803=26, 523=|803=3, 523=TestWaCRF2|803=28], 448=hagap|447=D|452=11|802=2=>[523=GB|803=25, 523=BarCapFutures.FETService|803=24]]|10=033"
     assert exp_str == str(msg)
 
 
@@ -96,7 +96,7 @@ def test_decode_invalid_checksum(fix_session):
     # print(repr(enc_msg))
     # assert False, enc_msg
 
-    enc_msg = b"8=FIX.4.4\x019=82\x0135=D\x0149=sender\x0156=target\x0134=1\x0152=20230919-07:13:26.808\x0144=123.45\x0138=9876\x0155=VOD.L\x0110=110\x01"  # noqa
+    enc_msg = b"8=FIX.4.4\x019=82\x0135=D\x0149=sender\x0156=target\x0134=1\x0152=20230919-07:13:26.808\x0144=123.45\x0138=9876\x0155=VOD.L\x0110=110\x01"
     msg, parsed_len, raw_msg = codec.decode(enc_msg)
 
     assert msg is None
@@ -120,7 +120,7 @@ def test_decode_valid(fix_session):
     # print(repr(enc_msg))
     # assert False, enc_msg
 
-    enc_msg = b"8=FIX.4.4\x019=82\x0135=D\x0149=sender\x0156=target\x0134=1\x0152=20230919-07:13:26.808\x0144=123.45\x0138=9876\x0155=VOD.L\x0110=100\x01"  # noqa
+    enc_msg = b"8=FIX.4.4\x019=82\x0135=D\x0149=sender\x0156=target\x0134=1\x0152=20230919-07:13:26.808\x0144=123.45\x0138=9876\x0155=VOD.L\x0110=100\x01"
     msg, parsed_len, raw_msg = codec.decode(enc_msg, silent=False)
 
     assert isinstance(msg, FIXMessage)
@@ -138,7 +138,7 @@ def test_decode_invalid_no_fix(fix_session):
     protocol = FIXProtocol44()
     codec = Codec(protocol)
 
-    enc_msg = b"my_some string without any "  # noqa
+    enc_msg = b"my_some string without any "
     msg, parsed_len, raw_msg = codec.decode(enc_msg)
     assert msg is None
     assert parsed_len == len(enc_msg)
@@ -151,7 +151,7 @@ def test_decode_invalid_with_added_fix(fix_session):
     protocol = FIXProtocol44()
     codec = Codec(protocol)
 
-    enc_msg = b"somejunk\n8=FIX.4.4\x019=82\x0135=D\x0149=sender\x0156=target\x0134=1\x0152=20230919-07:13:26.808\x0144=123.45\x0138=9876\x0155=VOD.L\x0110=100\x01"  # noqa
+    enc_msg = b"somejunk\n8=FIX.4.4\x019=82\x0135=D\x0149=sender\x0156=target\x0134=1\x0152=20230919-07:13:26.808\x0144=123.45\x0138=9876\x0155=VOD.L\x0110=100\x01"
     msg, parsed_len, raw_msg = codec.decode(enc_msg)
     assert isinstance(msg, FIXMessage)
     assert parsed_len == len(enc_msg)
@@ -164,7 +164,7 @@ def test_decode_invalid_junk_with_incomplete_fix(fix_session):
     protocol = FIXProtocol44()
     codec = Codec(protocol)
 
-    enc_msg = b"somejunk\n8=FIX.4.4\x019=82\x0135=D"  # noqa
+    enc_msg = b"somejunk\n8=FIX.4.4\x019=82\x0135=D"
     msg, parsed_len, raw_msg = codec.decode(enc_msg)
     # assert isinstance(msg, FIXMessage)
     assert msg is None
@@ -179,7 +179,7 @@ def test_decode_invalid_2nd_fix_msg(fix_session):
     protocol = FIXProtocol44()
     codec = Codec(protocol)
 
-    enc_msg = b"somejunk\n8=FIX.4.4\x019=82\x0135=D\x0149=sender\x0156=target\x0134=1\x0152=20230919-07:13:26.808\x0144=123.45\x0138=9876\x0155=VOD.L\x0110=100\x018=FIX.4.4\x019=82\x0135=D"  # noqa
+    enc_msg = b"somejunk\n8=FIX.4.4\x019=82\x0135=D\x0149=sender\x0156=target\x0134=1\x0152=20230919-07:13:26.808\x0144=123.45\x0138=9876\x0155=VOD.L\x0110=100\x018=FIX.4.4\x019=82\x0135=D"
     # msg, parsed_len, raw_msg = codec.decode(enc_msg)
     msg, parsed_len, raw_msg = codec.decode(enc_msg, silent=False)
     assert isinstance(msg, FIXMessage)
@@ -193,7 +193,7 @@ def test_decode_invalid_start_fix_msg(fix_session):
     protocol = FIXProtocol44()
     codec = Codec(protocol)
 
-    enc_msg = b"35=D\x0149=sender\x0156=target\x0134=1\x018=FIX.4.4\x019=82\x0135=D\x0149=sender\x0156=target\x0134=1\x0152=20230919-07:13:26.808\x0144=123.45\x0138=9876\x0155=VOD.L\x0110=100\x01"  # noqa
+    enc_msg = b"35=D\x0149=sender\x0156=target\x0134=1\x018=FIX.4.4\x019=82\x0135=D\x0149=sender\x0156=target\x0134=1\x0152=20230919-07:13:26.808\x0144=123.45\x0138=9876\x0155=VOD.L\x0110=100\x01"
     msg, parsed_len, raw_msg = codec.decode(enc_msg)
     assert isinstance(msg, FIXMessage)
     assert parsed_len == len(enc_msg)
@@ -274,7 +274,7 @@ def test_decode_protocol_mismatch(fix_session):
     protocol = FIXProtocol44()
     codec = Codec(protocol)
 
-    enc_msg = b"8=FIX.4.2\x019=82\x0135=D\x0149=sender\x0156=target\x0134=1\x0152=20230919-07:13:26.808\x0144=123.45\x0138=9876\x0155=VOD.L\x0110=100\x01"  # noqa
+    enc_msg = b"8=FIX.4.2\x019=82\x0135=D\x0149=sender\x0156=target\x0134=1\x0152=20230919-07:13:26.808\x0144=123.45\x0138=9876\x0155=VOD.L\x0110=100\x01"
     msg, parsed_len, raw_msg = codec.decode(enc_msg)
     assert msg is None
     assert parsed_len == len(enc_msg)
@@ -352,14 +352,14 @@ def test_decode_empty_tag(fix_session):
     protocol = FIXProtocol44()
     codec = Codec(protocol)
 
-    enc_msg = b"8=FIX.4.4\x019=75\x0135=D\x0149=sender\x0156=target\x0134=1\x0152=20230919-07:13:26.808\x0144=123.45\x0138\x0155=VOD.L\x0110=100\x01"  # noqa
+    enc_msg = b"8=FIX.4.4\x019=75\x0135=D\x0149=sender\x0156=target\x0134=1\x0152=20230919-07:13:26.808\x0144=123.45\x0138\x0155=VOD.L\x0110=100\x01"
     msg, parsed_len, raw_msg = codec.decode(enc_msg)
     assert msg is None
     assert parsed_len == len(enc_msg)
     with pytest.raises(AssertionError, match="incomplete tag 38"):
         msg, parsed_len, raw_msg = codec.decode(enc_msg, silent=False)
 
-    enc_msg = b"8=FIX.4.4\x019=75\x0135=D\x0149=sender\x0156=target\x0134=1\x0152=20230919-07:13:26.808\x0144=123.45\x01\x0155=VOD.L\x0110=100\x01"  # noqa
+    enc_msg = b"8=FIX.4.4\x019=75\x0135=D\x0149=sender\x0156=target\x0134=1\x0152=20230919-07:13:26.808\x0144=123.45\x01\x0155=VOD.L\x0110=100\x01"
     msg, parsed_len, raw_msg = codec.decode(enc_msg)
     assert msg is None
     assert parsed_len == len(enc_msg)
@@ -467,6 +467,6 @@ def test_decode_custom_msg_type(fix_session):
     # print(repr(enc_msg))
     # assert False, enc_msg
 
-    enc_msg = b"8=FIX.4.4\x019=82\x0135=ASD\x0149=sender\x0156=target\x0134=1\x0152=20230919-07:13:26.808\x0144=123.45\x0138=9876\x0155=VOD.L\x0110=248\x01"  # noqa
+    enc_msg = b"8=FIX.4.4\x019=82\x0135=ASD\x0149=sender\x0156=target\x0134=1\x0152=20230919-07:13:26.808\x0144=123.45\x0138=9876\x0155=VOD.L\x0110=248\x01"
     msg, parsed_len, raw_msg = codec.decode(enc_msg, silent=False)
     assert msg.msg_type == "ASD"

@@ -64,7 +64,7 @@ class AsyncFIXClient(AsyncFIXConnection):
                 self._host, self._port
             )
         except Exception as exc:  # noqa: BLE001
-            self.log.info(f"Connection error (waiting reconnect): {repr(exc)}")
+            self.log.info(f"Connection error (waiting reconnect): {exc!r}")
             self._connection_state = ConnectionState.DISCONNECTED_BROKEN_CONN
         else:
             self._connection_state = ConnectionState.NETWORK_CONN_ESTABLISHED

@@ -1091,7 +1091,7 @@ async def test_socket_read__decode_logic_msg_buff_management(
     partial_2 = full[20:]
     assert partial_1 + partial_2 == full
 
-    msg_valid = b"8=FIX.4.4\x019=82\x0135=D\x0149=sender\x0156=target\x0134=1\x0152=20230919-07:13:26.808\x0144=123.45\x0138=9876\x0155=VOD.L\x0110=100\x01"  # noqa
+    msg_valid = b"8=FIX.4.4\x019=82\x0135=D\x0149=sender\x0156=target\x0134=1\x0152=20230919-07:13:26.808\x0144=123.45\x0138=9876\x0155=VOD.L\x0110=100\x01"
 
     with patch.object(conn, "_process_message") as mock_process_message:
         socket_reader_mock.read.side_effect = [

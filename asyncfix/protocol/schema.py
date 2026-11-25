@@ -126,7 +126,7 @@ class SchemaField:
             format = f"{format}.%f"
 
         try:
-            dtm.datetime.strptime(value, format)  # noqa: DTZ007
+            dtm.datetime.strptime(value, format)
             return None  # all good
         except ValueError as exc:
             return str(exc)
@@ -211,7 +211,7 @@ class SchemaField:
 
     def __repr__(self):
         """Repr."""
-        return f"SchemaField({str(self)}, type={self.ftype})"
+        return f"SchemaField({self!s}, type={self.ftype})"
 
 
 class SchemaSet:
@@ -423,7 +423,7 @@ class SchemaGroup(SchemaSet):
                 if isinstance(sv, SchemaField):
                     if sv.tag not in fmsg and self.required[sv]:
                         raise FIXMessageError(
-                            f"fixmessage={groups} missing required field {repr(sv)}"
+                            f"fixmessage={groups} missing required field {sv!r}"
                         )
 
     def __repr__(self):
@@ -658,7 +658,7 @@ class FIXSchema:
             if req:
                 if isinstance(f, SchemaField):
                     if f.tag not in msg:
-                        raise FIXMessageError(f"Missing required field={repr(f)}")
+                        raise FIXMessageError(f"Missing required field={f!r}")
                     f_val = msg[f.tag]
                     f.validate_value(f_val)
 
@@ -687,7 +687,7 @@ class FIXSchema:
             if req:
                 if isinstance(f, SchemaField):
                     if f.tag not in msg:
-                        raise FIXMessageError(f"Missing required field={repr(f)}")
+                        raise FIXMessageError(f"Missing required field={f!r}")
 
         if "8" in msg:
             self._validate_header(msg)

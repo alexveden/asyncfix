@@ -55,7 +55,8 @@ class FIXSession:
         """Repr."""
         return (
             f"FIXSession(key={self.key},"
-            f" target={self.target_comp_id} sender={self.sender_comp_id} InSN={self.next_num_in} OutSN={self.next_num_out})"  # noqa
+            f" target={self.target_comp_id} sender={self.sender_comp_id}"
+            f" InSN={self.next_num_in} OutSN={self.next_num_out})"
         )
 
     def validate_comp_ids(self, target_comp_id: str, sender_comp_id: str) -> bool:

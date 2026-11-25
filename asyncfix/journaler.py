@@ -83,7 +83,8 @@ class Journaler:
             session.next_num_in = 1
         except sqlite3.IntegrityError:
             self.cursor.execute(
-                "SELECT sessionId, targetCompId, senderCompId, outboundSeqNo, inboundSeqNo"  # noqa
+                "SELECT sessionId, targetCompId, senderCompId, outboundSeqNo,"
+                " inboundSeqNo"
                 " FROM session WHERE targetCompId = ? AND senderCompId = ?",
                 (target_comp_id, sender_comp_id),
             )

@@ -402,7 +402,6 @@ class FIXNewOrderSingle:
         new_status = self.change_status(
             self.status, m.msg_type, 0, order_status, raise_on_err=False
         )
-        #
         if order_status == FOrdStatus.REJECTED:
             # Very weird (emergency) case, because the ClOrdId does not exist
             #   Let's set order inactive

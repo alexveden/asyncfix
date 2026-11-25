@@ -39,24 +39,24 @@ def test_create_or_load():
 
 
 def test_find_seqno():
-    enc_msg = b"8=FIX.4.4\x019=75\x0135=D\x0149=sender\x0156=target\x0134=073\x0152=20230919-07:13:26.808\x0144=123.45\x0138\x0155=VOD.L\x0110=100\x01"  # noqa
+    enc_msg = b"8=FIX.4.4\x019=75\x0135=D\x0149=sender\x0156=target\x0134=073\x0152=20230919-07:13:26.808\x0144=123.45\x0138\x0155=VOD.L\x0110=100\x01"
     assert Journaler.find_seq_no(enc_msg) == 73
 
     with pytest.raises(FIXMessageError):
-        enc_msg = b"8=FIX.4.4\x019=75\x0135=D\x0149=sender\x0156=target\x0134=\x0152=20230919-07:13:26.808\x0144=123.45\x0138\x0155=VOD.L\x0110=100\x01"  # noqa
+        enc_msg = b"8=FIX.4.4\x019=75\x0135=D\x0149=sender\x0156=target\x0134=\x0152=20230919-07:13:26.808\x0144=123.45\x0138\x0155=VOD.L\x0110=100\x01"
         Journaler.find_seq_no(enc_msg)
 
     with pytest.raises(FIXMessageError):
-        enc_msg = b"8=FIX.4.4\x019=75\x0135=D\x0149=sender\x0156=target\x0152=20230919-07:13:26.808\x0144=123.45\x0138\x0155=VOD.L\x0110=100\x01"  # noqa
+        enc_msg = b"8=FIX.4.4\x019=75\x0135=D\x0149=sender\x0156=target\x0152=20230919-07:13:26.808\x0144=123.45\x0138\x0155=VOD.L\x0110=100\x01"
         Journaler.find_seq_no(enc_msg)
 
     with pytest.raises(FIXMessageError):
-        enc_msg = b"8=FIX.4.4\x019=75\x0135=D\x0149=sender\x0156=target\x0134=asdf\x0152=20230919-07:13:26.808\x0144=123.45\x0138\x0155=VOD.L\x0110=100\x01"  # noqa
+        enc_msg = b"8=FIX.4.4\x019=75\x0135=D\x0149=sender\x0156=target\x0134=asdf\x0152=20230919-07:13:26.808\x0144=123.45\x0138\x0155=VOD.L\x0110=100\x01"
         Journaler.find_seq_no(enc_msg)
 
 
 def test_persist():
-    enc_msg = b"8=FIX.4.4\x019=75\x0135=D\x0149=sender\x0156=target\x0134=073\x0152=20230919-07:13:26.808\x0144=123.45\x0138\x0155=VOD.L\x0110=100\x01"  # noqa
+    enc_msg = b"8=FIX.4.4\x019=75\x0135=D\x0149=sender\x0156=target\x0134=073\x0152=20230919-07:13:26.808\x0144=123.45\x0138\x0155=VOD.L\x0110=100\x01"
 
     assert Journaler.find_seq_no(enc_msg) == 73
 
@@ -86,7 +86,7 @@ def test_persist():
 
 
 def test_sessions():
-    enc_msg = b"8=FIX.4.4\x019=75\x0135=D\x0149=sender\x0156=target\x0134=073\x0152=20230919-07:13:26.808\x0144=123.45\x0138\x0155=VOD.L\x0110=100\x01"  # noqa
+    enc_msg = b"8=FIX.4.4\x019=75\x0135=D\x0149=sender\x0156=target\x0134=073\x0152=20230919-07:13:26.808\x0144=123.45\x0138\x0155=VOD.L\x0110=100\x01"
 
     assert Journaler.find_seq_no(enc_msg) == 73
 
@@ -113,7 +113,7 @@ def test_sessions():
 
 
 def test_persist_recover():
-    enc_msg = b"8=FIX.4.4\x019=75\x0135=D\x0149=sender\x0156=target\x0134=073\x0152=20230919-07:13:26.808\x0144=123.45\x0138\x0155=VOD.L\x0110=100\x01"  # noqa
+    enc_msg = b"8=FIX.4.4\x019=75\x0135=D\x0149=sender\x0156=target\x0134=073\x0152=20230919-07:13:26.808\x0144=123.45\x0138\x0155=VOD.L\x0110=100\x01"
 
     assert Journaler.find_seq_no(enc_msg) == 73
 
@@ -140,9 +140,9 @@ def test_persist_recover():
 
 
 def test_get_all_msg():
-    enc_msg_in = b"8=FIX.4.4\x019=75\x0135=D\x0149=sender\x0156=target\x0134=073\x0152=20230919-07:13:26.808\x0144=123.45\x0138\x0155=VOD.L\x0110=100\x01"  # noqa
+    enc_msg_in = b"8=FIX.4.4\x019=75\x0135=D\x0149=sender\x0156=target\x0134=073\x0152=20230919-07:13:26.808\x0144=123.45\x0138\x0155=VOD.L\x0110=100\x01"
 
-    enc_msg_out = b"8=FIX.4.4\x019=75\x0135=D\x0149=sender\x0156=target\x0134=078\x0152=20230919-07:13:26.808\x0144=123.45\x0138\x0155=VOD.L\x0110=100\x01"  # noqa
+    enc_msg_out = b"8=FIX.4.4\x019=75\x0135=D\x0149=sender\x0156=target\x0134=078\x0152=20230919-07:13:26.808\x0144=123.45\x0138\x0155=VOD.L\x0110=100\x01"
 
     j = Journaler()
 
@@ -185,7 +185,7 @@ def test_get_all_msg():
 
 
 def test_persist_tofile():
-    enc_msg = b"8=FIX.4.4\x019=75\x0135=D\x0149=sender\x0156=target\x0134=073\x0152=20230919-07:13:26.808\x0144=123.45\x0138\x0155=VOD.L\x0110=100\x01"  # noqa
+    enc_msg = b"8=FIX.4.4\x019=75\x0135=D\x0149=sender\x0156=target\x0134=073\x0152=20230919-07:13:26.808\x0144=123.45\x0138\x0155=VOD.L\x0110=100\x01"
 
     j = Journaler("test.store")
     assert os.path.exists("test.store")
@@ -195,10 +195,10 @@ def test_persist_tofile():
 
 def test_seq_set():
     enc_messages = [
-        b"8=FIX.4.4\x019=75\x0135=D\x0149=sender\x0156=target\x0134=073\x0152=20230919-07:13:26.808\x0144=123.45\x0138\x0155=VOD.L\x0110=100\x01",  # noqa
-        b"8=FIX.4.4\x019=75\x0135=D\x0149=sender\x0156=target\x0134=074\x0152=20230919-07:13:26.808\x0144=123.45\x0138\x0155=VOD.L\x0110=100\x01",  # noqa
-        b"8=FIX.4.4\x019=75\x0135=D\x0149=sender\x0156=target\x0134=075\x0152=20230919-07:13:26.808\x0144=123.45\x0138\x0155=VOD.L\x0110=100\x01",  # noqa
-        b"8=FIX.4.4\x019=75\x0135=D\x0149=sender\x0156=target\x0134=076\x0152=20230919-07:13:26.808\x0144=123.45\x0138\x0155=VOD.L\x0110=100\x01",  # noqa
+        b"8=FIX.4.4\x019=75\x0135=D\x0149=sender\x0156=target\x0134=073\x0152=20230919-07:13:26.808\x0144=123.45\x0138\x0155=VOD.L\x0110=100\x01",
+        b"8=FIX.4.4\x019=75\x0135=D\x0149=sender\x0156=target\x0134=074\x0152=20230919-07:13:26.808\x0144=123.45\x0138\x0155=VOD.L\x0110=100\x01",
+        b"8=FIX.4.4\x019=75\x0135=D\x0149=sender\x0156=target\x0134=075\x0152=20230919-07:13:26.808\x0144=123.45\x0138\x0155=VOD.L\x0110=100\x01",
+        b"8=FIX.4.4\x019=75\x0135=D\x0149=sender\x0156=target\x0134=076\x0152=20230919-07:13:26.808\x0144=123.45\x0138\x0155=VOD.L\x0110=100\x01",
     ]
     assert Journaler.find_seq_no(enc_messages[0]) == 73
 
@@ -255,7 +255,7 @@ def test_seq_set():
 
 
 def test_perf():
-    msg_tpl = b"8=FIX.4.4\x019=75\x0135=D\x0149=sender\x0156=target\x0134=076\x0152=20230919-07:13:26.808\x0144=123.45\x0138\x0155=VOD.L\x0110=100\x01"  # noqa
+    msg_tpl = b"8=FIX.4.4\x019=75\x0135=D\x0149=sender\x0156=target\x0134=076\x0152=20230919-07:13:26.808\x0144=123.45\x0138\x0155=VOD.L\x0110=100\x01"
 
     j = Journaler("test.store")
 

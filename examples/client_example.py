@@ -121,7 +121,7 @@ class Client(AsyncFIXClient):
 
             order.process_execution_report(msg)
 
-            self.log.info(f"ExecutionReport: {repr(order)}")
+            self.log.info(f"ExecutionReport: {order!r}")
 
             if order.can_cancel():
                 self.log.debug("cancelling order")

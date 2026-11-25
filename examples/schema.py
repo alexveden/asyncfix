@@ -21,4 +21,4 @@ try:
     schema.validate(m)
     assert False
 except FIXMessageError as exc:
-    print(f"Message validation failed: `{repr(m)}`: {repr(exc)}")
+    print(f"Message validation failed: `{m!r}`: {exc!r}")
